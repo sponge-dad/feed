@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+package user;
+option go_package = "./user";
+
+// ==================== 消息定义 ====================
+
+// 用户完整信息
+message UserInfo {
+  int64  id         = 1;
+  string username   = 2;
+  string nickname   = 3;
+  string avatar     = 4;
+  string bio        = 5;
+  string city_code  = 6;
+  string city_name  = 7;
+  int32  status     = 8;
+  int64  created_at = 9;
+}
+
+// 用户简要信息（供 Feed/Comment 等聚合展示作者）
+message UserBrief {
+  int64  id       = 1;
+  string nickname = 2;
+  string avatar   = 3;
+}
+
+// ---- 注册 ----
+message RegisterReq {
+  string username  = 1;
+  string password  = 2;
+  string nickname  = 3;
+  string city_code = 4; // 网关根据IP解析后传入
+  string city_name = 5;
+}
+message RegisterResp {
+  UserInfo user  = 1;
+  string   token = 2;
+}
+
+// ---- 登录 ----
+message LoginReq {
+  string username = 1;
+  string password = 2;
+}
+message LoginResp {
+  UserInfo user  = 1;
+  string   token = 2;
+}
+
+// ---- 获取用户 ----
+message GetUserReq {
+  int64 user_id = 1;
+}
+message GetUserResp {
+  UserInfo user = 1;
+}
+
+// ---- 更新用户 ----
+message UpdateUserReq {
+  int64  user_id   = 1;
+  string nickname  = 2; // 空字符串表示不更新
+  string avatar    = 3;
+  string bio       = 4;
+  string city_code = 5;
+  string city_name = 6;
+}
+message UpdateUserResp {
+  UserInfo user = 1;
+}
+
+// ---- 批量获取（供聚合，避免 N+1） ----
+message BatchGetUsersReq {
+  repeated int64 user_ids = 1;
+}
+message BatchGetUsersResp {
+  repeated UserBrief users = 1;
+}
+
+// ==================== 服务定义 ====================
+service User {
+  rpc Register(RegisterReq) returns (RegisterResp);
+  rpc Login(LoginReq) returns (LoginResp);
+  rpc GetUser(GetUserReq) returns (GetUserResp);
+  rpc UpdateUser(UpdateUserReq) returns (UpdateUserResp);
+  rpc BatchGetUsers(BatchGetUsersReq) returns (BatchGetUsersResp);
+}
