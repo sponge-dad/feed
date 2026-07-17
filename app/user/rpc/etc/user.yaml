@@ -11,7 +11,12 @@ Name: user.rpc
 ListenOn: 0.0.0.0:9001
 Etcd:
   Hosts:
-  - 127.0.0.1:2379
+  # 注意：宿主机端口用的是 2479，不是 etcd 默认的 2379！
+  # 因为本机（k8s-master）自身是 K8s 集群节点，K8s 控制平面自带的 etcd
+  # 已经占用了宿主机的 2379，deploy/docker-compose.yaml 里把我们开发用的
+  # etcd 容器对外端口改成了 2479 以避免冲突，这里必须保持一致，
+  # 否则会误连到 K8s 集群自己的 etcd 上，导致服务发现异常。
+  - 127.0.0.1:2479
   Key: user.rpc
 
 # MySQL 连接配置

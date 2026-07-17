@@ -59,11 +59,24 @@ feed/
 
 > 前置条件：已安装 Go 1.21+、Docker Engine。系统 TencentOS Server / CentOS / RHEL 系。
 >
-> 注意：很多 CVM 上通过 yum/dnf 装的 Docker 只有引擎本身，**不带 compose 功能**
+> 注意 1：很多 CVM 上通过 yum/dnf 装的 Docker 只有引擎本身，**不带 compose 功能**
 > （`docker compose version` 会报 `unknown command`）。运行 `make up` 前先执行
 > `make install-compose` 补装，Makefile 里的 up/down 等命令会自动探测用
 > `docker compose`（v2插件）还是 `docker-compose`（v1二进制），两者都没装时会
 > 提示你先跑这个命令，不会报出难懂的错误。
+>
+> 注意 2：如果 CVM 上的 Docker 服务是 `disabled`/`inactive` 状态（`systemctl status
+> docker` 能看到），先 `sudo systemctl start docker && sudo systemctl enable docker`。
+> 这种情况常见于**同时也是 K8s 节点**的机器（K8s 1.24+ 默认用 containerd 做运行时，
+> docker.service 装了但没启用）。
+>
+> 注意 3：**如果这台机器本身是 K8s 集群节点（尤其是 master）**，K8s 控制平面自带的
+> etcd 会占用宿主机的 `2379` 端口，与本项目 `deploy/docker-compose.yaml` 里 etcd
+> 容器的默认端口冲突。当前配置已把开发用 etcd 的宿主机映射端口改成了 **2479**
+> （容器内部仍是 2379，不影响 compose 网络内部通信），`app/user/rpc/etc/user.yaml`
+> 等各服务配置里的 `Etcd.Hosts` 也要保持用 `127.0.0.1:2479`，两边必须一致，
+> 否则 RPC 服务会误连到 K8s 集群自己的 etcd 上，导致服务发现异常（表现可能是
+> "看起来连上了但服务发现不到彼此"，比报错更难排查）。
 
 ### 1. 安装工具链 + 生成项目骨架
 
@@ -105,8 +118,9 @@ MySQL 首次启动会自动执行 `deploy/sql/` 下所有 `.sql` 建表脚本（
 后续新增的表需要手动执行 SQL）。RocketMQ 管理台启动后可访问
 `http://<CVM_IP>:9877` 查看 Topic/消息堆积情况。
 
-各服务 `etc/*.yaml` 里默认配置的连接地址（`127.0.0.1:3306`、`127.0.0.1:6379` 等）
-和上述 Compose 暴露的端口是对齐的，本机跑服务无需额外改配置。
+各服务 `etc/*.yaml` 里默认配置的连接地址（`127.0.0.1:3306`、`127.0.0.1:6379`、
+`127.0.0.1:2479` 等）和上述 Compose 暴露的端口是对齐的，本机跑服务无需额外改配置。
+etcd 用的是 2479 而非默认的 2379，原因见上面"注意 3"。
 
 ### 3. 启动某个 RPC 服务
 

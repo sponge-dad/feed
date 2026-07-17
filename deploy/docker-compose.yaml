@@ -76,7 +76,12 @@ services:
       ALLOW_NONE_AUTHENTICATION: "yes"
       ETCD_ADVERTISE_CLIENT_URLS: http://etcd:2379
     ports:
-      - "2379:2379"
+      # 宿主机端口改用 2479，避开 2379——这台机器同时是 K8s master 节点，
+      # K8s 控制平面自带的 etcd 就占用着宿主机的 2379，会导致端口冲突。
+      # 容器内部仍然监听 2379，不影响：
+      #   - 同 compose 网络内的服务（RPC 服务的 etcd 配置用的是 `etcd:2379`，走容器内网络，不走宿主机端口）
+      #   - 只有你想从宿主机直接用 etcdctl/浏览器访问时才需要用 2479
+      - "2479:2379"
     volumes:
       - etcd_data:/bitnami/etcd
 
