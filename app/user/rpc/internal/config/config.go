@@ -27,8 +27,15 @@ type Config struct {
 	// 单机场景配置一个节点即可。
 	CacheRedis cache.CacheConf
 
-	// Auth JWT 签发与校验所需的密钥配置
-	Auth struct {
+	// JwtAuth JWT 签发与校验所需的密钥配置。
+	//
+	// 注意：这里不能叫 `Auth`——zrpc.RpcServerConf 内嵌了 go-zero 自己的
+	// `Auth bool` 字段（用于开启基于 Redis 的 gRPC 内置鉴权机制），字段名
+	// 一旦撞车，go-zero 配置加载器会在启动时直接报错拒绝启动：
+	//   error: config file etc/user.yaml, conflict key auth, pay attention to anonymous fields
+	// 所以我们自己的 JWT 配置改用 `JwtAuth` 这个名字，yaml 里对应写
+	// `JwtAuth:` 而不是 `Auth:`。
+	JwtAuth struct {
 		// AccessSecret 签名密钥，务必在生产环境用随机字符串替换，不要和其他服务共用
 		AccessSecret string
 		// AccessExpireHour token 过期时间（小时）

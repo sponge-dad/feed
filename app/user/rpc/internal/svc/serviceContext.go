@@ -51,6 +51,6 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		Config:     c,
 		UserModel:  model.NewUsersModel(conn, c.CacheRedis),
 		Redis:      rds,
-		JwtManager: jwtx.NewManager(c.Auth.AccessSecret, c.Auth.AccessExpireHour),
+		JwtManager: jwtx.NewManager(c.JwtAuth.AccessSecret, c.JwtAuth.AccessExpireHour),
 	}
 }

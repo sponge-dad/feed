@@ -30,6 +30,10 @@ CacheRedis:
   Pass: ""
 
 # JWT 签发配置
-Auth:
+#
+# 注意：这里的 key 是 JwtAuth，不是 Auth——go-zero 的 zrpc.RpcServerConf
+# 内嵌了框架自己的 Auth 字段（Redis 内置鉴权开关），如果写成 Auth 会与之
+# 撞名，启动时报错 "conflict key auth"。详见 internal/config/config.go 里的注释。
+JwtAuth:
   AccessSecret: "feed-user-service-jwt-secret-CHANGE-ME"
   AccessExpireHour: 720 # 30天
