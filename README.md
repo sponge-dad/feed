@@ -57,7 +57,13 @@ feed/
 
 ## 快速开始
 
-> 前置条件：已安装 Go 1.21+、Docker（含 `docker compose` 子命令）。系统 TencentOS Server / CentOS / RHEL 系。
+> 前置条件：已安装 Go 1.21+、Docker Engine。系统 TencentOS Server / CentOS / RHEL 系。
+>
+> 注意：很多 CVM 上通过 yum/dnf 装的 Docker 只有引擎本身，**不带 compose 功能**
+> （`docker compose version` 会报 `unknown command`）。运行 `make up` 前先执行
+> `make install-compose` 补装，Makefile 里的 up/down 等命令会自动探测用
+> `docker compose`（v2插件）还是 `docker-compose`（v1二进制），两者都没装时会
+> 提示你先跑这个命令，不会报出难懂的错误。
 
 ### 1. 安装工具链 + 生成项目骨架
 
@@ -87,6 +93,7 @@ make help            # 查看所有命令
 开发环境的中间件统一用 Docker Compose 管理，配置见 `deploy/docker-compose.yaml`：
 
 ```bash
+make install-compose   # 机器上没有 docker compose 时先装一下（幂等，装过会自动跳过）
 make up          # 一键启动 MySQL/Redis/etcd/RocketMQ
 make ps           # 查看容器状态
 make logs         # 查看日志（Ctrl+C 退出，不影响容器运行）

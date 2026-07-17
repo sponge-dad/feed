@@ -9,6 +9,15 @@ BUILD_DIR   := ./bin
 GREEN := \033[0;32m
 NC    := \033[0m
 
+# 自动探测可用的 compose 调用方式：优先用 `docker compose`（v2插件），
+# 找不到则退回独立的 `docker-compose`（v1二进制），两者都没有则留空，
+# 留空时 up/down 等目标会提示先运行 install-compose。
+# 用 shell 函数在 Makefile 加载时就探测一次，避免每个目标里重复判断。
+DOCKER_COMPOSE := $(shell \
+	if docker compose version >/dev/null 2>&1; then echo "docker compose"; \
+	elif command -v docker-compose >/dev/null 2>&1; then echo "docker-compose"; \
+	else echo ""; fi)
+
 .PHONY: help
 help: ## 显示帮助
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -69,24 +78,36 @@ fmt: ## 格式化代码
 	gofmt -w .
 
 # ---------------- 部署 ----------------
-# 注：用 `docker compose`（Docker 官方内置子命令）而不是独立的 `docker-compose` 二进制，
-# 后者在较新的 Docker 安装方式下可能不存在。
+# 说明：DOCKER_COMPOSE 变量在文件头部自动探测得到，兼容 `docker compose`（v2插件）
+# 和 `docker-compose`（v1独立二进制）两种写法。如果你的机器两者都没装，
+# 运行 `make install-compose` 补装（脚本会优先走系统包管理器，失败则下载官方二进制）。
+.PHONY: install-compose
+install-compose: ## 安装 docker compose（机器上缺失时用这个）
+	bash scripts/03-install-docker-compose.sh
+
 .PHONY: up
-up: ## 启动基础设施（MySQL/Redis/etcd/RocketMQ）
-	docker compose -f deploy/docker-compose.yaml up -d
+up: check-compose ## 启动基础设施（MySQL/Redis/etcd/RocketMQ）
+	$(DOCKER_COMPOSE) -f deploy/docker-compose.yaml up -d
 
 .PHONY: down
-down: ## 停止基础设施（保留数据）
-	docker compose -f deploy/docker-compose.yaml down
+down: check-compose ## 停止基础设施（保留数据）
+	$(DOCKER_COMPOSE) -f deploy/docker-compose.yaml down
 
 .PHONY: down-clean
-down-clean: ## 停止基础设施并清空所有数据（重新开始）
-	docker compose -f deploy/docker-compose.yaml down -v
+down-clean: check-compose ## 停止基础设施并清空所有数据（重新开始）
+	$(DOCKER_COMPOSE) -f deploy/docker-compose.yaml down -v
 
 .PHONY: ps
-ps: ## 查看基础设施容器状态
-	docker compose -f deploy/docker-compose.yaml ps
+ps: check-compose ## 查看基础设施容器状态
+	$(DOCKER_COMPOSE) -f deploy/docker-compose.yaml ps
 
 .PHONY: logs
-logs: ## 查看基础设施日志
-	docker compose -f deploy/docker-compose.yaml logs -f
+logs: check-compose ## 查看基础设施日志
+	$(DOCKER_COMPOSE) -f deploy/docker-compose.yaml logs -f
+
+.PHONY: check-compose
+check-compose:
+ifeq ($(DOCKER_COMPOSE),)
+	@echo "未检测到 docker compose，请先运行: make install-compose"
+	@exit 1
+endif
