@@ -1,0 +1,137 @@
+# docker-compose.yaml
+#
+# 职责：本地/CVM 开发环境的基础设施一键启动，包含 Feed 系统依赖的全部中间件：
+#   MySQL（业务数据） / Redis（缓存） / RocketMQ（消息队列） / etcd（go-zero 服务发现）
+#
+# 使用方式（在项目根目录执行，或用 Makefile 封装的 make up / make down）：
+#   docker compose -f deploy/docker-compose.yaml up -d      # 启动
+#   docker compose -f deploy/docker-compose.yaml down       # 停止（保留数据卷）
+#   docker compose -f deploy/docker-compose.yaml down -v    # 停止并清空数据（重新开始）
+#   docker compose -f deploy/docker-compose.yaml logs -f    # 查看日志
+#
+# 说明：这是"开发环境"配置，密码等直接写明文，生产环境（K8s）走 Secret，
+# 参考 deploy/k8s/（待补充）。
+# 注：不写 `version` 字段——Compose V2 已不需要它，写了反而会收到过时警告。
+
+# 显式声明项目名。不写的话 Docker Compose 会用 compose 文件所在目录名（即"deploy"）
+# 作为项目名，生成的网络/容器名前缀会变成 deploy_xxx，容易和其他项目产生混淆。
+name: feed
+
+services:
+  # ------------------------------------------------------------------
+  # MySQL：所有服务的业务数据存储
+  # ------------------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    container_name: feed-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      # 每个服务用独立数据库，避免表名冲突、方便未来拆分到不同物理实例
+      MYSQL_DATABASE: feed_user
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # 启动时自动执行 deploy/sql 下的建表脚本（仅首次建库时生效，之后新增表需手动执行）
+      - ./sql:/docker-entrypoint-initdb.d
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ------------------------------------------------------------------
+  # Redis：Cache-Aside 缓存 + Feed三种流的 ZSet 存储
+  # ------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: feed-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ------------------------------------------------------------------
+  # etcd：go-zero 微服务的服务注册与发现中心
+  # 所有 RPC 服务（user/relation/feed/comment/interaction）启动时都要连它，
+  # 网关也通过它发现各个 RPC 服务的地址，不需要手动配置服务IP。
+  # ------------------------------------------------------------------
+  etcd:
+    image: bitnami/etcd:3.5
+    container_name: feed-etcd
+    restart: unless-stopped
+    environment:
+      ALLOW_NONE_AUTHENTICATION: "yes"
+      ETCD_ADVERTISE_CLIENT_URLS: http://etcd:2379
+    ports:
+      - "2379:2379"
+    volumes:
+      - etcd_data:/bitnami/etcd
+
+  # ------------------------------------------------------------------
+  # RocketMQ NameServer：RocketMQ 的服务发现组件，Broker 和客户端都要先连它
+  # ------------------------------------------------------------------
+  rmq-namesrv:
+    image: apache/rocketmq:5.1.4
+    container_name: feed-rmq-namesrv
+    restart: unless-stopped
+    ports:
+      - "9876:9876"
+    command: sh mqnamesrv
+    environment:
+      JAVA_OPT_EXT: "-Xms256m -Xmx256m"
+
+  # ------------------------------------------------------------------
+  # RocketMQ Broker：真正存储消息、处理生产/消费的组件
+  # ------------------------------------------------------------------
+  rmq-broker:
+    image: apache/rocketmq:5.1.4
+    container_name: feed-rmq-broker
+    restart: unless-stopped
+    depends_on:
+      - rmq-namesrv
+    ports:
+      - "10909:10909"
+      - "10911:10911"
+      - "10912:10912"
+    environment:
+      NAMESRV_ADDR: "rmq-namesrv:9876"
+      JAVA_OPT_EXT: "-Xms512m -Xmx512m"
+      # 让 Broker 用容器服务名注册地址，避免宿主机/其他容器解析不到
+      BROKER_IP1: "rmq-broker"
+    command: sh mqbroker
+    volumes:
+      - rmq_broker_data:/home/rocketmq/store
+
+  # ------------------------------------------------------------------
+  # RocketMQ Dashboard：可视化管理界面，方便查看 Topic/消息堆积/消费情况
+  # 生产环境可以不部署，仅本地开发调试用，浏览器打开 http://<CVM_IP>:9877
+  # ------------------------------------------------------------------
+  rmq-dashboard:
+    image: apacherocketmq/rocketmq-dashboard:1.0.0
+    container_name: feed-rmq-dashboard
+    restart: unless-stopped
+    depends_on:
+      - rmq-namesrv
+    ports:
+      - "9877:8080"
+    environment:
+      JAVA_OPT: "-Drocketmq.namesrv.addr=rmq-namesrv:9876 -Dcom.rocketmq.sendMessageWithVIPChannel=false"
+
+volumes:
+  mysql_data:
+  redis_data:
+  etcd_data:
+  rmq_broker_data:

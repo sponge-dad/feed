@@ -45,13 +45,19 @@ proto: ## 重新生成所有 proto 代码
 
 # ---------------- 构建 ----------------
 .PHONY: build
-build: ## 编译所有服务
+build: ## 编译所有服务（仅编译已实际生成 rpc 骨架的服务，跳过尚未创建的）
 	@mkdir -p $(BUILD_DIR)
 	@for svc in $(SERVICES); do \
-		echo "$(GREEN)building $$svc-rpc...$(NC)"; \
-		go build -o $(BUILD_DIR)/$$svc-rpc ./app/$$svc/cmd/rpc; \
+		if [ -f app/$$svc/rpc/$$svc.go ]; then \
+			echo "$(GREEN)building $$svc-rpc...$(NC)"; \
+			go build -o $(BUILD_DIR)/$$svc-rpc ./app/$$svc/rpc; \
+		else \
+			echo "skip $$svc: app/$$svc/rpc/$$svc.go not found yet"; \
+		fi; \
 	done
-	go build -o $(BUILD_DIR)/gateway ./app/gateway/cmd/api
+	@if [ -f app/gateway/cmd/api/gateway.go ]; then \
+		go build -o $(BUILD_DIR)/gateway ./app/gateway/cmd/api; \
+	fi
 
 # ---------------- 测试 ----------------
 .PHONY: test
@@ -63,10 +69,24 @@ fmt: ## 格式化代码
 	gofmt -w .
 
 # ---------------- 部署 ----------------
+# 注：用 `docker compose`（Docker 官方内置子命令）而不是独立的 `docker-compose` 二进制，
+# 后者在较新的 Docker 安装方式下可能不存在。
 .PHONY: up
-up: ## docker-compose 启动基础设施
-	docker-compose -f deploy/docker-compose.yaml up -d
+up: ## 启动基础设施（MySQL/Redis/etcd/RocketMQ）
+	docker compose -f deploy/docker-compose.yaml up -d
 
 .PHONY: down
-down: ## docker-compose 停止
-	docker-compose -f deploy/docker-compose.yaml down
+down: ## 停止基础设施（保留数据）
+	docker compose -f deploy/docker-compose.yaml down
+
+.PHONY: down-clean
+down-clean: ## 停止基础设施并清空所有数据（重新开始）
+	docker compose -f deploy/docker-compose.yaml down -v
+
+.PHONY: ps
+ps: ## 查看基础设施容器状态
+	docker compose -f deploy/docker-compose.yaml ps
+
+.PHONY: logs
+logs: ## 查看基础设施日志
+	docker compose -f deploy/docker-compose.yaml logs -f

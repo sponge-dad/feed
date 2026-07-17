@@ -47,36 +47,64 @@ feed/
 │   ├── idgen/             # Snowflake ID
 │   ├── ipx/               # IP 定位
 │   └── mq/                # RocketMQ 封装
-├── deploy/                # 部署（SQL/K8s/config）
+├── deploy/                # 部署
+│   ├── sql/               # 各服务建表脚本
+│   ├── docker-compose.yaml # 本地/CVM开发环境基础设施（MySQL/Redis/etcd/RocketMQ）
+│   └── k8s/               # K8s 部署配置（待补充）
 ├── scripts/               # 初始化脚本
 └── Makefile
 ```
 
 ## 快速开始
 
-> 前置条件：已安装 Go 1.21+。系统 TencentOS Server / CentOS / RHEL 系。
+> 前置条件：已安装 Go 1.21+、Docker（含 `docker compose` 子命令）。系统 TencentOS Server / CentOS / RHEL 系。
 
-在 CVM 上按顺序执行三个脚本即可完成环境搭建和骨架生成：
+### 1. 安装工具链 + 生成项目骨架
 
 ```bash
-# 1. 安装工具链（protoc / goctl / 插件）
+# 安装工具链（protoc / goctl / 插件）
 bash scripts/00-install-tools.sh
 source ~/.bashrc          # 使 goctl 命令生效
 
-# 2. 初始化项目骨架（go.mod + 目录）
+# 初始化项目骨架（go.mod + 目录）
 bash scripts/01-init-project.sh
 
-# 3. 用 goctl 生成各服务 gRPC 骨架
+# 用 goctl 生成各服务 gRPC 骨架
 bash scripts/02-gen-services.sh
 ```
 
 或使用 Makefile：
 
 ```bash
-make install-tools   # = 步骤1
-make init            # = 步骤2
-make gen             # = 步骤3
+make install-tools   # 安装工具链
+make init            # 初始化骨架
+make gen             # 生成 gRPC 骨架
 make help            # 查看所有命令
+```
+
+### 2. 启动基础设施（MySQL / Redis / etcd / RocketMQ）
+
+开发环境的中间件统一用 Docker Compose 管理，配置见 `deploy/docker-compose.yaml`：
+
+```bash
+make up          # 一键启动 MySQL/Redis/etcd/RocketMQ
+make ps           # 查看容器状态
+make logs         # 查看日志（Ctrl+C 退出，不影响容器运行）
+make down         # 停止（保留数据，下次 up 数据还在）
+make down-clean   # 停止并清空所有数据（重新开始用这个）
+```
+
+MySQL 首次启动会自动执行 `deploy/sql/` 下所有 `.sql` 建表脚本（仅首次建库时生效，
+后续新增的表需要手动执行 SQL）。RocketMQ 管理台启动后可访问
+`http://<CVM_IP>:9877` 查看 Topic/消息堆积情况。
+
+各服务 `etc/*.yaml` 里默认配置的连接地址（`127.0.0.1:3306`、`127.0.0.1:6379` 等）
+和上述 Compose 暴露的端口是对齐的，本机跑服务无需额外改配置。
+
+### 3. 启动某个 RPC 服务
+
+```bash
+cd app/user/rpc && go run user.go -f etc/user.yaml
 ```
 
 ## 开发进度
@@ -87,11 +115,11 @@ make help            # 查看所有命令
 - [x] 数据模型设计（docs/data-model.md）
 - [x] REST API 契约（docs/api/）
 - [x] 项目骨架 + 公共代码 + 初始化脚本
-- [ ] User 服务实现
+- [x] Docker Compose 本地联调环境（MySQL/Redis/etcd/RocketMQ）
+- [x] User 服务实现（见 `app/user/rpc/README.md`）
 - [ ] Relation 服务实现
 - [ ] Feed 服务实现
 - [ ] Comment 服务实现
 - [ ] Interaction 服务实现
 - [ ] API Gateway 实现
-- [ ] Docker Compose 本地联调
 - [ ] K8s 部署
