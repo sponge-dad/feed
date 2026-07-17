@@ -34,6 +34,7 @@ feed/
 ├── docs/                  # 设计文档
 │   ├── service-design.md  # 微服务拆分方案
 │   ├── data-model.md      # 数据模型（MySQL + Redis）
+│   ├── dev-guidelines.md  # 开发规范（注释/分层/错误处理约定，写代码前必读）
 │   └── api/               # REST API 定义（各模块）
 ├── api/proto/             # 内部 gRPC proto 契约
 ├── app/                   # 各微服务代码

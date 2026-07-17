@@ -16,13 +16,13 @@
 
 ```sql
 CREATE TABLE users (
-    id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    id           BIGINT UNSIGNED NOT NULL,               -- Snowflake 生成，应用层写入，非自增
     username     VARCHAR(64)     NOT NULL DEFAULT '',
     password     VARCHAR(256)    NOT NULL DEFAULT '',   -- bcrypt hash
     nickname     VARCHAR(64)     NOT NULL DEFAULT '',
     avatar       VARCHAR(512)    NOT NULL DEFAULT '',   -- COS URL
-    email        VARCHAR(128)    NOT NULL DEFAULT '',
-    phone        VARCHAR(20)     NOT NULL DEFAULT '',
+    email        VARCHAR(128)    NULL     DEFAULT NULL, -- 预留，允许NULL避免唯一键冲突
+    phone        VARCHAR(20)     NULL     DEFAULT NULL, -- 预留，允许NULL避免唯一键冲突
     bio          VARCHAR(512)    NOT NULL DEFAULT '',
     city_code    VARCHAR(16)     NOT NULL DEFAULT '',   -- 城市编码, 如 "440300"=深圳
     city_name    VARCHAR(64)     NOT NULL DEFAULT '',   -- 城市名, 如 "深圳"
@@ -32,14 +32,18 @@ CREATE TABLE users (
     PRIMARY KEY (id),
     UNIQUE KEY uk_username (username),
     UNIQUE KEY uk_phone (phone),
+    UNIQUE KEY uk_email (email),
     KEY idx_city (city_code),
     KEY idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
+> 完整脚本见 `deploy/sql/user.sql`（含逐字段注释）。
+
 设计说明：
 - **不分表**：10w 用户单表完全够，百万级再考虑
-- **登录方式**：当前只支持用户名 + 密码，手机号为选填
+- **ID 生成**：主键不用 MySQL 自增，统一走 `common/idgen`（Snowflake），为未来分库分表铺路
+- **登录方式**：当前只支持用户名 + 密码，手机号/邮箱为预留字段（NULL 而非空字符串，避免唯一键冲突）
 - **城市**：注册时通过 IP 自动定位写入，用户可手动修改
 
 ### 1.2 Redis

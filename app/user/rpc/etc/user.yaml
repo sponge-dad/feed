@@ -1,6 +1,30 @@
+# user.yaml
+#
+# User RPC 服务运行配置。字段结构对应 internal/config/config.go 中的 Config，
+# 改配置字段名之前必须先同步改 config.go，否则启动时会因为字段不匹配而报错或取到默认值。
+#
+# 本地/CVM 单机开发环境示例值，生产环境需替换为 K8s ConfigMap/Secret 注入的真实值。
+
 Name: user.rpc
-ListenOn: 0.0.0.0:8080
+# 服务端口约定：9001（见 docs/service-design.md 端口分配表），
+# 而不是 goctl 默认生成的 8080（8080 是网关端口，避免和网关冲突）。
+ListenOn: 0.0.0.0:9001
 Etcd:
   Hosts:
   - 127.0.0.1:2379
   Key: user.rpc
+
+# MySQL 连接配置
+Mysql:
+  DataSource: root:root@tcp(127.0.0.1:3306)/feed_user?charset=utf8mb4&parseTime=true&loc=Local
+
+# Redis 缓存配置（go-zero cache.CacheConf 是数组，支持配置多节点分片，单机场景写一个节点）
+CacheRedis:
+- Host: 127.0.0.1:6379
+  Type: node
+  Pass: ""
+
+# JWT 签发配置
+Auth:
+  AccessSecret: "feed-user-service-jwt-secret-CHANGE-ME"
+  AccessExpireHour: 720 # 30天
