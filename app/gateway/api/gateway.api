@@ -1,0 +1,39 @@
+// gateway.api
+//
+// 职责：Gateway 对外 HTTP REST 接口入口文件，聚合各模块路由。
+// 说明：通过 import 引入各模块类型，在此统一注册 HTTP 路由。
+import (
+	"user.api"
+)
+
+// 公开接口：注册、登录
+@server (
+	prefix: /api/v1
+)
+service gateway {
+	@handler register
+	post /users/register (RegisterReq) returns (RegisterResp)
+
+	@handler login
+	post /users/login (LoginReq) returns (LoginResp)
+}
+
+// 需登录接口：获取用户、获取当前用户、更新当前用户、上传凭证
+@server (
+	jwt:    Auth
+	prefix: /api/v1
+)
+service gateway {
+	@handler getUser
+	get /users/:userId (GetUserReq) returns (UserDetail)
+
+	@handler getMe
+	get /users/me returns (UserDetail)
+
+	@handler updateMe
+	patch /users/me (UpdateUserReq) returns (UpdateUserResp)
+
+	@handler uploadToken
+	post /upload/token (UploadTokenReq) returns (UploadTokenResp)
+}
+

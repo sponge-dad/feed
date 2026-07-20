@@ -1,0 +1,89 @@
+// user.api
+//
+// 职责：User 模块对外 HTTP REST 接口的类型定义。
+// 说明：具体路由在 gateway.api 中注册，handler 内部通过 User RPC Client 调用 User 服务。
+
+// 用户基础信息（注册/登录/更新返回用）
+type User {
+    ID       int64  `json:"id"`
+    Username string `json:"username"`
+    Nickname string `json:"nickname"`
+    Avatar   string `json:"avatar"`
+    Bio      string `json:"bio"`
+    CityName string `json:"city_name"`
+}
+
+// 用户详情（他人主页/我的主页，含聚合数据）
+type UserDetail {
+    ID             int64  `json:"id"`
+    Username       string `json:"username"`
+    Nickname       string `json:"nickname"`
+    Avatar         string `json:"avatar"`
+    Bio            string `json:"bio"`
+    CityName       string `json:"city_name"`
+    FollowingCount int64  `json:"following_count"`
+    FollowerCount  int64  `json:"follower_count"`
+    FeedCount      int64  `json:"feed_count"`
+    IsFollowing    bool   `json:"is_following"`
+}
+
+// 注册
+type RegisterReq {
+    Username string `json:"username" validate:"required"`
+    Password string `json:"password" validate:"required"`
+    Nickname string `json:"nickname" validate:"required"`
+}
+
+type RegisterResp {
+    User  User   `json:"user"`
+    Token string `json:"token"`
+}
+
+// 登录
+type LoginReq {
+    Username string `json:"username" validate:"required"`
+    Password string `json:"password" validate:"required"`
+}
+
+type LoginResp {
+    User  User   `json:"user"`
+    Token string `json:"token"`
+}
+
+// 获取用户详情
+type GetUserReq {
+    UserID int64 `path:"userId"`
+}
+
+// 更新当前用户
+type UpdateUserReq {
+    Nickname string `json:"nickname,optional"`
+    Avatar   string `json:"avatar,optional"`
+    Bio      string `json:"bio,optional"`
+    CityCode string `json:"city_code,optional"`
+    CityName string `json:"city_name,optional"`
+}
+
+type UpdateUserResp {
+    User User `json:"user"`
+}
+
+// 获取上传凭证
+type UploadTokenReq {
+    FileType string `json:"file_type" validate:"required"`
+    FileExt  string `json:"file_ext" validate:"required"`
+}
+
+type UploadCredentials {
+    TmpSecretID  string `json:"tmp_secret_id"`
+    TmpSecretKey string `json:"tmp_secret_key"`
+    SessionToken string `json:"session_token"`
+    ExpiredTime  int64  `json:"expired_time"`
+}
+
+type UploadTokenResp {
+    UploadURL   string            `json:"upload_url"`
+    Credentials UploadCredentials `json:"credentials"`
+    FileKey     string            `json:"file_key"`
+    FileURL     string            `json:"file_url"`
+}
