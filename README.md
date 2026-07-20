@@ -138,7 +138,7 @@ cd app/user/rpc && go run user.go -f etc/user.yaml
 - [x] 项目骨架 + 公共代码 + 初始化脚本
 - [x] Docker Compose 本地联调环境（MySQL/Redis/etcd/RocketMQ）
 - [x] User 服务实现（见 `app/user/rpc/README.md`）
-- [ ] Relation 服务实现
+- [x] Relation 服务实现（见 `app/relation/rpc/README.md`）
 - [ ] Feed 服务实现
 - [ ] Comment 服务实现
 - [ ] Interaction 服务实现

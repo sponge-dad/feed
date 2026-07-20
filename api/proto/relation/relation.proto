@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package relation;
+option go_package = "./relation";
+
+// ==================== 消息定义 ====================
+
+// 关注/取关请求
+message FollowReq {
+  int64 follower_id  = 1; // 发起关注的用户ID
+  int64 followee_id  = 2; // 被关注的用户ID
+}
+message FollowResp {
+  bool success = 1; // true 表示成功
+}
+
+message UnfollowReq {
+  int64 follower_id = 1;
+  int64 followee_id = 2;
+}
+message UnfollowResp {
+  bool success = 1;
+}
+
+// 获取关注列表
+message GetFollowsReq {
+  int64 user_id  = 1; // 要查的用户ID
+  int64 page     = 2; // 页码，从1开始
+  int64 page_size = 3; // 每页条数，默认20
+}
+message GetFollowsResp {
+  repeated int64 followee_ids = 1; // 被关注者ID列表，按关注时间倒序
+  int64 total = 2; // 总关注数
+}
+
+// 获取粉丝列表
+message GetFansReq {
+  int64 user_id   = 1;
+  int64 page      = 2;
+  int64 page_size = 3;
+}
+message GetFansResp {
+  repeated int64 follower_ids = 1; // 粉丝ID列表，按关注时间倒序
+  int64 total = 2; // 总粉丝数
+}
+
+// 是否关注（批量）
+message IsFollowReq {
+  int64 follower_id = 1; // 关注者
+  repeated int64 followee_ids = 2; // 被关注者ID列表
+}
+message IsFollowResp {
+  // key: followee_id, value: 是否关注
+  map<int64, bool> results = 1;
+}
+
+// 大V判定：粉丝数是否超过阈值
+message IsVipReq {
+  int64 user_id = 1;
+}
+message IsVipResp {
+  bool is_vip = 1; // true 表示是大V
+}
+
+// ==================== 服务定义 ====================
+service Relation {
+  rpc Follow(FollowReq) returns (FollowResp);
+  rpc Unfollow(UnfollowReq) returns (UnfollowResp);
+  rpc GetFollows(GetFollowsReq) returns (GetFollowsResp);
+  rpc GetFans(GetFansReq) returns (GetFansResp);
+  rpc IsFollow(IsFollowReq) returns (IsFollowResp);
+  rpc IsVip(IsVipReq) returns (IsVipResp);
+}
