@@ -56,9 +56,9 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass mUd0ZLc312DPJ4Acaf4PnIoF
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "mUd0ZLc312DPJ4Acaf4PnIoF", "ping"]
       interval: 5s
       timeout: 5s
       retries: 10

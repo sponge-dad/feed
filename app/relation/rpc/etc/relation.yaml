@@ -4,7 +4,7 @@
 # 本地/CVM 单机开发环境示例值，生产环境需替换为 K8s ConfigMap 注入的真实值。
 
 Name: relation.rpc
-# 服务端口约定：9002（见 docs/service-design.md 端口分配表），避免与 8080 网关冲突。
+# 服务端口约定：9002（见 ../../../docs/design/service-design.md 端口分配表），避免与 8080 网关冲突。
 ListenOn: 0.0.0.0:9002
 Etcd:
   Hosts:
@@ -20,7 +20,7 @@ Mysql:
 CacheRedis:
 - Host: 127.0.0.1:6379
   Type: node
-  Pass: ""
+  Pass: "mUd0ZLc312DPJ4Acaf4PnIoF"
 
 # 大V判定阈值
 Vip:

@@ -1,9 +1,9 @@
 -- user.sql
 --
--- 职责：User 服务的 MySQL 建表脚本，对应 docs/data-model.md 第1节的设计。
+-- 职责：User 服务的 MySQL 建表脚本，对应 ../../docs/design/data-model.md 第1节的设计。
 -- 使用方式：在目标数据库中手动执行一次即可（无需 ORM 迁移工具，团队约定手动建表）。
 --
--- 重要约定（详见 docs/dev-guidelines.md）：
+-- 重要约定（详见 ../../docs/agent/dev-guidelines.md）：
 --   1. id 不使用 MySQL AUTO_INCREMENT，而是由应用层 common/idgen（Snowflake）生成后插入。
 --      原因：未来 users 表可能需要分库分表，提前统一用 Snowflake 全局ID，
 --      避免到时候还要单独迁移 ID 生成策略。

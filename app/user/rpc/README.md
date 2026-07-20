@@ -3,7 +3,7 @@
 用户注册/登录/信息管理的 gRPC 服务，是 Feed 系统的基础身份服务，其他服务（Relation/Feed/
 Comment/Interaction）通过 `BatchGetUsers` 获取用户简要信息用于展示，不直接访问 users 表。
 
-> 完整的设计背景见 `docs/service-design.md`（服务职责划分）和 `docs/data-model.md`
+> 完整的设计背景见 `../../../docs/design/service-design.md`（服务职责划分）和 `../../../docs/design/data-model.md`
 > （数据模型），本文档只总结**这个服务实现层面用到的技术点**，供后续开发同类服务参照。
 
 ## 1. 服务信息
@@ -124,7 +124,7 @@ type ServiceContext struct {
   时间是准确的库内值。
 - `email`/`phone` 字段当前只建了表和唯一索引，Register/Login 均未启用，为后续
   手机号登录/找回密码预留。
-- 尚未接入 RocketMQ：按 `docs/service-design.md` 的规划，用户注册成功后应该发一条
+- 尚未接入 RocketMQ：按 `../../../docs/design/service-design.md` 的规划，用户注册成功后应该发一条
   `user.registered` 事件（供推荐系统冷启动、风控等下游订阅），本服务当前版本未实现。
 
 ## 7. 本地运行

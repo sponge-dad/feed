@@ -1,6 +1,6 @@
 // Package errorx 统一业务错误码定义。
 //
-// 业务码分段（见 docs/api/README.md）：
+// 业务码分段（见 ../design/api-spec/README.md）：
 //
 //	0            成功
 //	10000~10999  User 服务

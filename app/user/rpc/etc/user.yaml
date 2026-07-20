@@ -6,7 +6,7 @@
 # 本地/CVM 单机开发环境示例值，生产环境需替换为 K8s ConfigMap/Secret 注入的真实值。
 
 Name: user.rpc
-# 服务端口约定：9001（见 docs/service-design.md 端口分配表），
+# 服务端口约定：9001（见 ../../../docs/design/service-design.md 端口分配表），
 # 而不是 goctl 默认生成的 8080（8080 是网关端口，避免和网关冲突）。
 ListenOn: 0.0.0.0:9001
 Etcd:
@@ -27,7 +27,7 @@ Mysql:
 CacheRedis:
 - Host: 127.0.0.1:6379
   Type: node
-  Pass: ""
+  Pass: "mUd0ZLc312DPJ4Acaf4PnIoF"
 
 # JWT 签发配置
 #

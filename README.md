@@ -31,11 +31,15 @@
 
 ```
 feed/
-├── docs/                  # 设计文档
-│   ├── service-design.md  # 微服务拆分方案
-│   ├── data-model.md      # 数据模型（MySQL + Redis）
-│   ├── dev-guidelines.md  # 开发规范（注释/分层/错误处理约定，写代码前必读）
-│   └── api/               # REST API 定义（各模块）
+├── docs/                  # 设计文档与 AI 协作指引
+│   ├── agent/             # vibe coding 时约束 AI 的指引文档
+│   │   ├── dev-guidelines.md    # 开发规范（注释/分层/错误处理约定，写代码前必读）
+│   │   └── api-writing-guide.md # API 文档编写规范
+│   └── design/            # 系统设计文档
+│       ├── architecture.md      # 整体技术方案
+│       ├── service-design.md    # 微服务拆分方案
+│       ├── data-model.md        # 数据模型（MySQL + Redis）
+│       └── api-spec/            # REST API 定义（各模块）
 ├── api/proto/             # 内部 gRPC proto 契约
 ├── app/                   # 各微服务代码
 │   ├── user/ relation/ feed/ comment/ interaction/  # gRPC 服务
@@ -132,9 +136,9 @@ cd app/user/rpc && go run user.go -f etc/user.yaml
 
 - [x] 需求定稿
 - [x] 技术选型
-- [x] 微服务拆分设计（docs/service-design.md）
-- [x] 数据模型设计（docs/data-model.md）
-- [x] REST API 契约（docs/api/）
+- [x] 微服务拆分设计（docs/design/service-design.md）
+- [x] 数据模型设计（docs/design/data-model.md）
+- [x] REST API 契约（docs/design/api-spec/）
 - [x] 项目骨架 + 公共代码 + 初始化脚本
 - [x] Docker Compose 本地联调环境（MySQL/Redis/etcd/RocketMQ）
 - [x] User 服务实现（见 `app/user/rpc/README.md`）

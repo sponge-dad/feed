@@ -59,7 +59,7 @@ package logic
   尤其是：
   - 涉及缓存读写策略的地方（为什么先删缓存不是先写缓存）
   - 涉及批量操作代替循环单查的地方（为什么不能写 for 循环查 N 次）
-  - 涉及错误码返回的地方（对应 `docs/api/xxx.md` 里的哪个业务码）
+  - 涉及错误码返回的地方（对应 `../design/api-spec/xxx.md` 里的哪个业务码）
 
 ### 2.1 示例
 
@@ -127,7 +127,7 @@ func (l *RegisterLogic) Register(in *user.RegisterReq) (*user.RegisterResp, erro
 - Go 文件用小驼峰命名，和 goctl 生成风格保持一致，如 `registerLogic.go`（而不是
   `register_logic.go`）。
 - 结构体、导出函数用大驼峰（PascalCase）；内部变量、参数用小驼峰（camelCase）。
-- Redis Key、MQ Topic 命名以 `docs/data-model.md` 和 `docs/service-design.md` 中
+- Redis Key、MQ Topic 命名以 `../design/data-model.md` 和 `../design/service-design.md` 中
   已定义的为准，新增时先补充文档再写代码。
 
 ---

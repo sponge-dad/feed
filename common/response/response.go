@@ -9,7 +9,7 @@
 //	  "request_id": "xxx"
 //	}
 //
-// 约定见 docs/api/README.md。
+// 约定见 ../../design/api-spec/README.md。
 package response
 
 import (

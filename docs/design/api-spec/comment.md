@@ -29,7 +29,7 @@
 └─ [加载更多评论]
 ```
 
-存储实为两层（详见 `docs/data-model.md`）：
+存储实为两层（详见 `../data-model.md`）：
 - `root_id`：指向最顶层评论，同楼回复 root_id 相同（一级评论 root_id=0）
 - `parent_id`：直接回复的评论 id，用于展示"回复@某人"
 - `reply_user_id`：被回复者，前端显示"张三 回复 李四"
