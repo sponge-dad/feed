@@ -23,5 +23,6 @@ CacheRedis:
   Pass: "mUd0ZLc312DPJ4Acaf4PnIoF"
 
 # 大V判定阈值
+# 生产环境建议 100000（10万），开发/压测环境可配置较小值以便快速验证大V拉模式逻辑。
 Vip:
   FansThreshold: 10000

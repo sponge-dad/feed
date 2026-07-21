@@ -121,6 +121,8 @@ func (l *RegisterLogic) Register(in *user.RegisterReq) (*user.RegisterResp, erro
 - **写/改**：直接更新 MySQL，然后**删除**对应缓存 key（不要直接覆盖写缓存），
   下次读取时自然触发重建，避免并发场景下写缓存脏数据。
 - **批量读**：禁止在循环里逐条查 Redis/MySQL（N+1 问题），必须用 `MGET`/`IN` 批量查询。
+- **例外**：超高频写场景（如点赞、收藏）允许采用「Redis 先行 + MQ 异步落库」的削峰策略，
+  具体见 `docs/design/data-model.md` 第 5 节。普通业务写仍须遵循先写 DB 再删缓存。
 
 ## 6. 命名规范
 

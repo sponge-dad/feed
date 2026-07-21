@@ -6,7 +6,7 @@
 
 | 类别 | 选型 |
 |------|------|
-| 语言 | Go 1.23+ |
+| 语言 | Go 1.21+ |
 | 微服务框架 | go-zero |
 | 服务通信 | gRPC + Protobuf |
 | 对外协议 | HTTP REST（网关） |
@@ -33,8 +33,10 @@
 feed/
 ├── docs/                  # 设计文档与 AI 协作指引
 │   ├── agent/             # vibe coding 时约束 AI 的指引文档
-│   │   ├── dev-guidelines.md    # 开发规范（注释/分层/错误处理约定，写代码前必读）
-│   │   └── api-writing-guide.md # API 文档编写规范
+│   │   ├── dev-guidelines.md         # 开发规范（注释/分层/错误处理约定，写代码前必读）
+│   │   ├── api-writing-guide.md      # REST API 文档编写规范
+│   │   ├── proto-writing-guide.md    # 内部 gRPC .proto 编写规范
+│   │   └── go-zero-api-writing-guide.md # go-zero 网关 .api 文件编写规范
 │   └── design/            # 系统设计文档
 │       ├── architecture.md      # 整体技术方案
 │       ├── service-design.md    # 微服务拆分方案
@@ -56,7 +58,9 @@ feed/
 │   ├── docker-compose.yaml # 本地/CVM开发环境基础设施（MySQL/Redis/etcd/RocketMQ）
 │   └── k8s/               # K8s 部署配置（待补充）
 ├── scripts/               # 初始化脚本
-└── Makefile
+├── Makefile
+├── README.md
+└── AGENTS.md              # AI 协作总览指南
 ```
 
 ## 快速开始

@@ -93,7 +93,11 @@
 
 **数据归属**：
 - MySQL：`relations` 表
-- Redis：`following:{user_id}` 关注列表 ZSet、`follower:{user_id}` 粉丝列表 ZSet、`follow_count:{user_id}` 计数 Hash、`vip:list` 大V集合
+- Redis：
+  - `user:follow:{user_id}` 关注列表 ZSet
+  - `user:fans:{user_id}` 粉丝列表 ZSet
+  - `user:fans_count:{user_id}` 粉丝数计数 String
+  - `user:vip_users` 大V集合 Set
 
 **依赖**：
 - User Service（获取用户基本信息）
@@ -101,7 +105,7 @@
 **配置参数**：
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| VIP_FOLLOWER_THRESHOLD | 100,000 | 粉丝数超过此阈值判定为大V |
+| Vip.FansThreshold | 100,000（生产）/ 10,000（开发测试） | 粉丝数达到此阈值判定为大V。开发/压测环境可配置较小值以便验证 |
 
 ---
 
@@ -128,7 +132,7 @@
   - `feed:{feed_id}` Hash — 帖子详情缓存
   - `feed:recommend` ZSet — 推荐流候选池
   - `feed:city:{city_code}` ZSet — 同城流候选池
-  - `timeline_cache:{user_id}:{tab}` String — Timeline 热点缓存
+  - `timeline:{user_id}:{tab}` String — Timeline 热点缓存
 
 **依赖**：
 - User Service（获取作者信息）
@@ -240,7 +244,7 @@
 |-------|--------|--------|
 | `feed.created` | Feed Service | Feed Worker（推送到收件箱） |
 | `feed.deleted` | Feed Service | Feed Worker（清理缓存） |
-| `relation.created` | Relation Service | Feed Worker（拉历史帖子） |
+| `relation.created` | Relation Service | Feed Worker（拉历史帖子到粉丝 inbox） |
 | `relation.deleted` | Relation Service | Feed Worker（清理 inbox） |
 | `interaction.event` | Interaction Service | 通知服务、计数同步 |
 | `comment.event` | Comment Service | 通知服务 |
@@ -253,7 +257,8 @@
 
 - 仓库名：`feed`
 - 服务模块路径：`github.com/sponge-dad/feed`
-- 每个服务独立的 go module 或使用 monorepo 结构（建议 monorepo，多人协作方便）
-- gRPC Proto 路径：`api/proto/{service}/v1/{service}.proto`
-- 服务入口：`cmd/{service}/main.go`
-- 业务逻辑：`internal/{service}/`
+- 项目结构：monorepo
+- gRPC Proto 路径：`api/proto/{service}/{service}.proto`
+- 服务入口：`app/{service}/rpc/{service}.go`
+- 业务逻辑：`app/{service}/rpc/internal/logic/`
+- 数据访问：`app/{service}/model/`

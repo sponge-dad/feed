@@ -45,11 +45,11 @@ POST /api/v1/relations/follow
 **Request**
 ```json
 {
-  "following_id": 10002
+  "followee_id": 10002
 }
 ```
 
-`follower_id` 从 Token 解析，无需前端传。
+`follower_id` 从 Token 解析，无需前端传；`followee_id` 表示被关注用户。
 
 **Response data**
 ```json
@@ -72,7 +72,7 @@ DELETE /api/v1/relations/follow
 **Request**
 ```json
 {
-  "following_id": 10002
+  "followee_id": 10002
 }
 ```
 
@@ -173,7 +173,7 @@ GET /api/v1/relations/is-following?target_id=10002
 | code | message | 说明 |
 |------|---------|------|
 | 0 | success | 成功 |
-| 11001 | 不能关注自己 | following_id == follower_id |
+| 11001 | 不能关注自己 | followee_id == follower_id |
 | 11002 | 已经关注该用户 | 重复关注 |
 | 11003 | 未关注该用户 | 取关时并未关注 |
-| 11004 | 目标用户不存在 | following_id 无效 |
+| 11004 | 目标用户不存在 | followee_id 无效 |

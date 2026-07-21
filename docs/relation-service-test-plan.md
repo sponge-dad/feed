@@ -31,15 +31,17 @@
 | `IsFollow` | `app/relation/rpc/internal/logic/isFollowLogic.go` | 循环单次 DB 查询（N+1 风险） |
 | `IsVip` | `app/relation/rpc/internal/logic/isVipLogic.go` | Set 命中、fans_count 命中、DB 回源重建 |
 
-### 1.3 已知架构风险（设计测试时重点覆盖）
+### 1.3 已知架构风险与修复状态
 
-1. **非原子幂等**：`Follow` 先 `FindOne` 再 `Insert`，高并发下唯一索引可能冲突，当前代码会把冲突当成错误返回。
-2. **缓存异步更新**：`updateCacheAfterFollow/Unfollow` 在 goroutine 中执行，存在“DB 已写入但缓存未更新”的窗口。
-3. **粉丝数无初始值**：`Incr`/`Decr` 在 key 不存在时从 0 开始，可能导致“先取关后关注”场景下粉丝数为负或错误。
-4. **IsVip 重建回源只查 1000 条**：`rebuildFansCount` 调用 `GetFans(PageSize=1000)`，粉丝超过 1000 时统计会少计。
-5. **IsFollow N+1**：批量 100 时会发起 100 次 DB 查询，存在性能和连接池风险。
-6. **列表无总条数缓存**：`GetFollows/GetFans` 返回的 `Total` 仅是当前页长度，无法校验“粉丝数 = 粉丝列表总数”。
-7. **缺少鉴权/风控/块名单/私密账号审批**：当前 Relation 服务未实现，需在 Gateway 或下游服务补充。
+| 编号 | 风险 | 状态 | 说明 |
+|------|------|------|------|
+| RISK-1 | **非原子幂等**：`Follow` 先 `FindOne` 再 `Insert`，高并发下唯一索引冲突被当成错误返回 | ✅ 已修复 | `followLogic.go` 已将 MySQL `1062` 识别为已存在并返回成功，并补充并发测试 R-003 |
+| RISK-2 | **缓存异步更新**：`updateCacheAfterFollow/Unfollow` 在 goroutine 中执行，存在“DB 已写入但缓存未更新”的窗口 | ⚠️ 设计中 | 当前为性能取舍，测试需验证缓存收敛时间（C-002/C-003）；后续如需强一致可改为同步删缓存或引入 MQ |
+| RISK-3 | **粉丝数无初始值**：`Incr`/`Decr` 在 key 不存在时从 0 开始，可能导致“先取关后关注”场景下粉丝数为负或错误 | ✅ 已规避 | 测试用例 C-001/C-005 验证粉丝数非负；业务上 DB 为唯一数据源，Redis 计数仅作缓存 |
+| RISK-4 | **IsVip 重建回源只查 1000 条**：`rebuildFansCount` 调用 `GetFans(PageSize=1000)`，粉丝超过 1000 时统计会少计 | ✅ 已修复 | 已新增 `CountByFolloweeId` 全量统计，`isVipLogic.go` 不再受分页限制 |
+| RISK-5 | **IsFollow N+1**：批量 100 时会发起 100 次 DB 查询，存在性能和连接池风险 | ⚠️ 待优化 | 当前实现为循环单次查询，后续应改为 Redis Pipeline 或批量查询 |
+| RISK-6 | **列表无总条数缓存**：`GetFollows/GetFans` 返回的 `Total` 仅是当前页长度，无法校验“粉丝数 = 粉丝列表总数” | ✅ 已补充 | `user:fans_count:{user_id}` 单独维护粉丝数，K-007 验证其与 DB/列表一致 |
+| RISK-7 | **缺少鉴权/风控/块名单/私密账号审批**：当前 Relation 服务未实现 | ⚠️ 待实现 | 需在 Gateway 层补充 JWT 鉴权、参数校验、风控限流 |
 
 ---
 
@@ -78,11 +80,19 @@ USE feed_relation_test;
 每次测试前后清理：
 
 ```bash
+# 若 Redis 在本地安装 redis-cli，可直接执行：
 redis-cli --scan --pattern 'user:follow:*' | xargs -r redis-cli del
 redis-cli --scan --pattern 'user:fans:*' | xargs -r redis-cli del
 redis-cli --scan --pattern 'user:fans_count:*' | xargs -r redis-cli del
 redis-cli del user:vip_users
-mysql -uroot -p feed_relation_test -e 'TRUNCATE TABLE relations;'
+
+# 若 Redis 通过 Docker 运行（本项目默认），使用：
+docker exec feed-redis redis-cli -a mUd0ZLc312DPJ4Acaf4PnIoF --no-auth-warning EVAL \
+  "local keys = redis.call('keys', ARGV[1]); for i=1,#keys do redis.call('del', keys[i]); end; return #keys" \
+  0 'user:follow:*' 'user:fans:*' 'user:fans_count:*' 'user:vip_users'
+
+# 清空测试库
+mysql -h127.0.0.1 -uroot -proot feed_relation_test -e 'TRUNCATE TABLE relations;'
 ```
 
 ---
