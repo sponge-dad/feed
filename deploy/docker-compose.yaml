@@ -123,9 +123,13 @@ services:
   # ------------------------------------------------------------------
   # RocketMQ Dashboard：可视化管理界面，方便查看 Topic/消息堆积/消费情况
   # 生产环境可以不部署，仅本地开发调试用，浏览器打开 http://<CVM_IP>:9877
+  #
+  # 安全说明：旧版本 1.0.0 内嵌 fastjson-1.2.76，存在反序列化漏洞。
+  # 2.1.0 版本已升级到 fastjson-1.2.83 + fastjson2-2.0.43，漏洞已修复。
+  # 请勿回退到 1.0.0 或更早版本。
   # ------------------------------------------------------------------
   rmq-dashboard:
-    image: apacherocketmq/rocketmq-dashboard:1.0.0
+    image: apacherocketmq/rocketmq-dashboard:2.1.0
     container_name: feed-rmq-dashboard
     restart: unless-stopped
     depends_on:
