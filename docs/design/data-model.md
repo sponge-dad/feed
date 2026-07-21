@@ -3,10 +3,10 @@
 > 本文档定义 Feed 流系统所有服务的 MySQL 表结构和 Redis 数据结构。
 >
 > 通用约定：
-> - 主键 `id` 使用 Snowflake 生成的分布式 ID（BIGINT UNSIGNED）
+> - 主键 `id` 使用 Snowflake 生成的分布式 ID（BIGINT UNSIGNED），应用层写入
 > - 所有表 `ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
-> - 删除统一用软删除（`status` 字段），不物理删除
-> - 时间字段用 `DATETIME`，缓存中的时间戳用毫秒级 unix timestamp
+> - 删除策略按服务自定义：Relation 取关为物理删除；Feed/Comment 等使用 `status` 软删除
+> - MySQL 时间字段用 `DATETIME`；Redis ZSet score、内部 RPC `created_at` 等时间戳字段统一用**秒级 Unix 时间戳**（与当前 `relation.proto` 等实现保持一致）
 
 ---
 
@@ -62,34 +62,34 @@ CREATE TABLE users (
 
 ```sql
 CREATE TABLE relations (
-    id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    follower_id   BIGINT UNSIGNED NOT NULL,           -- 关注者ID
-    following_id  BIGINT UNSIGNED NOT NULL,           -- 被关注者ID
-    status        TINYINT         NOT NULL DEFAULT 1,  -- 1:正常 2:已取关（软删除）
-    created_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    id            BIGINT UNSIGNED NOT NULL,             -- Snowflake ID，应用层写入
+    follower_id   BIGINT UNSIGNED NOT NULL,             -- 关注者ID
+    followee_id   BIGINT UNSIGNED NOT NULL,             -- 被关注者ID
+    created_at    BIGINT          NOT NULL,             -- 关注时间，Unix 时间戳（秒）
     PRIMARY KEY (id),
-    UNIQUE KEY uk_follower_following (follower_id, following_id),
-    KEY idx_following (following_id),
-    KEY idx_follower (follower_id)
+    UNIQUE KEY uk_follow (follower_id, followee_id),
+    KEY idx_follower_id (follower_id, created_at),
+    KEY idx_followee_id (followee_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
+> 完整脚本见 `deploy/sql/relation.sql`。
+
 设计说明：
-- **单向表**：一条记录表示 `follower_id` 关注了 `following_id`
-  - 查"我关注了谁"：`WHERE follower_id = ?` 走 `idx_follower`
-  - 查"谁关注了我"：`WHERE following_id = ?` 走 `idx_following`
-- **软删除**：取关时 `status=2`，保留数据便于回溯分析
-- **大V判定**：关注/取关时更新 `follow_count`，`follower_count > 100000` 加入 `vip:list`，不要求实时精确，1小时过期后重新计算
+- **单向表**：一条记录表示 `follower_id` 关注了 `followee_id`
+  - 查"我关注了谁"：`WHERE follower_id = ?` 走 `idx_follower_id`
+  - 查"谁关注了我"：`WHERE followee_id = ?` 走 `idx_followee_id`
+- **物理删除**：取关时直接 `DELETE` 记录，结合唯一索引保证幂等。若后续需要审计/回溯，可改为软删除或增加审计表。
+- **大V判定**：关注/取关时更新 `user:fans_count:{followee_id}`，粉丝数达到阈值（生产默认 100,000，开发/测试可配置为 10,000）加入 `user:vip_users`，不要求实时精确，缓存过期后重新计算。
 
 ### 2.2 Redis
 
 | Key | 类型 | 说明 | score | TTL |
 |-----|------|------|-------|-----|
-| `following:{user_id}` | ZSet | 关注列表, member=被关注者ID | 关注时间戳 | 永久 |
-| `follower:{user_id}` | ZSet | 粉丝列表, member=粉丝ID | 关注时间戳 | 永久 |
-| `follow_count:{user_id}` | Hash | `{following_count, follower_count}` | - | 1小时 |
-| `vip:list` | Set | 大V用户ID集合（粉丝数 > 10w） | - | 永久 |
+| `user:follow:{user_id}` | ZSet | 关注列表, member=被关注者ID | 关注时间戳 | 永久 |
+| `user:fans:{user_id}` | ZSet | 粉丝列表, member=粉丝ID | 关注时间戳 | 永久 |
+| `user:fans_count:{user_id}` | String | 粉丝总数 | - | 1小时 |
+| `user:vip_users` | Set | 大V用户ID集合 | - | 永久 |
 
 ### 2.3 性能与一致性说明
 
@@ -100,18 +100,19 @@ CREATE TABLE relations (
 
 ```
 关注操作流程：
-  1. MySQL INSERT (status=1)
-  2. Redis ZADD following:{follower_id}
-  3. Redis ZADD follower:{following_id}
-  4. Redis HINCRBY follow_count:{following_id} follower_count 1
+  1. MySQL INSERT（唯一键冲突则幂等返回成功）
+  2. Redis ZADD user:follow:{follower_id} {created_at} {followee_id}
+  3. Redis ZADD user:fans:{followee_id} {created_at} {follower_id}
+  4. Redis INCR user:fans_count:{followee_id}
   5. 发送 MQ (relation.created)
-  6. 检查 follower_count > 100000 → 加入 vip:list
+  6. 检查 fans_count >= Vip.FansThreshold → 加入 user:vip_users
 
 取关操作流程：
-  1. MySQL UPDATE status=2
-  2. Redis ZREM following / follower
-  3. Redis HINCRBY follow_count -1
-  4. 发送 MQ (relation.deleted)
+  1. MySQL DELETE
+  2. Redis ZREM user:follow:{follower_id} {followee_id}
+  3. Redis ZREM user:fans:{followee_id} {follower_id}
+  4. Redis DECR user:fans_count:{followee_id}
+  5. 发送 MQ (relation.deleted)
 ```
 
 ---
@@ -156,7 +157,7 @@ CREATE TABLE feeds (
 | `feed:recommend` | ZSet | 推荐流候选池（全局） | random × 时间衰减 | 10万条 | 30天 |
 | `feed:city:{city_code}` | ZSet | 同城流候选池（每城市一个） | 发帖时间戳 | 2万条/城市 | 7天 |
 | `feed:{feed_id}` | Hash | 帖子详情缓存 | - | - | 30天 |
-| `timeline:{user_id}:{tab}` | String | 前2页JSON缓存 | - | - | 60秒 |
+| `timeline:{user_id}:{tab}` | String | Timeline 前2页 JSON 缓存 | - | - | 60秒 |
 
 ### 3.3 三种 Feed 流策略
 
@@ -197,7 +198,7 @@ time_decay_factor = 1 / (1 + hours_since_created / 24)
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| VIP_FOLLOWER_THRESHOLD | 100,000 | 粉丝数超此阈值判定为大V |
+| Vip.FansThreshold | 100,000（生产）/ 10,000（开发测试） | 粉丝数达到此阈值判定为大V，开发/压测环境可配置较小值 |
 | PUSH_FAN_BATCH_SIZE | 500 | 推模式每批推送粉丝数 |
 | INBOX_MAX_SIZE | 1000 | 普通用户收件箱最大容量 |
 | OUTBOX_VIP_MAX_SIZE | 2000 | 大V发件箱最大容量 |

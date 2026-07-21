@@ -13,13 +13,13 @@
 | 需求澄清 | 第0周 | 业务场景、功能边界、性能指标 | ✅ 已确认 |
 | 架构设计 | 第0周 | 技术方案、数据模型、接口定义 | ✅ 本文档 |
 | Proto 定义 | 第1周 | .proto 文件 + 代码生成 | ✅ 第4节 |
-| 基础设施搭建 | 第1周 | Docker Compose、MySQL/Redis/Kafka | ✅ 第8节 |
+| 基础设施搭建 | 第1周 | Docker Compose、MySQL/Redis/RocketMQ | ✅ 第8节 |
 | 服务开发 (MVP) | 第1-2周 | 4个微服务核心链路 | ✅ Phase 1 |
-| 异步化+推拉结合 | 第3-4周 | Kafka Worker、大V拉模式 | ✅ Phase 2 |
+| 异步化+推拉结合 | 第3-4周 | RocketMQ Worker、大V拉模式 | ✅ Phase 2 |
 | 生产加固 | 第5-6周 | 限流、缓存、监控、测试 | ✅ Phase 3 |
 | 扩展功能 | 第7-8周 | 图片、点赞、评论、推荐 | ✅ Phase 4 |
 
-> **当前状态**: 正处于「架构设计」阶段，本文档即为完整技术方案。确认后进入「Proto 定义 + 基础设施搭建」阶段。
+> **当前状态**: 已完成 User / Relation 服务核心实现，正在进行 Feed / Comment / Interaction 服务与 Gateway 的实现。
 
 ---
 
@@ -40,7 +40,7 @@
     ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
     │   User Service  │ │ Relation Service│ │   Feed Service  │
     │   (用户服务)     │ │  (关系服务)      │ │   (Feed服务)     │
-    │   Port: 50051   │ │  Port: 50052    │ │  Port: 50053    │
+    │   Port: 9001    │ │  Port: 9002     │ │  Port: 9003     │
     └────────┬────────┘ └────────┬────────┘ └────────┬────────┘
              │                   │                   │
              │         ┌─────────┼─────────┐         │
@@ -63,10 +63,11 @@
              │         └──────────────────────────────────────────┘
              │
              │         ┌──────────────────────────────────────────┐
-             │         │              Kafka Cluster               │
+             │         │             RocketMQ Cluster             │
              │         │  ┌──────────────────────────────────┐    │
              │         │  │  feed.created / feed.deleted     │    │
              │         │  │  relation.created / relation.deleted │ │
+             │         │  │  interaction.event / comment.event   │ │
              │         │  └──────────────────────────────────┘    │
              │         └──────────────────────────────────────────┘
              │
@@ -86,7 +87,7 @@ User A 发帖
 Feed Service 写入 MySQL (feeds 表)
   │
   ▼
-Feed Service 发送 Kafka 消息 "feed.created"
+Feed Service 发送 RocketMQ 消息 "feed.created"
   │
   ▼
 Feed Worker (消费者) 消费消息
@@ -108,7 +109,7 @@ Big V 发帖
 Feed Service 写入 MySQL (feeds 表)
   │
   ▼
-Feed Service 发送 Kafka 消息 "feed.created" (标记 is_vip=true)
+Feed Service 发送 RocketMQ 消息 "feed.created" (标记 is_vip=true)
   │
   ▼
 Feed Worker 消费消息
@@ -150,11 +151,11 @@ Feed Service
 | 服务 | 职责 | 数据存储 | 端口 |
 |------|------|---------|------|
 | **API Gateway** | HTTP路由、认证鉴权、限流、请求聚合 | - | 8080 |
-| **User Service** | 用户注册/登录、个人信息管理、JWT签发 | MySQL (users DB) + Redis | 50051 |
-| **Relation Service** | 关注/取关、粉丝列表、关注列表、大V标记 | MySQL (relations DB) + Redis | 50052 |
-| **Feed Service** | 发帖/删帖、Timeline拉取、帖子详情 | MySQL (feeds DB) + Redis | 50053 |
-| **Feed Worker** | Kafka消费、异步推送、大V判断 | Kafka Consumer | - |
-| **Counter Service** (可选) | 点赞/评论/转发计数 | Redis + MySQL | 50054 |
+| **User Service** | 用户注册/登录、个人信息管理、JWT签发 | MySQL (users DB) + Redis | 9001 |
+| **Relation Service** | 关注/取关、粉丝列表、关注列表、大V标记 | MySQL (relations DB) + Redis | 9002 |
+| **Feed Service** | 发帖/删帖、Timeline拉取、帖子详情 | MySQL (feeds DB) + Redis | 9003 |
+| **Feed Worker** | RocketMQ消费、异步推送、大V判断 | RocketMQ Consumer | - |
+| **Counter Service** (可选) | 点赞/评论/转发计数 | Redis + MySQL | 9006 |
 
 ### 2.2 User Service 详细设计
 
@@ -170,15 +171,14 @@ Feed Service
 - `user:{user_id}` - Hash，用户基本信息缓存
 - `user:token:{token}` - String，JWT 黑名单
 
-**gRPC 接口**:
+**gRPC 接口**（详见 `api/proto/user/user.proto`）：
 ```protobuf
-service UserService {
-  rpc CreateUser(CreateUserReq) returns (CreateUserResp);
+service User {
+  rpc Register(RegisterReq) returns (RegisterResp);
+  rpc Login(LoginReq) returns (LoginResp);
   rpc GetUser(GetUserReq) returns (GetUserResp);
-  rpc GetUserByUsername(GetUserByUsernameReq) returns (GetUserResp);
   rpc UpdateUser(UpdateUserReq) returns (UpdateUserResp);
   rpc BatchGetUsers(BatchGetUsersReq) returns (BatchGetUsersResp);
-  rpc VerifyToken(VerifyTokenReq) returns (VerifyTokenResp);
 }
 ```
 
@@ -195,23 +195,24 @@ service UserService {
 **MySQL 表**: `relations`
 
 **Redis 缓存**:
-- `following:{user_id}` - ZSet，按关注时间排序的关注列表
-- `follower:{user_id}` - ZSet，按关注时间排序的粉丝列表
-- `follow_count:{user_id}` - Hash，{following_count, follower_count}
+- `user:follow:{user_id}` - ZSet，按关注时间排序的关注列表
+- `user:fans:{user_id}` - ZSet，按关注时间排序的粉丝列表
+- `user:fans_count:{user_id}` - String，粉丝数计数
+- `user:vip_users` - Set，大V用户ID集合
 
-**gRPC 接口**:
+**gRPC 接口**（详见 `api/proto/relation/relation.proto`）：
 ```protobuf
-service RelationService {
+service Relation {
   rpc Follow(FollowReq) returns (FollowResp);
   rpc Unfollow(UnfollowReq) returns (UnfollowResp);
-  rpc GetFollowing(GetFollowingReq) returns (GetFollowingResp);
-  rpc GetFollowers(GetFollowersReq) returns (GetFollowersResp);
-  rpc IsFollowing(IsFollowingReq) returns (IsFollowingResp);
-  rpc GetFollowingVIPs(GetFollowingVIPsReq) returns (GetFollowingVIPsResp);  // 获取关注的大V列表
-  rpc IsVIP(IsVIPReq) returns (IsVIPResp);  // 判断用户是否为大V
-  rpc GetFollowerIDs(GetFollowerIDsReq) returns (GetFollowerIDsResp);  // 批量获取粉丝ID（用于推送）
+  rpc GetFollows(GetFollowsReq) returns (GetFollowsResp);
+  rpc GetFans(GetFansReq) returns (GetFansResp);
+  rpc IsFollow(IsFollowReq) returns (IsFollowResp);
+  rpc IsVip(IsVipReq) returns (IsVipResp);
 }
 ```
+
+> 未来如需 Feed Worker 批量拉取粉丝 ID、获取「我关注的大V列表」等内部支撑接口，再扩展 `BatchGetFans`、`GetFollowingVIPs` 等方法。
 
 ### 2.4 Feed Service 详细设计
 
@@ -271,23 +272,21 @@ CREATE TABLE users (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
-#### relations 表（按 follower_id 分表）
+> 各服务完整表结构见 `docs/design/data-model.md`。以下为当前阶段核心表简要示例。
+
+#### relations 表
+
 ```sql
 CREATE TABLE relations (
-    id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    follower_id     BIGINT UNSIGNED NOT NULL,       -- 关注者 ID
-    following_id    BIGINT UNSIGNED NOT NULL,       -- 被关注者 ID
-    status          TINYINT         NOT NULL DEFAULT 1,  -- 1:正常 2:已取关
-    is_vip_relation TINYINT         NOT NULL DEFAULT 0,  -- 0:否 1:是（following_id 是大V）
-    created_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    id            BIGINT UNSIGNED NOT NULL,             -- Snowflake ID
+    follower_id   BIGINT UNSIGNED NOT NULL,             -- 关注者 ID
+    followee_id   BIGINT UNSIGNED NOT NULL,             -- 被关注者 ID
+    created_at    BIGINT          NOT NULL,             -- 关注时间，Unix 时间戳（秒）
     PRIMARY KEY (id),
-    UNIQUE KEY uk_follower_following (follower_id, following_id),
-    KEY idx_following_id (following_id),
-    KEY idx_follower_id (follower_id),
-    KEY idx_created_at (created_at)
+    UNIQUE KEY uk_follow (follower_id, followee_id),
+    KEY idx_follower_id (follower_id, created_at),
+    KEY idx_followee_id (followee_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
--- 按 follower_id 分 64 张表: relations_0 ~ relations_63
 ```
 
 #### feeds 表
@@ -337,11 +336,11 @@ CREATE TABLE feed_images (
 | `outbox:{user_id}` | ZSet | 用户发件箱，score=发帖时间戳，member=feed_id | 7天 | 大V最多存2000条 |
 | `feed:{feed_id}` | Hash | 帖子详情缓存 | 30天 | 全量 |
 | `user:{user_id}` | Hash | 用户基本信息缓存 | 1小时 | 全量 |
-| `following:{user_id}` | ZSet | 关注列表，score=关注时间戳 | 永久 | 每位用户最多5000 |
-| `follower:{user_id}` | ZSet | 粉丝列表，score=关注时间戳 | 永久 | 大V可达百万+ |
-| `follow_count:{user_id}` | Hash | {following_count, follower_count} | 1小时 | 全量 |
-| `vip:list` | Set | 大V用户ID集合 | 永久 | 全量大V |
-| `timeline_cache:{user_id}` | String | Timeline前2页JSON缓存 | 60秒 | 活跃用户 |
+| `user:follow:{user_id}` | ZSet | 关注列表，score=关注时间戳 | 永久 | 每位用户最多5000 |
+| `user:fans:{user_id}` | ZSet | 粉丝列表，score=关注时间戳 | 永久 | 大V可达百万+ |
+| `user:fans_count:{user_id}` | String | 粉丝总数 | 1小时 | 全量 |
+| `user:vip_users` | Set | 大V用户ID集合 | 永久 | 全量大V |
+| `timeline:{user_id}:{tab}` | String | Timeline前2页JSON缓存 | 60秒 | 活跃用户 |
 
 ---
 
@@ -484,7 +483,7 @@ GET    /api/v1/users/:id/feeds          # 用户个人主页帖子列表
 触发条件: 发帖用户粉丝数 <= 100,000
 执行流程:
   1. Feed 写入 MySQL
-  2. 发送 Kafka 消息 (is_vip=false)
+  2. 发送 RocketMQ 消息 (is_vip=false)
   3. Worker 消费后，批量写入粉丝 inbox ZSet
   4. 每个粉丝 inbox 只保留最近 1000 条
   5. 异步通知在线用户（WebSocket 可选）
@@ -496,7 +495,7 @@ GET    /api/v1/users/:id/feeds          # 用户个人主页帖子列表
 触发条件: 发帖用户粉丝数 > 100,000
 执行流程:
   1. Feed 写入 MySQL
-  2. 发送 Kafka 消息 (is_vip=true)
+  2. 发送 RocketMQ 消息 (is_vip=true)
   3. Worker 消费后，仅写入大V自己的 outbox ZSet
   4. 不推送到粉丝 inbox
   5. 粉丝拉取 Timeline 时，合并大V outbox 数据
@@ -553,15 +552,17 @@ func GetTimeline(userID int64, page, pageSize int) ([]FeedInfo, error) {
 
 ## 6. 异步消息设计
 
-### 6.1 Kafka Topic 定义
+### 6.1 RocketMQ Topic 定义
 
-| Topic | 分区数 | 副本数 | 说明 |
-|-------|--------|--------|------|
-| `feed.created` | 16 | 2 | 帖子发布事件 |
-| `feed.deleted` | 8 | 2 | 帖子删除事件 |
-| `relation.created` | 8 | 2 | 关注事件 |
-| `relation.deleted` | 8 | 2 | 取关事件 |
-| `user.updated` | 4 | 2 | 用户信息变更事件 |
+| Topic | 队列数 | 说明 |
+|-------|--------|------|
+| `feed.created` | 16 | 帖子发布事件 |
+| `feed.deleted` | 8 | 帖子删除事件 |
+| `relation.created` | 8 | 关注事件 |
+| `relation.deleted` | 8 | 取关事件 |
+| `interaction.event` | 8 | 点赞/收藏事件 |
+| `comment.event` | 4 | 评论事件 |
+| `user.updated` | 4 | 用户信息变更事件 |
 
 ### 6.2 消息格式
 
@@ -588,7 +589,7 @@ func GetTimeline(userID int64, page, pageSize int) ([]FeedInfo, error) {
   "event_id": "uuid-v4",
   "event_type": "relation.created",
   "follower_id": 12345,
-  "following_id": 67890,
+  "followee_id": 67890,
   "is_vip_relation": false,
   "timestamp": 1720000000000
 }
@@ -665,13 +666,13 @@ func GetTimeline(userID int64, page, pageSize int) ([]FeedInfo, error) {
 写流程:
   1. 先写 MySQL
   2. 删除/更新 Redis 缓存
-  3. 发送 Kafka 消息通知其他服务
+  3. 发送 RocketMQ 消息通知其他服务
 ```
 
 #### Timeline 缓存策略
 ```
 Timeline 前 2 页（40条）:
-  - 缓存到 Redis: timeline_cache:{user_id}
+  - 缓存到 Redis: timeline:{user_id}:{tab}
   - TTL: 60 秒
   - 当用户发帖/新关注时主动失效
 
@@ -682,7 +683,7 @@ Feed 详情:
 ```
 
 #### 一致性保证
-- **最终一致性**: 大V发帖到粉丝可见，延迟 < 3 秒（Kafka消费延迟）
+- **最终一致性**: 大V发帖到粉丝可见，延迟 < 3 秒（RocketMQ消费延迟）
 - **读己之写**: 发帖后立即写入自己的 outbox，自己 Timeline 立即可见
 - **缓存穿透**: 布隆过滤器过滤不存在的 feed_id
 - **缓存雪崩**: TTL 加随机偏移（±10%），避免集中过期
@@ -693,172 +694,22 @@ Feed 详情:
 
 ### 8.1 Docker Compose 编排
 
-```yaml
-version: '3.8'
+本地/CVM 开发环境使用项目根目录下的 `deploy/docker-compose.yaml`，一键启动：
 
-services:
-  # ============ 基础设施 ============
-
-  mysql:
-    image: mysql:8.0
-    container_name: feed-mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: root123
-      MYSQL_DATABASE: feed
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql-data:/var/lib/mysql
-      - ./deploy/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
-    command: --default-authentication-plugin=mysql_native_password
-    networks:
-      - feed-network
-
-  redis:
-    image: redis:7-alpine
-    container_name: feed-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-      - ./deploy/redis/redis.conf:/usr/local/etc/redis/redis.conf
-    command: redis-server /usr/local/etc/redis/redis.conf
-    networks:
-      - feed-network
-
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    container_name: feed-zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    networks:
-      - feed-network
-
-  kafka:
-    image: confluentinc/cp-kafka:7.5.0
-    container_name: feed-kafka
-    depends_on:
-      - zookeeper
-    ports:
-      - "9092:9092"
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    networks:
-      - feed-network
-
-  minio:
-    image: minio/minio:latest
-    container_name: feed-minio
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    command: server /data --console-address ":9001"
-    volumes:
-      - minio-data:/data
-    networks:
-      - feed-network
-
-  # ============ 业务服务 ============
-
-  api-gateway:
-    build:
-      context: .
-      dockerfile: build/Dockerfile.gateway
-    container_name: feed-api-gateway
-    ports:
-      - "8080:8080"
-    environment:
-      - USER_SERVICE_ADDR=user-service:50051
-      - RELATION_SERVICE_ADDR=relation-service:50051
-      - FEED_SERVICE_ADDR=feed-service:50051
-      - REDIS_ADDR=redis:6379
-    depends_on:
-      - user-service
-      - relation-service
-      - feed-service
-    networks:
-      - feed-network
-
-  user-service:
-    build:
-      context: .
-      dockerfile: build/Dockerfile.user
-    container_name: feed-user-service
-    environment:
-      - MYSQL_DSN=root:root123@tcp(mysql:3306)/feed?charset=utf8mb4&parseTime=True
-      - REDIS_ADDR=redis:6379
-      - GRPC_PORT=50051
-    depends_on:
-      - mysql
-      - redis
-    networks:
-      - feed-network
-
-  relation-service:
-    build:
-      context: .
-      dockerfile: build/Dockerfile.relation
-    container_name: feed-relation-service
-    environment:
-      - MYSQL_DSN=root:root123@tcp(mysql:3306)/feed?charset=utf8mb4&parseTime=True
-      - REDIS_ADDR=redis:6379
-      - GRPC_PORT=50051
-    depends_on:
-      - mysql
-      - redis
-    networks:
-      - feed-network
-
-  feed-service:
-    build:
-      context: .
-      dockerfile: build/Dockerfile.feed
-    container_name: feed-feed-service
-    environment:
-      - MYSQL_DSN=root:root123@tcp(mysql:3306)/feed?charset=utf8mb4&parseTime=True
-      - REDIS_ADDR=redis:6379
-      - KAFKA_BROKERS=kafka:9092
-      - GRPC_PORT=50051
-      - RELATION_SERVICE_ADDR=relation-service:50051
-      - USER_SERVICE_ADDR=user-service:50051
-    depends_on:
-      - mysql
-      - redis
-      - kafka
-    networks:
-      - feed-network
-
-  feed-worker:
-    build:
-      context: .
-      dockerfile: build/Dockerfile.worker
-    container_name: feed-worker
-    environment:
-      - REDIS_ADDR=redis:6379
-      - KAFKA_BROKERS=kafka:9092
-      - RELATION_SERVICE_ADDR=relation-service:50051
-    depends_on:
-      - redis
-      - kafka
-    networks:
-      - feed-network
-
-networks:
-  feed-network:
-    driver: bridge
-
-volumes:
-  mysql-data:
-  redis-data:
-  minio-data:
+```bash
+make up      # 启动 MySQL / Redis / etcd / RocketMQ
+make down    # 停止并保留数据卷
+make down-clean  # 停止并清空数据卷（重新开始）
 ```
+
+关键约定：
+- MySQL root 密码：`root`（开发环境明文，生产走 Secret）。
+- Redis 端口：`6379`，已启用密码。
+- etcd 宿主机端口：`2479`（避开 K8s 节点默认占用的 `2379`）。
+- RocketMQ NameServer：`9876`，Dashboard：`9877`。
+- 各 RPC 服务端口：`9001`（User）、`9002`（Relation）、`9003`（Feed）、`9004`（Comment）、`9005`（Interaction）。
+
+> 详细的 compose 配置（含 healthcheck、数据卷、RocketMQ Dashboard 安全版本等）请直接查看 `deploy/docker-compose.yaml`，避免本文档示例与实际文件脱节。
 
 ### 8.2 资源配置建议
 
@@ -868,135 +719,66 @@ volumes:
 | User Service | 1核 | 256MB | 2 | 轻量服务 |
 | Relation Service | 2核 | 512MB | 2 | 关注/取关高并发 |
 | Feed Service | 2-4核 | 1GB | 3 | Timeline 查询压力大 |
-| Feed Worker | 2核 | 512MB | 2 | Kafka 消费 |
+| Feed Worker | 2核 | 512MB | 2 | RocketMQ 消费 |
 | MySQL | 4核 | 8GB | 1主+1从 | 可后续分库 |
 | Redis | 2核 | 4GB | 1主+1从 | 根据数据量扩展 |
-| Kafka | 2核 | 4GB | 3节点 | 生产环境需3节点 |
+| RocketMQ | 2核 | 4GB | 2主+2从 | 生产环境 NameServer 至少 2 节点 |
 
 ---
 
 ## 9. 项目目录结构
 
+本项目采用 **monorepo + go-zero 标准目录结构**，每个 RPC 服务独立入口，公共能力下沉到 `common/`。
+
 ```
 feed/
 ├── api/
-│   └── proto/
-│       ├── common/v1/
-│       │   └── common.proto              # 公共消息定义
-│       ├── user/v1/
-│       │   └── user.proto                # 用户服务接口
-│       ├── relation/v1/
-│       │   └── relation.proto            # 关系服务接口
-│       └── feed/v1/
-│           └── feed.proto                # Feed 服务接口
+│   └── proto/              # 内部 gRPC Proto 契约
+│       ├── user/user.proto
+│       ├── relation/relation.proto
+│       ├── feed/feed.proto
+│       ├── comment/comment.proto
+│       └── interaction/interaction.proto
 │
-├── cmd/
-│   ├── gateway/
-│   │   └── main.go                       # API Gateway 入口
-│   ├── user/
-│   │   └── main.go                       # User Service 入口
-│   ├── relation/
-│   │   └── main.go                       # Relation Service 入口
-│   ├── feed/
-│   │   └── main.go                       # Feed Service 入口
-│   └── worker/
-│       └── main.go                       # Feed Worker 入口
+├── app/
+│   ├── user/rpc/           # User 服务入口：user.go，端口 9001
+│   ├── relation/rpc/       # Relation 服务入口：relation.go，端口 9002
+│   ├── feed/rpc/           # Feed 服务入口：feed.go，端口 9003（待实现）
+│   ├── comment/rpc/        # Comment 服务入口：comment.go，端口 9004（待实现）
+│   ├── interaction/rpc/    # Interaction 服务入口：interaction.go，端口 9005（待实现）
+│   └── gateway/            # HTTP 网关，端口 8080（待实现）
+│       ├── api/            # *.api 接口定义文件
+│       └── cmd/api/        # 网关入口 main.go
 │
-├── internal/
-│   ├── gateway/
-│   │   ├── handler/                      # HTTP 请求处理器
-│   │   │   ├── user_handler.go
-│   │   │   ├── relation_handler.go
-│   │   │   └── feed_handler.go
-│   │   ├── middleware/                   # 中间件
-│   │   │   ├── auth.go
-│   │   │   ├── ratelimit.go
-│   │   │   └── recovery.go
-│   │   └── router/
-│   │       └── router.go                 # 路由注册
-│   │
-│   ├── user/
-│   │   ├── server/
-│   │   │   └── grpc.go                   # gRPC Server 实现
-│   │   ├── repository/
-│   │   │   └── user_repo.go              # 数据访问层
-│   │   ├── service/
-│   │   │   └── user_service.go           # 业务逻辑层
-│   │   └── model/
-│   │       └── user.go                   # 数据模型
-│   │
-│   ├── relation/
-│   │   ├── server/
-│   │   │   └── grpc.go
-│   │   ├── repository/
-│   │   │   └── relation_repo.go
-│   │   ├── service/
-│   │   │   └── relation_service.go
-│   │   └── model/
-│   │       └── relation.go
-│   │
-│   ├── feed/
-│   │   ├── server/
-│   │   │   └── grpc.go
-│   │   ├── repository/
-│   │   │   └── feed_repo.go
-│   │   ├── service/
-│   │   │   └── feed_service.go
-│   │   ├── timeline/
-│   │   │   └── timeline.go               # Timeline 合并逻辑
-│   │   └── model/
-│   │       └── feed.go
-│   │
-│   └── worker/
-│       ├── consumer/
-│       │   ├── feed_consumer.go           # feed.created 消费者
-│       │   └── relation_consumer.go       # relation.created 消费者
-│       └── pusher/
-│           └── inbox_pusher.go            # 收件箱推送逻辑
-│
-├── pkg/
-│   ├── config/
-│   │   └── config.go                      # 统一配置管理
-│   ├── database/
-│   │   ├── mysql.go                       # MySQL 连接管理
-│   │   └── redis.go                       # Redis 连接管理
-│   ├── kafka/
-│   │   ├── producer.go                    # Kafka Producer
-│   │   └── consumer.go                    # Kafka Consumer
-│   ├── grpc/
-│   │   └── client.go                      # gRPC 客户端连接池
-│   ├── middleware/
-│   │   └── interceptor.go                 # gRPC 拦截器
-│   ├── errors/
-│   │   └── errors.go                      # 统一错误码
-│   └── utils/
-│       ├── idgen.go                       # ID 生成器 (Snowflake)
-│       ├── jwt.go                         # JWT 工具
-│       └── validator.go                   # 参数校验
+├── common/                 # 跨服务公共代码
+│   ├── errorx/             # 统一错误码
+│   ├── idgen/              # Snowflake ID
+│   ├── jwtx/               # JWT 工具
+│   ├── response/           # 统一响应结构
+│   └── ...
 │
 ├── deploy/
-│   ├── docker-compose.yaml                # 开发环境编排
-│   ├── mysql/
-│   │   └── init.sql                       # 初始化 SQL
-│   ├── redis/
-│   │   └── redis.conf                     # Redis 配置
-│   └── kafka/
-│       └── create-topics.sh               # Topic 创建脚本
+│   ├── docker-compose.yaml # MySQL/Redis/etcd/RocketMQ 开发环境
+│   ├── sql/                # 各服务建表脚本
+│   └── k8s/                # K8s 部署配置（待补充）
 │
-├── scripts/
-│   ├── gen-proto.sh                       # Proto 代码生成脚本
-│   └── migrate.sh                         # 数据库迁移脚本
+├── docs/
+│   ├── agent/              # AI 协作规范
+│   ├── design/             # 系统设计文档
+│   └── *-test-plan.md      # 各服务测试方案
 │
-├── configs/
-│   ├── config.yaml                        # 默认配置
-│   ├── config.dev.yaml                    # 开发环境配置
-│   └── config.prod.yaml                   # 生产环境配置
-│
-├── Makefile                               # 构建、测试、部署命令
+├── scripts/                # 初始化与压测脚本
+├── Makefile
 ├── go.mod
 ├── go.sum
-└── README.md
+├── README.md
+└── AGENTS.md               # AI 协作总览指南
 ```
+
+**关键约定**：
+- RPC 服务入口为 `app/<svc>/rpc/<svc>.go`，不是 `cmd/<svc>/main.go`。
+- Proto 路径为 `api/proto/<svc>/<svc>.proto`，无 `v1` 子目录。
+- 业务逻辑写在 `app/<svc>/rpc/internal/logic/`，数据访问写在 `app/<svc>/model/`。
 
 ---
 
@@ -1022,14 +804,14 @@ feed/
 
 **验证标准**: 用户A发帖 -> 用户B(关注A)刷新Timeline能看到帖子
 
-### Phase 2: 推拉结合 + Kafka 异步（第3-4周）
+### Phase 2: 推拉结合 + RocketMQ 异步（第3-4周）
 
-**目标**: 引入 Kafka 异步解耦，实现大V拉模式
+**目标**: 引入 RocketMQ 异步解耦，实现大V拉模式
 
 | 任务 | 产出 | 优先级 |
 |------|------|--------|
-| Kafka 集成 | Producer/Consumer 封装, Topic 创建 | P0 |
-| feed.created 事件 | 发帖后发送 Kafka 消息 | P0 |
+| RocketMQ 集成 | Producer/Consumer 封装, Topic 创建 | P0 |
+| feed.created 事件 | 发帖后发送 RocketMQ 消息 | P0 |
 | Feed Worker | 消费 feed.created, 异步推送 inbox | P0 |
 | relation.created 事件 | 关注/取关事件 | P0 |
 | Relation Worker | 消费关系事件, 同步缓存 | P1 |
@@ -1081,7 +863,7 @@ feed/
 | 决策 | 选项 | 选择 | 理由 |
 |------|------|------|------|
 | 服务通信 | REST vs gRPC | gRPC | 性能高, 强类型, 适合微服务 |
-| 消息队列 | RabbitMQ vs Kafka | Kafka | 高吞吐, 持久化, 适合 Feed 场景 |
+| 消息队列 | RabbitMQ vs Kafka vs RocketMQ | RocketMQ | 高吞吐, 持久化, 中文社区活跃, 适合 Feed 场景 |
 | 收件箱存储 | List vs ZSet | ZSet | 按时间排序, 支持范围查询 |
 | ID 生成 | 自增 vs UUID vs Snowflake | Snowflake | 全局唯一, 趋势递增, 高性能 |
 | 配置管理 | 环境变量 vs 配置中心 | 环境变量 + YAML | MVP 阶段够用, 后续可接配置中心 |
@@ -1091,62 +873,48 @@ feed/
 
 ### Timeline 合并核心逻辑
 ```go
-// internal/feed/timeline/timeline.go
+// app/feed/rpc/internal/logic/getTimelineLogic.go（示意）
 
-func (s *TimelineService) GetTimeline(ctx context.Context, userID int64, page, pageSize int32) ([]model.FeedWithAuthor, *PageInfo, error) {
+func (l *GetTimelineLogic) GetTimeline(in *feed.GetTimelineReq) (*feed.GetTimelineResp, error) {
+    userID := in.UserId
+    pageSize := in.PageSize
+
     // 1. 获取推模式数据（inbox）
-    inboxFeeds, err := s.redis.ZRevRange(ctx, fmt.Sprintf("inbox:%d", userID), 0, int64(page*pageSize-1))
+    inboxFeeds, err := l.svcCtx.Redis.ZrevrangeCtx(l.ctx, fmt.Sprintf("inbox:%d", userID), 0, int64(pageSize-1))
     if err != nil {
-        return nil, nil, err
+        return nil, err
     }
 
-    // 2. 获取关注的大V列表
-    vips, err := s.relationClient.GetFollowingVIPs(ctx, userID)
+    // 2. 获取关注列表，并筛选出大V（后续可扩展为 Relation.BatchIsVip 批量接口）
+    followsResp, err := l.svcCtx.RelationRpc.GetFollows(l.ctx, &relation.GetFollowsReq{UserId: userID, Page: 1, PageSize: 1000})
     if err != nil {
-        return nil, nil, err
+        return nil, err
+    }
+    var vipIDs []int64
+    for _, followeeID := range followsResp.FolloweeIds {
+        vipResp, _ := l.svcCtx.RelationRpc.IsVip(l.ctx, &relation.IsVipReq{UserId: followeeID})
+        if vipResp != nil && vipResp.IsVip {
+            vipIDs = append(vipIDs, followeeID)
+        }
     }
 
     // 3. 拉取大V发件箱
-    var vipFeedItems []model.FeedItem
-    for _, vipID := range vips {
-        feeds, err := s.redis.ZRevRange(ctx, fmt.Sprintf("outbox:%d", vipID), 0, int64(page*pageSize-1))
+    var vipFeedItems []FeedItem
+    for _, vipID := range vipIDs {
+        feeds, err := l.svcCtx.Redis.ZrevrangeCtx(l.ctx, fmt.Sprintf("outbox:%d", vipID), 0, int64(pageSize-1))
         if err != nil {
             continue // 单个大V失败不阻塞整体
         }
         vipFeedItems = append(vipFeedItems, feeds...)
     }
 
-    // 4. 合并排序
-    allItems := s.mergeByTimestamp(inboxFeeds, vipFeedItems)
+    // 4. 合并排序 + 5. 分页 + 6. 批量获取详情 + 7. 填充作者信息
+    allItems := mergeByTimestamp(inboxFeeds, vipFeedItems)
+    pageItems := paginate(allItems, in.Page, pageSize)
+    feeds := batchGetFeedDetails(pageItems)
+    result := fillAuthors(feeds)
 
-    // 5. 分页
-    offset := (page - 1) * pageSize
-    if int(offset) >= len(allItems) {
-        return nil, &PageInfo{HasMore: false}, nil
-    }
-    end := offset + pageSize
-    if int(end) > len(allItems) {
-        end = int32(len(allItems))
-    }
-    pageItems := allItems[offset:end]
-
-    // 6. 批量获取详情
-    feedIDs := extractIDs(pageItems)
-    feeds, err := s.feedRepo.BatchGetByIDs(ctx, feedIDs)
-    if err != nil {
-        return nil, nil, err
-    }
-
-    // 7. 填充作者信息
-    userIDs := extractUserIDs(feeds)
-    users, _ := s.userClient.BatchGetUsers(ctx, userIDs)
-    result := s.fillAuthors(feeds, users)
-
-    return result, &PageInfo{
-        Page:     page,
-        PageSize: pageSize,
-        HasMore:  int(end) < len(allItems),
-    }, nil
+    return &feed.GetTimelineResp{Feeds: result}, nil
 }
 ```
 

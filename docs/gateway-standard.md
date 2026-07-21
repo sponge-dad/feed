@@ -36,7 +36,11 @@ Gateway 服务目录位于 `app/gateway/`，结构如下：
 app/gateway/
 ├── api/                     # go-zero API 接口定义（*.api）
 │   ├── gateway.api         # 总入口：import 各模块、注册路由
-│   └── user.api            # 各业务模块 API 类型定义
+│   ├── user.api            # 用户模块 API 类型定义
+│   ├── relation.api        # 关系模块 API 类型定义
+│   ├── feed.api            # Feed 模块 API 类型定义
+│   ├── comment.api         # 评论模块 API 类型定义
+│   └── interaction.api     # 互动模块 API 类型定义
 ├── cmd/api/
 │   └── main.go             # HTTP 服务入口
 ├── etc/
@@ -44,12 +48,13 @@ app/gateway/
 └── internal/
     ├── config/
     │   └── config.go       # 配置结构体
-    ├── handler/            # HTTP Handler
+    ├── handler/            # HTTP Handler（goctl 生成）
+    ├── logic/              # 跨服务聚合逻辑（手写）
     ├── middleware/         # 自定义中间件
     ├── svc/
     │   └── service_context.go  # ServiceContext，注入 RPC Client 与配置
     └── types/
-        └── types.go        # API 请求/响应类型
+        └── types.go        # API 请求/响应类型（goctl 生成）
 ```
 
 ### 2.1 目录说明
@@ -113,9 +118,10 @@ service gateway {
 
 | 项 | 规范 |
 |----|------|
-| service 名 | 固定为 `gateway` |
+| service 名 | 固定为 `gateway`（通过多个 `@server` 块按鉴权维度拆分） |
 | prefix | 统一为 `/api/v1`，多版本时可用 `/api/v2` |
 | 路径 | 小写、kebab-case 或 snake_case 保持一致；REST 资源命名，如 `/users/:userId` |
+| 路径参数 | `.api` 文件中使用 `:` 前缀（如 `:userId`），接口文档中使用 `{}`（如 `{userId}`） |
 | 方法 | 严格遵循 HTTP 语义：`GET` 查询、`POST` 创建、`PUT/PATCH` 更新、`DELETE` 删除 |
 | 鉴权 | 需登录接口加 `jwt: Auth`；公开接口不加 |
 | handler 名 | 驼峰命名，与功能一致，如 `getUser`、`uploadToken` |
@@ -478,21 +484,24 @@ if !ok {
 
 ### 10.2 错误码规范
 
+业务错误码统一在 `common/errorx/errorx.go` 中维护，分段规则如下：
+
 | 错误码段 | 含义 |
 |----------|------|
 | 0 | 成功 |
-| 1 ~ 999 | 系统级错误（参数错误、未登录、无权限等） |
-| 1000 ~ 1999 | 用户服务错误 |
-| 2000 ~ 2999 | 关系服务错误 |
-| 3000 ~ 3999 | Feed 服务错误 |
-| 4000 ~ 4999 | 评论服务错误 |
-| 5000 ~ 5999 | 互动服务错误 |
-| 9000 ~ 9999 | 网关层错误 |
+| 1 ~ 999 | 系统级错误（参数错误、未登录、无权限、网关层错误等） |
+| 10000 ~ 10999 | User 服务错误 |
+| 11000 ~ 11999 | Relation 服务错误 |
+| 12000 ~ 12999 | Feed 服务错误 |
+| 13000 ~ 13999 | Comment 服务错误 |
+| 14000 ~ 14999 | Interaction 服务错误 |
+
+> 详细码段定义与错误码列表见 `docs/design/api-spec/README.md` 和 `common/errorx/errorx.go`。
 
 ### 10.3 错误处理原则
 
-- 网关层错误（如参数解析失败、超时）使用 9000 段错误码。
-- 下游 RPC 错误透传时保留原错误码，由网关统一包装为 HTTP JSON。
+- 网关层错误（如参数解析失败、超时）使用 1 ~ 999 段错误码。
+- 下游 RPC 错误透传时保留原业务错误码，由网关统一包装为 HTTP JSON。
 - 禁止将内部错误详情（如 SQL 错误、堆栈）直接返回给客户端。
 
 ---
