@@ -162,6 +162,7 @@ GET /api/v1/feeds/timeline?type=recommend&cursor=xxx&page_size=10
 ```
 
 **Query 参数**
+
 | 参数 | 类型 | 说明 |
 |------|------|------|
 | type | string | `recommend`(推荐/默认) \| `follow`(关注) \| `city`(同城) |
@@ -169,6 +170,7 @@ GET /api/v1/feeds/timeline?type=recommend&cursor=xxx&page_size=10
 | page_size | int | 每页数量，默认10，最大50 |
 
 **三种流的行为**
+
 | type | 数据来源 | 排序 | 城市来源 |
 |------|---------|------|---------|
 | recommend | 全局推荐池 | 随机 × 时间衰减 | - |
