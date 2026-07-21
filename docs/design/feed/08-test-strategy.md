@@ -20,7 +20,7 @@
 
 ### 2.1 需要单测的 logic
 
-- `publishFeedLogic`
+- `createFeedLogic`
 - `deleteFeedLogic`
 - `getFeedLogic`
 - `batchGetFeedsLogic`
@@ -41,11 +41,11 @@
 
 ### 2.3 典型单测用例
 
-**PublishFeed**
+**CreateFeed**
 
 | 用例 | 输入 | 期望 |
 |------|------|------|
-| 图文正常发布 | feed_type=1, media_urls=["url1"] | 返回 feed_id，DB 有记录 |
+| 图文正常发布 | feed_type=1, media_urls=["url1"] | 返回 FeedInfo，DB 有记录 |
 | 视频缺少封面 | feed_type=2, cover_url="" | 返回参数错误码 |
 | 图文无媒体 | feed_type=1, media_urls=[] | 返回参数错误码 |
 

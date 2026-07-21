@@ -6,6 +6,9 @@
 
 ---
 
+> **时间戳约定**：内部 RPC 的 `created_at` / `updated_at` 统一使用**毫秒级 Unix 时间戳**（遵循 `docs/agent/proto-writing-guide.md`）。
+> Redis ZSet score 在本服务中使用**秒级 Unix 时间戳**即可满足排序精度，代码写入时由毫秒转换。
+
 ## 1. MySQL 表设计原则
 
 ### 1.1 单表优先，分表后置

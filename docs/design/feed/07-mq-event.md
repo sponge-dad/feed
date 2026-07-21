@@ -42,9 +42,11 @@ MQ 的作用：
   "user_id": 10001,
   "is_vip_feed": false,
   "city_code": "440300",
-  "created_at": 1752998400
+  "created_at": 1752998400000
 }
 ```
+
+> `created_at` 使用毫秒级 Unix 时间戳，与 proto 一致；写入 Redis ZSet 时转换为秒级。
 
 ### 2.2 feed.deleted
 

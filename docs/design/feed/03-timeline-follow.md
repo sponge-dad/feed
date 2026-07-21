@@ -73,12 +73,14 @@
 Cursor 组成：
 
 ```
-cursor = base64(score + ":" + feed_id)
+cursor = base64(score_sec + ":" + feed_id)
 ```
 
-- score：发帖时间戳（秒级）。
-- feed_id：Snowflake ID，用于处理同一秒内多条帖子的情况。
-- 下一页查询时，取 `score < cursor_score` 或 `score == cursor_score 且 feed_id < cursor_feed_id` 的帖子。
+- `score_sec`：发帖时间戳的秒级部分，来自 Redis ZSet score。
+- `feed_id`：Snowflake ID，用于处理同一秒内多条帖子的情况。
+- 下一页查询时，取 `score_sec < cursor_score` 或 `score_sec == cursor_score 且 feed_id < cursor_feed_id` 的帖子。
+
+> proto 中 `created_at` 用毫秒级，但 Redis ZSet score 用秒级；Cursor 基于秒级 score 生成。
 
 为什么不用 Offset？
 

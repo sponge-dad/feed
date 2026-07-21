@@ -9,7 +9,7 @@
 
 ### 1.1 接口职责边界
 
-PublishFeed 只做三件事：
+`CreateFeed` 只做三件事：
 
 1. 参数校验与风控预审。
 2. 写入 MySQL `feeds` 表。
@@ -41,10 +41,9 @@ Feed Service 内部主要做业务校验：
 ### 1.3 ID 与创建时间生成
 
 - `id` 由 `common/idgen` 生成，调用一次即可。
-- `created_at` 使用生成 ID 时的秒级 Unix 时间戳，确保：
-  - MySQL 写入时间与 Redis ZSet score 一致。
-  - 后续 Cursor 分页稳定。
-- 不要在 MySQL 中用 `DEFAULT CURRENT_TIMESTAMP`，否则可能和 Redis score 有几秒偏差。
+- `created_at` 使用生成 ID 时的毫秒级 Unix 时间戳（proto 规范）。
+- 写入 Redis ZSet 时，将毫秒转换为秒作为 score。
+- 不要在 MySQL 中用 `DEFAULT CURRENT_TIMESTAMP`，否则可能和 RPC 时间戳有几秒偏差。
 
 ### 1.4 写入 MySQL 策略
 
@@ -70,8 +69,8 @@ Feed Service 内部主要做业务校验：
 
 - 发帖成功后立即删除（或更新）相关缓存：
   - 作者本人的 `outbox:{user_id}` —— 可以直接 ZADD，也可以先删除缓存让下次查询重建。
-  - 推荐池 `feed:recommend` —— 由后台定时任务刷新，或者实时 ZADD 一条。
-  - 同城池 `feed:city:{city_code}` —— 实时 ZADD。
+- 推荐池 `feed:recommend` —— 由后台定时任务刷新，或者实时 ZADD 一条（score = random × time_decay，基于秒级时间）。
+- 同城池 `feed:city:{city_code}` —— 实时 ZADD（score = created_at 秒级）。
   - 作者本人的 `timeline:{user_id}:*` —— 删除，让下次读取重建。
 - 推荐原则：**先写 DB，再删/更新缓存**。
 

@@ -58,13 +58,13 @@ Feed 服务是「内容发布 + 三种 Feed 流聚合」的核心服务：
 
 | 接口 | 类型 | 说明 |
 |------|------|------|
-| PublishFeed | Unary | 发帖 |
+| CreateFeed | Unary | 发帖 |
 | DeleteFeed | Unary | 删帖（软删除） |
 | GetFeed | Unary | 帖子详情 |
 | BatchGetFeeds | Unary | 批量帖子详情 |
-| GetRecommendTimeline | Unary | 推荐流 |
-| GetFollowTimeline | Unary | 关注流 |
-| GetCityTimeline | Unary | 同城流 |
+| GetRecommendTimeline | Unary | 推荐流，Offset 分页 |
+| GetFollowTimeline | Unary | 关注流，Cursor 分页 |
+| GetCityTimeline | Unary | 同城流，Offset 分页 |
 | GetUserFeeds | Unary | 个人主页帖子列表 |
 
 ---

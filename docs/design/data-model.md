@@ -6,7 +6,7 @@
 > - 主键 `id` 使用 Snowflake 生成的分布式 ID（BIGINT UNSIGNED），应用层写入
 > - 所有表 `ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
 > - 删除策略按服务自定义：Relation 取关为物理删除；Feed/Comment 等使用 `status` 软删除
-> - MySQL 时间字段用 `DATETIME`；Redis ZSet score、内部 RPC `created_at` 等时间戳字段统一用**秒级 Unix 时间戳**（与当前 `relation.proto` 等实现保持一致）
+> - MySQL 时间字段用 `DATETIME`；内部 RPC `created_at` / `updated_at` 统一用**毫秒级 Unix 时间戳**（遵循 `docs/agent/proto-writing-guide.md`）。Redis ZSet score 可用秒级 Unix 时间戳，具体由各服务代码约定。
 
 ---
 
