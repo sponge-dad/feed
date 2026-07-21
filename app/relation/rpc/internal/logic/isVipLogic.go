@@ -66,16 +66,12 @@ func (l *IsVipLogic) IsVip(in *relation.IsVipReq) (*relation.IsVipResp, error) {
 }
 
 // rebuildFansCount 从 DB 重新计算粉丝数并写回 Redis。
+// 使用 count(*) 全量统计，避免受 GetFans 分页 1000 条限制导致大 V 粉丝数少计。
 func (l *IsVipLogic) rebuildFansCount(userId int64) (int64, error) {
-	resp, err := NewGetFansLogic(l.ctx, l.svcCtx).GetFans(&relation.GetFansReq{
-		UserId:   userId,
-		Page:     1,
-		PageSize: 1000,
-	})
+	count, err := l.svcCtx.RelationModel.CountByFolloweeId(l.ctx, uint64(userId))
 	if err != nil {
 		return 0, err
 	}
-	count := int64(len(resp.FollowerIds))
 
 	if err := l.svcCtx.Redis.Set(fansCountKey(userId), int64toa(count)); err != nil {
 		l.Errorf("Set fans count cache fail, userId=%d err=%v", userId, err)

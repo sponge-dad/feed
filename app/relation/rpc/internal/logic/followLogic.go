@@ -10,8 +10,10 @@ package logic
 
 import (
 	"context"
+	"errors"
 	"time"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/sponge-dad/feed/app/relation/model"
 	"github.com/sponge-dad/feed/app/relation/rpc/internal/svc"
 	"github.com/sponge-dad/feed/app/relation/rpc/relation"
@@ -63,6 +65,12 @@ func (l *FollowLogic) Follow(in *relation.FollowReq) (*relation.FollowResp, erro
 		CreatedAt:  now,
 	})
 	if err != nil {
+		// 高并发下唯一索引冲突视为已存在，返回成功以保证幂等。
+		var mysqlErr *mysql.MySQLError
+		if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
+			l.Infof("Follow duplicate key ignored, follower=%d followee=%d", in.FollowerId, in.FolloweeId)
+			return &relation.FollowResp{Success: true}, nil
+		}
 		l.Errorf("Insert relation fail, follower=%d followee=%d err=%v", in.FollowerId, in.FolloweeId, err)
 		return nil, err
 	}

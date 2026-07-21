@@ -8,6 +8,7 @@ package model
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/zeromicro/go-zero/core/stores/cache"
@@ -26,6 +27,9 @@ type (
 		// FindByFolloweeId 查询某用户粉丝列表（按关注时间倒序）。
 		// 用于 GetFans 接口。
 		FindByFolloweeId(ctx context.Context, followeeId uint64, limit, offset uint64) ([]*Relations, error)
+		// CountByFolloweeId 查询某用户的粉丝总数。
+		// 用于 IsVip 回源重建粉丝数，避免受分页 1000 条限制。
+		CountByFolloweeId(ctx context.Context, followeeId uint64) (int64, error)
 	}
 
 	customRelationsModel struct {
@@ -55,4 +59,23 @@ func (m *customRelationsModel) FindByFolloweeId(ctx context.Context, followeeId 
 	var resp []*Relations
 	err := m.QueryRowsNoCacheCtx(ctx, &resp, query, followeeId, limit, offset)
 	return resp, err
+}
+
+// CountByFolloweeId 按 followee_id 统计粉丝总数。
+func (m *customRelationsModel) CountByFolloweeId(ctx context.Context, followeeId uint64) (int64, error) {
+	query := fmt.Sprintf("select count(*) from %s where `followee_id` = ?", m.table)
+	var count int64
+	err := m.QueryRowNoCacheCtx(ctx, &count, query, followeeId)
+	return count, err
+}
+
+// Insert 重写生成版本的 Insert，显式写入 created_at。
+// goctl 生成的 relationsRowsExpectAutoSet 会排除 created_at，但本表需要应用层写入时间戳。
+func (m *customRelationsModel) Insert(ctx context.Context, data *Relations) (sql.Result, error) {
+	relationsFollowerIdFolloweeIdKey := fmt.Sprintf("%s%v:%v", cacheRelationsFollowerIdFolloweeIdPrefix, data.FollowerId, data.FolloweeId)
+	relationsIdKey := fmt.Sprintf("%s%v", cacheRelationsIdPrefix, data.Id)
+	query := fmt.Sprintf("insert into %s (`id`,`follower_id`,`followee_id`,`created_at`) values (?, ?, ?, ?)", m.table)
+	return m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (sql.Result, error) {
+		return conn.ExecCtx(ctx, query, data.Id, data.FollowerId, data.FolloweeId, data.CreatedAt)
+	}, relationsFollowerIdFolloweeIdKey, relationsIdKey)
 }
