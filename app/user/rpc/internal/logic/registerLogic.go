@@ -49,7 +49,8 @@ func (l *RegisterLogic) Register(in *user.RegisterReq) (*user.RegisterResp, erro
 
 	// 2. bcrypt 对密码加盐哈希，绝不存明文或弱哈希（如 MD5）。
 	//    DefaultCost 是 bcrypt 推荐的计算成本，兼顾安全性与性能。
-	hashed, err := bcrypt.GenerateFromPassword([]byte(in.Password), bcrypt.DefaultCost)
+	//    通过 BcryptPool 执行，避免无限制并发把 CPU 打满。
+	hashed, err := l.svcCtx.BcryptPool.Hash([]byte(in.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}

@@ -41,4 +41,10 @@ type Config struct {
 		// AccessExpireHour token 过期时间（小时）
 		AccessExpireHour int
 	}
+
+	// BcryptWorkers bcrypt 并发计算的 worker 数量。
+	// 注册/登录都依赖 bcrypt，属于 CPU 密集型操作。该值控制同时执行 bcrypt 的
+	// 最大 goroutine 数，避免并发请求过多时把 CPU 占满导致 RPC 超时。<=0 时默认
+	// 使用 runtime.NumCPU()。
+	BcryptWorkers int
 }

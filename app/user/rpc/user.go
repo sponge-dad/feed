@@ -6,6 +6,7 @@ import (
 
 	"github.com/sponge-dad/feed/app/user/rpc/internal/config"
 	"github.com/sponge-dad/feed/app/user/rpc/internal/server"
+	"github.com/sponge-dad/feed/app/user/rpc/internal/serverinterceptors"
 	"github.com/sponge-dad/feed/app/user/rpc/internal/svc"
 	"github.com/sponge-dad/feed/app/user/rpc/user"
 
@@ -32,6 +33,9 @@ func main() {
 			reflection.Register(grpcServer)
 		}
 	})
+
+	// 注册服务端拦截器：将业务错误码转换为 gRPC status error，供调用方还原。
+	s.AddUnaryInterceptors(serverinterceptors.ErrorInterceptor)
 	defer s.Stop()
 
 	fmt.Printf("Starting rpc server at %s...\n", c.ListenOn)

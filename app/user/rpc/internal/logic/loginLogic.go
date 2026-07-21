@@ -14,7 +14,6 @@ import (
 	"github.com/sponge-dad/feed/common/errorx"
 
 	"github.com/zeromicro/go-zero/core/logx"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type LoginLogic struct {
@@ -51,7 +50,8 @@ func (l *LoginLogic) Login(in *user.LoginReq) (*user.LoginResp, error) {
 	}
 
 	// 3. bcrypt 校验密码：将输入密码和库中哈希比较，bcrypt 内部处理了加盐逻辑。
-	if err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(in.Password)); err != nil {
+	//    通过 BcryptPool 执行，避免无限制并发把 CPU 打满。
+	if err := l.svcCtx.BcryptPool.Compare([]byte(u.Password), []byte(in.Password)); err != nil {
 		return nil, errorx.New(errorx.UserPasswordWrong)
 	}
 

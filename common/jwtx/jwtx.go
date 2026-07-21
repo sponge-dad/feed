@@ -13,7 +13,10 @@ import (
 
 // Claims 自定义 JWT 载荷
 type Claims struct {
-	UserID   int64  `json:"user_id"`
+	// UserID 在 JSON 中以字符串形式存储，避免 64 位整数经过 float64 时精度丢失。
+	// go-zero 内置 JWT 中间件使用 jwt.MapClaims 解析，number 类型会转为 float64，
+	// 而 Snowflake ID 超过 53 位有效数字，解析后精度会受损，导致 Gateway 取到的用户 ID 错误。
+	UserID   int64  `json:"user_id,string"`
 	Username string `json:"username"`
 	jwt.RegisteredClaims
 }

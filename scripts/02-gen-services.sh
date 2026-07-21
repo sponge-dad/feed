@@ -47,7 +47,7 @@ for svc in "${SERVICES[@]}"; do
 done
 
 # ---------- 2. 生成 gateway HTTP 服务骨架 ----------
-GATEWAY_API="api/gateway.api"
+GATEWAY_API="app/gateway/api/gateway.api"
 if [ -f "${GATEWAY_API}" ]; then
     info "生成 gateway HTTP 骨架..."
     goctl api go --api "${GATEWAY_API}" --dir "app/gateway" --style=goZero \

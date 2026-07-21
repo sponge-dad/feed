@@ -15,6 +15,7 @@ package svc
 import (
 	"github.com/sponge-dad/feed/app/user/model"
 	"github.com/sponge-dad/feed/app/user/rpc/internal/config"
+	"github.com/sponge-dad/feed/app/user/rpc/internal/pkg/bcryptx"
 	"github.com/sponge-dad/feed/common/jwtx"
 
 	"github.com/zeromicro/go-zero/core/stores/redis"
@@ -35,6 +36,10 @@ type ServiceContext struct {
 
 	// JwtManager 签发和解析登录 token，Register/Login 成功后调用 Generate。
 	JwtManager *jwtx.Manager
+
+	// BcryptPool 限制 bcrypt 计算的并发度，防止 CPU 密集型操作把服务打满。
+	// Register/Login 通过它执行密码哈希和校验。
+	BcryptPool *bcryptx.Pool
 }
 
 // NewServiceContext 根据配置初始化所有依赖，服务启动时调用一次。
@@ -52,5 +57,6 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		UserModel:  model.NewUsersModel(conn, c.CacheRedis),
 		Redis:      rds,
 		JwtManager: jwtx.NewManager(c.JwtAuth.AccessSecret, c.JwtAuth.AccessExpireHour),
+		BcryptPool: bcryptx.NewPool(c.BcryptWorkers),
 	}
 }

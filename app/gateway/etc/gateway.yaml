@@ -1,17 +1,15 @@
-# gateway.yaml
-#
-# Gateway HTTP 服务运行配置。字段结构对应 internal/config/config.go 中的 Config。
-
 Name: gateway
 Host: 0.0.0.0
 Port: 8080
 
 # User gRPC 服务客户端配置（通过 etcd 服务发现）
+# Timeout 单位为毫秒，login/register 涉及 bcrypt，需要给足时间。
 UserRpc:
   Etcd:
     Hosts:
       - 127.0.0.1:2479
     Key: user.rpc
+  Timeout: 10000
 
 # Relation gRPC 服务客户端配置（用于用户主页聚合）
 RelationRpc:
@@ -19,8 +17,19 @@ RelationRpc:
     Hosts:
       - 127.0.0.1:2479
     Key: relation.rpc
+  Timeout: 3000
 
 # JWT 解析配置，必须与 User RPC 服务保持一致，否则网关无法解析登录 token。
-JwtAuth:
+Auth:
   AccessSecret: "feed-user-service-jwt-secret-CHANGE-ME"
-  AccessExpireHour: 720
+  AccessExpire: 2592000
+
+Log:
+  Encoding: plain
+
+# 关闭 HTTP breaker 中间件。
+# login/register 涉及 bcrypt CPU 计算，响应时间在几十到上百毫秒属于正常，
+# 默认 breaker 会将其误判为慢请求并熔断，导致压测时大量 503。
+Middlewares:
+  Breaker: false
+  Shedding: false

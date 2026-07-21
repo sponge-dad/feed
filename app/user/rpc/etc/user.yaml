@@ -9,6 +9,15 @@ Name: user.rpc
 # 服务端口约定：9001（见 ../../../docs/design/service-design.md 端口分配表），
 # 而不是 goctl 默认生成的 8080（8080 是网关端口，避免和网关冲突）。
 ListenOn: 0.0.0.0:9001
+
+# RPC 服务端全局超时与连接控制。
+# Timeout 单位为毫秒，bcrypt 计算是 CPU 密集型，压测时需要给足处理时间。
+Timeout: 10000
+MaxConns: 1000
+# CpuThreshold 设置为 999（上限），压测时关闭 adaptive shedding，避免其误判 bcrypt CPU 占用。
+# 生产环境建议根据实际负载调回 900~950。
+CpuThreshold: 999
+
 Etcd:
   Hosts:
   # 注意：宿主机端口用的是 2479，不是 etcd 默认的 2379！
@@ -37,3 +46,8 @@ CacheRedis:
 JwtAuth:
   AccessSecret: "feed-user-service-jwt-secret-CHANGE-ME"
   AccessExpireHour: 720 # 30天
+
+# bcrypt 计算并发 worker 数。
+# <=0 时使用 runtime.NumCPU()。该值应根据实际 CPU 核心数和线上负载调整：
+# 过大导致 CPU 占满、RPC 超时；过小会导致请求排队、吞吐下降。
+BcryptWorkers: 0
