@@ -1,0 +1,143 @@
+// interaction.proto
+//
+// 职责：Interaction 服务内部 gRPC 接口定义。
+// 服务范围：点赞/收藏、互动计数、用户互动状态、用户互动列表。
+// 主要接口：LikeFeed, UnlikeFeed, CollectFeed, UncollectFeed,
+//          GetFeedStats, BatchGetFeedStats,
+//          GetUserInteractionStatus, BatchGetUserInteractionStatus,
+//          GetUserLikedFeeds, GetUserCollectedFeeds。
+syntax = "proto3";
+
+package interaction;
+option go_package = "./interaction";
+
+// ==================== 领域消息 ====================
+
+// FeedStats 帖子互动计数
+message FeedStats {
+  int64 feed_id       = 1; // 帖子 ID
+  int64 like_count    = 2; // 点赞数
+  int64 collect_count = 3; // 收藏数
+}
+
+// UserInteractionStatus 用户对单条帖子的互动状态
+message UserInteractionStatus {
+  int64 feed_id       = 1; // 帖子 ID
+  bool  is_liked      = 2; // 是否已点赞
+  bool  is_collected  = 3; // 是否已收藏
+}
+
+// ==================== 动作类接口 ====================
+
+// 点赞帖子
+message LikeFeedReq {
+  int64 user_id = 1; // 发起点赞的用户 ID
+  int64 feed_id = 2; // 被点赞的帖子 ID
+}
+message LikeFeedResp {
+}
+
+// 取消点赞
+message UnlikeFeedReq {
+  int64 user_id = 1;
+  int64 feed_id = 2;
+}
+message UnlikeFeedResp {
+}
+
+// 收藏帖子
+message CollectFeedReq {
+  int64 user_id = 1;
+  int64 feed_id = 2;
+}
+message CollectFeedResp {
+}
+
+// 取消收藏
+message UncollectFeedReq {
+  int64 user_id = 1;
+  int64 feed_id = 2;
+}
+message UncollectFeedResp {
+}
+
+// ==================== 查询类接口 ====================
+
+// 单条帖子互动计数
+message GetFeedStatsReq {
+  int64 feed_id = 1;
+}
+message GetFeedStatsResp {
+  FeedStats stats = 1;
+}
+
+// 批量帖子互动计数
+message BatchGetFeedStatsReq {
+  repeated int64 feed_ids = 1; // 帖子 ID 列表，建议单次不超过 100 个
+}
+message BatchGetFeedStatsResp {
+  repeated FeedStats stats_list = 1; // 与请求顺序保持一致
+}
+
+// 单条帖子当前用户互动状态
+message GetUserInteractionStatusReq {
+  int64 user_id = 1; // 当前查看者
+  int64 feed_id = 2;
+}
+message GetUserInteractionStatusResp {
+  UserInteractionStatus status = 1;
+}
+
+// 批量帖子当前用户互动状态
+message BatchGetUserInteractionStatusReq {
+  int64          user_id  = 1;
+  repeated int64 feed_ids = 2; // 建议单次不超过 100 个
+}
+message BatchGetUserInteractionStatusResp {
+  repeated UserInteractionStatus status_list = 1; // 与请求顺序保持一致
+}
+
+// ==================== 列表类接口 ====================
+
+// 用户点赞过的帖子列表
+message GetUserLikedFeedsReq {
+  int64  user_id   = 1; // 要查询的用户 ID
+  int32  page_size = 2; // 每页条数，默认 20
+  string cursor    = 3; // 游标，首页为空；由 score:feed_id base64 编码组成
+}
+message GetUserLikedFeedsResp {
+  repeated int64 feed_ids   = 1; // 帖子 ID 列表，按点赞时间倒序
+  string         next_cursor = 2; // 下一页游标，为空表示没有更多
+  int64          total       = 3; // 当前有效点赞总数
+}
+
+// 用户收藏过的帖子列表
+message GetUserCollectedFeedsReq {
+  int64  user_id   = 1;
+  int32  page_size = 2;
+  string cursor    = 3;
+}
+message GetUserCollectedFeedsResp {
+  repeated int64 feed_ids    = 1;
+  string         next_cursor = 2;
+  int64          total       = 3;
+}
+
+// ==================== 服务定义 ====================
+service Interaction {
+  // 动作类
+  rpc LikeFeed(LikeFeedReq) returns (LikeFeedResp);
+  rpc UnlikeFeed(UnlikeFeedReq) returns (UnlikeFeedResp);
+  rpc CollectFeed(CollectFeedReq) returns (CollectFeedResp);
+  rpc UncollectFeed(UncollectFeedReq) returns (UncollectFeedResp);
+
+  // 查询类
+  rpc GetFeedStats(GetFeedStatsReq) returns (GetFeedStatsResp);
+  rpc BatchGetFeedStats(BatchGetFeedStatsReq) returns (BatchGetFeedStatsResp);
+  rpc GetUserInteractionStatus(GetUserInteractionStatusReq) returns (GetUserInteractionStatusResp);
+  rpc BatchGetUserInteractionStatus(BatchGetUserInteractionStatusReq) returns (BatchGetUserInteractionStatusResp);
+
+  // 列表类
+  rpc GetUserLikedFeeds(GetUserLikedFeedsReq) returns (GetUserLikedFeedsResp);
+  rpc GetUserCollectedFeeds(GetUserCollectedFeedsReq) returns (GetUserCollectedFeedsResp);
+}

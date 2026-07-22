@@ -11,6 +11,7 @@
 | [data-model.md](./data-model.md) | MySQL 表结构、Redis 数据结构、数据归属说明 |
 | [api-spec/](./api-spec/) | 对外 REST API 契约总纲与各模块接口定义 |
 | [feed/](./feed/) | Feed 服务（9003）分模块设计方案：数据模型、帖子管理、三种 Timeline、缓存、MQ、测试 |
+| [interaction/](./interaction/) | Interaction 服务（9005）分模块设计方案：点赞/收藏、计数/状态、用户列表、缓存一致性、MQ、测试 |
 
 ## 与设计相关的代码目录
 
