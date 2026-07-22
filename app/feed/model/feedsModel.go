@@ -1,6 +1,9 @@
 package model
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/zeromicro/go-zero/core/stores/cache"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
@@ -12,6 +15,8 @@ type (
 	// and implement the added methods in customFeedsModel.
 	FeedsModel interface {
 		feedsModel
+		FindByUserId(ctx context.Context, userId uint64) ([]*Feeds, error)
+		FindByCityCode(ctx context.Context, cityCode string) ([]*Feeds, error)
 	}
 
 	customFeedsModel struct {
@@ -24,4 +29,18 @@ func NewFeedsModel(conn sqlx.SqlConn, c cache.CacheConf, opts ...cache.Option) F
 	return &customFeedsModel{
 		defaultFeedsModel: newFeedsModel(conn, c, opts...),
 	}
+}
+
+func (m *customFeedsModel) FindByUserId(ctx context.Context, userId uint64) ([]*Feeds, error) {
+	query := fmt.Sprintf("select %s from %s where user_id = ?", feedsRows, m.table)
+	var feeds []*Feeds
+	err := m.QueryRowsNoCacheCtx(ctx, &feeds, query, userId)
+	return feeds, err
+}
+
+func (m *customFeedsModel) FindByCityCode(ctx context.Context, cityCode string) ([]*Feeds, error) {
+	query := fmt.Sprintf("select %s from %s where city_code = ?", feedsRows, m.table)
+	var feeds []*Feeds
+	err := m.QueryRowsNoCacheCtx(ctx, &feeds, query, cityCode)
+	return feeds, err
 }
