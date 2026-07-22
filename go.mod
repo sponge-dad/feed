@@ -3,6 +3,7 @@ module github.com/sponge-dad/feed
 go 1.21
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/alicebob/miniredis/v2 v2.33.0
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/go-sql-driver/mysql v1.8.1
