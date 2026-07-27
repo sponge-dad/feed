@@ -29,3 +29,4 @@ RocketMQ:
   NameServer:
     - 127.0.0.1:9876
   GroupName: feed_producer_group
+  ConsumeGroup: feed_consumer_group

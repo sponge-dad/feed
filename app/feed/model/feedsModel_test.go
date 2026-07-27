@@ -27,7 +27,7 @@ var feedColumns = []string{
 }
 
 func TestFindByUserId(t *testing.T) {
-	model, mock, _ := newMockFeedsModel(t)
+	model, mock, _, _ := newMockFeedsModel(t)
 	query := fmt.Sprintf("select %s from `feeds` where `user_id` = ? and `status` = ? order by `created_at` desc, `id` desc limit ? offset ?", feedsRows)
 	mock.ExpectQuery(regexp.QuoteMeta(query)).
 		WithArgs(uint64(42), feedStatusNormal, uint64(20), uint64(40)).
@@ -42,7 +42,7 @@ func TestFindByUserId(t *testing.T) {
 }
 
 func TestFindByCityCodeUsesParameterizedFilter(t *testing.T) {
-	model, mock, _ := newMockFeedsModel(t)
+	model, mock, _, _ := newMockFeedsModel(t)
 	cityCode := "440300' OR 1=1 --"
 	query := fmt.Sprintf("select %s from `feeds` where `city_code` = ? and `status` = ? order by `created_at` desc, `id` desc limit ? offset ?", feedsRows)
 	mock.ExpectQuery(regexp.QuoteMeta(query)).
@@ -59,7 +59,7 @@ func TestFindByCityCodeUsesParameterizedFilter(t *testing.T) {
 
 func TestFindByIds(t *testing.T) {
 	t.Run("empty IDs skip database", func(t *testing.T) {
-		model, mock, _ := newMockFeedsModel(t)
+		model, mock, _, _ := newMockFeedsModel(t)
 
 		feeds, err := model.FindByIds(context.Background(), nil)
 
@@ -69,7 +69,7 @@ func TestFindByIds(t *testing.T) {
 	})
 
 	t.Run("queries all IDs at once", func(t *testing.T) {
-		model, mock, _ := newMockFeedsModel(t)
+		model, mock, _, _ := newMockFeedsModel(t)
 		query := fmt.Sprintf("select %s from `feeds` where `status` = ? and `id` in (?,?,?)", feedsRows)
 		mock.ExpectQuery(regexp.QuoteMeta(query)).
 			WithArgs(feedStatusNormal, uint64(1001), uint64(1002), uint64(1003)).
@@ -84,7 +84,7 @@ func TestFindByIds(t *testing.T) {
 }
 
 func TestSoftDeleteByUserId(t *testing.T) {
-	model, mock, cacheStub := newMockFeedsModel(t)
+	model, mock, _, rdsStub := newMockFeedsModel(t)
 	query := "update `feeds` set `status` = ? where `id` = ? and `user_id` = ? and `status` <> ?"
 	mock.ExpectExec(regexp.QuoteMeta(query)).
 		WithArgs(feedStatusDeleted, uint64(1001), uint64(42), feedStatusDeleted).
@@ -94,11 +94,12 @@ func TestSoftDeleteByUserId(t *testing.T) {
 
 	require.NoError(t, err)
 	require.True(t, deleted)
-	require.Equal(t, []string{"cache:feeds:id:1001"}, cacheStub.deletedKeys)
+	// 软删除应使业务详情缓存 feed:{feed_id} 失效
+	require.Equal(t, []string{"feed:1001"}, rdsStub.deletedKeys)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func newMockFeedsModel(t *testing.T) (*customFeedsModel, sqlmock.Sqlmock, *recordingCache) {
+func newMockFeedsModel(t *testing.T) (*customFeedsModel, sqlmock.Sqlmock, *recordingCache, *recordingRedis) {
 	t.Helper()
 
 	db, mock, err := sqlmock.New()
@@ -108,13 +109,15 @@ func newMockFeedsModel(t *testing.T) (*customFeedsModel, sqlmock.Sqlmock, *recor
 	})
 
 	cacheStub := &recordingCache{}
+	redisStub := &recordingRedis{}
 	conn := sqlx.NewSqlConnFromDB(db)
 	return &customFeedsModel{
 		defaultFeedsModel: &defaultFeedsModel{
 			CachedConn: sqlc.NewConnWithCache(conn, cacheStub),
 			table:      "`feeds`",
 		},
-	}, mock, cacheStub
+		rds: redisStub,
+	}, mock, cacheStub, redisStub
 }
 
 func newFeedRows(id, userId uint64, cityCode string) *sqlmock.Rows {
@@ -187,3 +190,13 @@ func (c *recordingCache) TakeWithExpireCtx(_ context.Context, val any, _ string,
 }
 
 var _ cache.Cache = (*recordingCache)(nil)
+
+// recordingRedis 记录 Del 调用，用于断言 SoftDeleteByUserId 使详情缓存失效。
+type recordingRedis struct {
+	deletedKeys []string
+}
+
+func (r *recordingRedis) Del(keys ...string) (int, error) {
+	r.deletedKeys = append(r.deletedKeys, keys...)
+	return len(keys), nil
+}

@@ -94,16 +94,35 @@ func (l *CreateFeedLogic) CreateFeed(in *feed.CreateFeedReq) (*feed.CreateFeedRe
 		return nil, err
 	}
 	// 发送event -> MQ
-	event := feedEvent.NewFeedCreateEvent(feedID, in.AuthorId, vip.IsVip, in.CityCode, now.Unix())
+	event := feedEvent.NewEventFeedCreated(feedID, in.AuthorId, vip.IsVip, in.CityCode, now.UnixMilli())
 	body, err := json.Marshal(event)
 	if err != nil {
 		l.Errorf("marshal feed.created event failed feedId=%d err=%v", feedID, err)
 		return nil, err
 	} else if err = l.svcCtx.Producer.SendSync(feedEvent.TopicFeedCreated, body); err != nil {
+		// MQ 失败不阻塞主流程：记录日志，由 Worker 重试/本地消息表兜底。
 		l.Errorf("send feed.created to MQ failed feedId=%d err=%v", feedID, err)
-		return nil, err
 	}
 
-	// 更新缓存
-	return &feed.CreateFeedResp{}, nil
+	return &feed.CreateFeedResp{
+		Feed: &feed.FeedInfo{
+			FeedId:       feedID,
+			AuthorId:     in.AuthorId,
+			FeedType:     in.FeedType,
+			Title:        in.Title,
+			Description:  in.Description,
+			MediaUrls:    in.MediaUrls,
+			CoverUrl:     in.CoverUrl,
+			CityCode:     in.CityCode,
+			CityName:     in.CityName,
+			IpLocation:   in.IpLocation,
+			Status:       1,
+			IsVipFeed:    vip.IsVip,
+			LikeCount:    0,
+			CommentCount: 0,
+			CollectCount: 0,
+			CreatedAt:    now.UnixMilli(),
+			UpdatedAt:    now.UnixMilli(),
+		},
+	}, nil
 }

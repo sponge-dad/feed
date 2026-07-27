@@ -30,8 +30,9 @@ func NewServiceContext(c config.Config) (*ServiceContext, error) {
 		return nil, err
 	}
 	return &ServiceContext{
-		Config:      c,
-		FeedModel:   model.NewFeedsModel(conn, c.CacheRedis),
+		Config: c,
+		// FeedModel 关闭 go-zero 自带主键缓存：详情缓存统一用业务级 feed:{feed_id} Hash（见 06-cache-strategy.md）
+		FeedModel:   model.NewFeedsModel(conn, rds),
 		Redis:       rds,
 		IdGen:       idgen.Next,
 		RelationRpc: relationclient.NewRelation(zrpc.MustNewClient(c.RelationRpc)),

@@ -13,7 +13,8 @@ type Config struct {
 	CacheRedis  cache.CacheConf
 	RelationRpc zrpc.RpcClientConf
 	RocketMQ    struct {
-		NameServer []string
-		GroupName  string
+		NameServer   []string
+		GroupName    string
+		ConsumeGroup string
 	}
 }

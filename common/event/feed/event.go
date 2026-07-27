@@ -15,8 +15,9 @@ import "github.com/google/uuid"
 */
 
 const TopicFeedCreated = "feed.created"
+const TopicFeedDeleted = "feed.deleted"
 
-type CreateFeedEvent struct {
+type EventFeedCreate struct {
 	EventID   string `json:"event_id"`
 	EventType string `json:"event_type"`
 	FeedID    int64  `json:"feed_id"`
@@ -26,8 +27,8 @@ type CreateFeedEvent struct {
 	CreatedAt int64  `json:"created_at"`
 }
 
-func NewFeedCreateEvent(feedId, userId int64, isVipFeed bool, cityCode string, createAt int64) *CreateFeedEvent {
-	return &CreateFeedEvent{
+func NewEventFeedCreated(feedId, userId int64, isVipFeed bool, cityCode string, createAt int64) *EventFeedCreate {
+	return &EventFeedCreate{
 		EventID:   uuid.NewString(), // TODO 应该需要修改
 		EventType: TopicFeedCreated,
 		FeedID:    feedId,
@@ -35,5 +36,23 @@ func NewFeedCreateEvent(feedId, userId int64, isVipFeed bool, cityCode string, c
 		IsVipFeed: isVipFeed,
 		CityCode:  cityCode,
 		CreatedAt: createAt,
+	}
+}
+
+type EventFeedDeleted struct {
+	EventID   string `json:"event_id"`
+	EventType string `json:"event_type"`
+	FeedID    int64  `json:"feed_id"`
+	UserID    int64  `json:"user_id"`
+	CityCode  string `json:"city_code"`
+}
+
+func NewEventFeedDeleted(feedId, userId int64, cityCode string) *EventFeedDeleted {
+	return &EventFeedDeleted{
+		EventID:   uuid.NewString(), // TODO 应该需要修改
+		EventType: TopicFeedDeleted,
+		FeedID:    feedId,
+		UserID:    userId,
+		CityCode:  cityCode,
 	}
 }

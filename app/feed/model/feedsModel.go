@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/stores/cache"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
@@ -37,13 +38,24 @@ type (
 
 	customFeedsModel struct {
 		*defaultFeedsModel
+		// rds 用于维护业务详情缓存 feed:{feed_id} 的失效（cache-aside）。
+		rds redisCache
 	}
 )
 
+// redisCache 抽象详情缓存删除依赖，便于单测注入 mock。
+// 与 go-zero 自带主键缓存解耦：feed 详情缓存统一由业务层 Redis 的 feed:{feed_id} Hash 管理。
+type redisCache interface {
+	Del(keys ...string) (int, error)
+}
+
 // NewFeedsModel 创建 feeds 表的 model 实例。
-func NewFeedsModel(conn sqlx.SqlConn, c cache.CacheConf, opts ...cache.Option) FeedsModel {
+// conn 为 MySQL 连接；rds 为业务 Redis（详情缓存 feed:{feed_id} 的失效依赖）。
+// go-zero 自带主键缓存已关闭（传空 cache.CacheConf），详情缓存统一走业务 Hash。
+func NewFeedsModel(conn sqlx.SqlConn, rds redisCache, opts ...cache.Option) FeedsModel {
 	return &customFeedsModel{
-		defaultFeedsModel: newFeedsModel(conn, c, opts...),
+		defaultFeedsModel: newFeedsModel(conn, cache.CacheConf{}, opts...),
+		rds:               rds,
 	}
 }
 
@@ -84,16 +96,24 @@ func (m *customFeedsModel) FindByIds(ctx context.Context, ids []uint64) ([]*Feed
 	return feeds, err
 }
 
-// SoftDeleteByUserId 将作者自己的帖子更新为已删除状态。
+// SoftDeleteByUserId 将作者自己的帖子标记为已删除，并使业务详情缓存失效。
 // SQL 同时校验 user_id，防止调用方遗漏权限条件；重复删除不会重复修改数据。
+// 软删除后删除业务详情缓存 feed:{feed_id}（Hash），由 GetFeed 下次读取时回源重建。
 func (m *customFeedsModel) SoftDeleteByUserId(ctx context.Context, feedId, userId uint64) (bool, error) {
-	feedsIdKey := fmt.Sprintf("%s%v", cacheFeedsIdPrefix, feedId)
+	feedDetailKey := fmt.Sprintf("feed:%d", feedId)
 	result, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
 		query := fmt.Sprintf("update %s set `status` = ? where `id` = ? and `user_id` = ? and `status` <> ?", m.table)
 		return conn.ExecCtx(ctx, query, feedStatusDeleted, feedId, userId, feedStatusDeleted)
-	}, feedsIdKey)
+	})
 	if err != nil {
 		return false, err
+	}
+
+	// 失效业务详情缓存：缓存删除失败不阻塞软删除主流程，仅记录日志。
+	if m.rds != nil {
+		if _, derr := m.rds.Del(feedDetailKey); derr != nil {
+			logx.Errorf("del feed detail cache failed key=%s err=%v", feedDetailKey, derr)
+		}
 	}
 
 	affected, err := result.RowsAffected()
