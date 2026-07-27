@@ -23,9 +23,8 @@ func NewDeleteFeedLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Delete
 	}
 }
 
-// 删除帖子（软删除）
+// DeleteFeed 删除帖子（软删除）
 func (l *DeleteFeedLogic) DeleteFeed(in *feed.DeleteFeedReq) (*feed.DeleteFeedResp, error) {
-	// todo: add your logic here and delete this line
-
+	//
 	return &feed.DeleteFeedResp{}, nil
 }

@@ -1,4 +1,4 @@
-// unfollowLogic.go
+// Package logic unfollowLogic.go
 //
 // 职责：处理取消关注（Unfollow）请求的业务逻辑。
 // 主要流程：
@@ -10,6 +10,7 @@ package logic
 
 import (
 	"context"
+	"errors"
 
 	"github.com/sponge-dad/feed/app/relation/model"
 	"github.com/sponge-dad/feed/app/relation/rpc/internal/svc"
@@ -45,7 +46,7 @@ func (l *UnfollowLogic) Unfollow(in *relation.UnfollowReq) (*relation.UnfollowRe
 	}
 
 	rel, err := l.svcCtx.RelationModel.FindOneByFollowerIdFolloweeId(l.ctx, uint64(in.FollowerId), uint64(in.FolloweeId))
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return &relation.UnfollowResp{Success: true}, nil
 	}
 	if err != nil {
