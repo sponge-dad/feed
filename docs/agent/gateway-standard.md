@@ -211,12 +211,20 @@ JwtAuth:
 type Config struct {
 	rest.RestConf
 
-	UserRpc     zrpc.RpcClientConf
-	RelationRpc zrpc.RpcClientConf
+	UserRpc        zrpc.RpcClientConf
+	RelationRpc    zrpc.RpcClientConf
+	FeedRpc        zrpc.RpcClientConf
+	CommentRpc     zrpc.RpcClientConf
+	InteractionRpc zrpc.RpcClientConf
 
 	JwtAuth struct {
 		AccessSecret     string
 		AccessExpireHour int
+	}
+
+	// IP 定位解析器配置（同城流用），见 common/ipx
+	IPLocation struct {
+		DefaultCity string
 	}
 }
 ```
@@ -238,16 +246,24 @@ type Config struct {
 
 ```go
 type ServiceContext struct {
-	Config      config.Config
-	UserRpc     user.UserClient
-	RelationRpc relation.RelationClient
+	Config         config.Config
+	UserRpc        user.UserClient
+	RelationRpc    relation.RelationClient
+	FeedRpc        feed.FeedClient
+	CommentRpc     comment.CommentClient
+	InteractionRpc interaction.InteractionClient
+	IPResolver     ipx.Resolver
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
 	return &ServiceContext{
-		Config:      c,
-		UserRpc:     user.NewUserClient(zrpc.MustNewClient(c.UserRpc).Conn()),
-		RelationRpc: relation.NewRelationClient(zrpc.MustNewClient(c.RelationRpc).Conn()),
+		Config:         c,
+		UserRpc:        user.NewUserClient(zrpc.MustNewClient(c.UserRpc).Conn()),
+		RelationRpc:    relation.NewRelationClient(zrpc.MustNewClient(c.RelationRpc).Conn()),
+		FeedRpc:        feed.NewFeedClient(zrpc.MustNewClient(c.FeedRpc).Conn()),
+		CommentRpc:     comment.NewCommentClient(zrpc.MustNewClient(c.CommentRpc).Conn()),
+		InteractionRpc: interaction.NewInteractionClient(zrpc.MustNewClient(c.InteractionRpc).Conn()),
+		IPResolver:     ipx.NewStaticResolver(c.IPLocation.DefaultCity),
 	}
 }
 ```
@@ -662,8 +678,12 @@ go run cmd/api/main.go -f etc/gateway.yaml
 
 | 文件 | 说明 |
 |------|------|
-| `app/gateway/api/gateway.api` | 网关总入口 API 文件 |
+| `app/gateway/api/gateway.api` | 网关总入口 API 文件（import 各模块、注册路由） |
 | `app/gateway/api/user.api` | 用户模块 API 类型定义 |
+| `app/gateway/api/relation.api` | 关系模块 API 类型定义 |
+| `app/gateway/api/feed.api` | Feed 模块 API 类型定义 |
+| `app/gateway/api/comment.api` | 评论模块 API 类型定义 |
+| `app/gateway/api/interaction.api` | 互动模块 API 类型定义 |
 | `app/gateway/etc/gateway.yaml` | 网关运行配置 |
 | `app/gateway/internal/config/config.go` | 配置结构体 |
 | `app/gateway/internal/svc/service_context.go` | 依赖注入容器 |

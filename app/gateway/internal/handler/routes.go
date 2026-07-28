@@ -6,6 +6,10 @@ package handler
 import (
 	"net/http"
 
+	comment "github.com/sponge-dad/feed/app/gateway/internal/handler/comment"
+	feed "github.com/sponge-dad/feed/app/gateway/internal/handler/feed"
+	interaction "github.com/sponge-dad/feed/app/gateway/internal/handler/interaction"
+	relation "github.com/sponge-dad/feed/app/gateway/internal/handler/relation"
 	"github.com/sponge-dad/feed/app/gateway/internal/svc"
 
 	"github.com/zeromicro/go-zero/rest"
@@ -49,6 +53,144 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Method:  http.MethodPatch,
 				Path:    "/users/me",
 				Handler: updateMeHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/v1"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				Method:  http.MethodDelete,
+				Path:    "/comments/:commentId",
+				Handler: comment.DeleteCommentHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/comments/:commentId/like",
+				Handler: comment.LikeCommentHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodDelete,
+				Path:    "/comments/:commentId/like",
+				Handler: comment.UnlikeCommentHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/comments/:rootId/replies",
+				Handler: comment.ListRepliesHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/feeds/:feedId/comments",
+				Handler: comment.CreateCommentHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/feeds/:feedId/comments",
+				Handler: comment.ListCommentsHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/v1"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				Method:  http.MethodPost,
+				Path:    "/feeds",
+				Handler: feed.CreateFeedHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodDelete,
+				Path:    "/feeds/:feedId",
+				Handler: feed.DeleteFeedHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/feeds/:feedId",
+				Handler: feed.GetFeedDetailHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/feeds/timeline",
+				Handler: feed.TimelineHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/users/:userId/feeds",
+				Handler: feed.UserFeedsHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/v1"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				Method:  http.MethodPost,
+				Path:    "/feeds/:feedId/collect",
+				Handler: interaction.CollectFeedHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodDelete,
+				Path:    "/feeds/:feedId/collect",
+				Handler: interaction.UncollectFeedHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/feeds/:feedId/like",
+				Handler: interaction.LikeFeedHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodDelete,
+				Path:    "/feeds/:feedId/like",
+				Handler: interaction.UnlikeFeedHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/users/me/collects",
+				Handler: interaction.MyCollectsHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/users/me/likes",
+				Handler: interaction.MyLikesHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/v1"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				Method:  http.MethodPost,
+				Path:    "/relations/follow",
+				Handler: relation.FollowHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodDelete,
+				Path:    "/relations/follow",
+				Handler: relation.UnfollowHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/relations/followers",
+				Handler: relation.FollowerListHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/relations/following",
+				Handler: relation.FollowingListHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/relations/is-following",
+				Handler: relation.IsFollowingHandler(serverCtx),
 			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),

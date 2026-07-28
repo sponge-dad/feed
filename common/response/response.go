@@ -16,6 +16,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/sponge-dad/feed/common/errorx"
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
@@ -61,6 +62,19 @@ func Error(ctx context.Context, w http.ResponseWriter, code int, message string)
 		Data:      nil,
 		RequestID: requestID(ctx),
 	})
+}
+
+// ErrorFrom 根据 err 推断业务错误码并返回统一错误响应。
+// 业务错误（errorx.CodeError，或从下游 gRPC status error 中还原的 CodeError）
+// 原样透传 code/message；其它错误一律按服务器内部错误返回并记录日志，
+// 避免把 SQL、堆栈等内部细节泄漏给客户端。
+func ErrorFrom(ctx context.Context, w http.ResponseWriter, err error) {
+	if codeErr, ok := errorx.TryParse(err); ok {
+		Error(ctx, w, codeErr.Code, codeErr.Message)
+		return
+	}
+	logx.WithContext(ctx).Errorf("gateway: unexpected error: %v", err)
+	Error(ctx, w, errorx.ServerError, "服务器内部错误")
 }
 
 // HTTPError 返回带 HTTP 状态码的错误（如 401/403/500）

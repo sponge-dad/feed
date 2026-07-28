@@ -41,6 +41,15 @@ gen: ## 用 goctl 生成服务骨架
 tidy: ## 整理 go 依赖
 	go mod tidy
 
+# ---------------- gateway api ----------------
+.PHONY: api
+api: ## 重新生成 gateway HTTP 代码（types/handler/routes）
+	cd app/gateway && goctl api go -api api/gateway.api -dir . --style=goZero
+	@# goctl 会在根目录生成默认入口与小写 ServiceContext 脚手架，
+	@# 本项目入口固定为 cmd/api/gateway.go、依赖容器为 internal/svc/serviceContext.go，删除冗余文件
+	@rm -f app/gateway/gateway.go app/gateway/internal/svc/servicecontext.go
+	gofmt -w app/gateway
+
 # ---------------- proto ----------------
 .PHONY: proto
 proto: ## 重新生成所有 proto 代码

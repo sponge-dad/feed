@@ -3,8 +3,246 @@
 
 package types
 
+type CollectFeedReq struct {
+	FeedID int64 `path:"feedId"`
+}
+
+type CollectFeedResp struct {
+	Success      bool  `json:"success"`
+	CollectCount int64 `json:"collect_count"`
+}
+
+type CommentAuthor struct {
+	ID       int64  `json:"id"`
+	Nickname string `json:"nickname"`
+	Avatar   string `json:"avatar"`
+}
+
+type CommentDetail struct {
+	ID        int64            `json:"id"`
+	FeedID    int64            `json:"feed_id"`
+	Content   string           `json:"content"`
+	RootID    int64            `json:"root_id"`
+	ParentID  int64            `json:"parent_id"`
+	Author    CommentAuthor    `json:"author"`
+	ReplyUser CommentReplyUser `json:"reply_user"`
+	LikeCount int64            `json:"like_count"`
+	CreatedAt int64            `json:"created_at"`
+}
+
+type CommentEntry struct {
+	ID         int64          `json:"id"`
+	Content    string         `json:"content"`
+	Author     CommentAuthor  `json:"author"`
+	LikeCount  int64          `json:"like_count"`
+	IsLiked    bool           `json:"is_liked"`
+	ReplyCount int64          `json:"reply_count"`
+	CreatedAt  int64          `json:"created_at"`
+	SubReplies []CommentReply `json:"sub_replies"`
+}
+
+type CommentReply struct {
+	ID        int64            `json:"id"`
+	Content   string           `json:"content"`
+	Author    CommentAuthor    `json:"author"`
+	ReplyUser CommentReplyUser `json:"reply_user"`
+	LikeCount int64            `json:"like_count"`
+	IsLiked   bool             `json:"is_liked"`
+	CreatedAt int64            `json:"created_at"`
+}
+
+type CommentReplyUser struct {
+	ID       int64  `json:"id"`
+	Nickname string `json:"nickname"`
+}
+
+type CreateCommentReq struct {
+	FeedID      int64  `path:"feedId"`
+	Content     string `json:"content" validate:"required"`
+	RootID      int64  `json:"root_id,optional"`
+	ParentID    int64  `json:"parent_id,optional"`
+	ReplyUserID int64  `json:"reply_user_id,optional"`
+}
+
+type CreateCommentResp struct {
+	Comment CommentDetail `json:"comment"`
+}
+
+type CreateFeedReq struct {
+	FeedType    int32    `json:"feed_type" validate:"required"`
+	Title       string   `json:"title,optional"`
+	Description string   `json:"description,optional"`
+	MediaUrls   []string `json:"media_urls" validate:"required"`
+	CoverURL    string   `json:"cover_url,optional"`
+}
+
+type CreateFeedResp struct {
+	Feed FeedInfo `json:"feed"`
+}
+
+type DeleteCommentReq struct {
+	CommentID int64 `path:"commentId"`
+}
+
+type DeleteCommentResp struct {
+	Success bool `json:"success"`
+}
+
+type DeleteFeedReq struct {
+	FeedID int64 `path:"feedId"`
+}
+
+type DeleteFeedResp struct {
+	Success bool `json:"success"`
+}
+
+type FeedAuthor struct {
+	ID       int64  `json:"id"`
+	Nickname string `json:"nickname"`
+	Avatar   string `json:"avatar"`
+}
+
+type FeedAuthorDetail struct {
+	ID          int64  `json:"id"`
+	Nickname    string `json:"nickname"`
+	Avatar      string `json:"avatar"`
+	IsFollowing bool   `json:"is_following"`
+}
+
+type FeedCard struct {
+	ID          int64               `json:"id"`
+	FeedType    int32               `json:"feed_type"`
+	Title       string              `json:"title"`
+	CoverURL    string              `json:"cover_url"`
+	Author      FeedAuthor          `json:"author"`
+	Stats       FeedStatsInfo       `json:"stats"`
+	Interaction FeedInteractionInfo `json:"interaction"`
+	CreatedAt   int64               `json:"created_at"`
+}
+
+type FeedCardList struct {
+	List       []FeedCard `json:"list"`
+	NextCursor string     `json:"next_cursor"`
+	HasMore    bool       `json:"has_more"`
+}
+
+type FeedDetail struct {
+	ID          int64               `json:"id"`
+	FeedType    int32               `json:"feed_type"`
+	Title       string              `json:"title"`
+	Description string              `json:"description"`
+	MediaUrls   []string            `json:"media_urls"`
+	CoverURL    string              `json:"cover_url"`
+	CityName    string              `json:"city_name"`
+	IPLocation  string              `json:"ip_location"`
+	CreatedAt   int64               `json:"created_at"`
+	Author      FeedAuthorDetail    `json:"author"`
+	Stats       FeedStatsInfo       `json:"stats"`
+	Interaction FeedInteractionInfo `json:"interaction"`
+}
+
+type FeedInfo struct {
+	ID          int64    `json:"id"`
+	UserID      int64    `json:"user_id"`
+	FeedType    int32    `json:"feed_type"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	MediaUrls   []string `json:"media_urls"`
+	CoverURL    string   `json:"cover_url"`
+	CityName    string   `json:"city_name"`
+	IPLocation  string   `json:"ip_location"`
+	CreatedAt   int64    `json:"created_at"`
+}
+
+type FeedInteractionInfo struct {
+	IsLiked     bool `json:"is_liked"`
+	IsCollected bool `json:"is_collected"`
+}
+
+type FeedStatsInfo struct {
+	LikeCount    int64 `json:"like_count"`
+	CommentCount int64 `json:"comment_count"`
+	CollectCount int64 `json:"collect_count"`
+}
+
+type FollowReq struct {
+	FolloweeID int64 `json:"followee_id" validate:"required"`
+}
+
+type FollowResp struct {
+	Success       bool  `json:"success"`
+	FollowerCount int64 `json:"follower_count"`
+}
+
+type FollowerListReq struct {
+	UserID   int64 `form:"user_id,optional"`
+	Page     int64 `form:"page,default=1"`
+	PageSize int64 `form:"page_size,default=20"`
+}
+
+type FollowingListReq struct {
+	UserID   int64 `form:"user_id,optional"`
+	Page     int64 `form:"page,default=1"`
+	PageSize int64 `form:"page_size,default=20"`
+}
+
+type GetFeedDetailReq struct {
+	FeedID int64 `path:"feedId"`
+}
+
 type GetUserReq struct {
 	UserID int64 `path:"userId"`
+}
+
+type IsFollowingReq struct {
+	TargetID int64 `form:"target_id" validate:"required"`
+}
+
+type IsFollowingResp struct {
+	IsFollowing bool `json:"is_following"`
+}
+
+type LikeCommentReq struct {
+	CommentID int64 `path:"commentId"`
+}
+
+type LikeCommentResp struct {
+	Success   bool  `json:"success"`
+	LikeCount int64 `json:"like_count"`
+}
+
+type LikeFeedReq struct {
+	FeedID int64 `path:"feedId"`
+}
+
+type LikeFeedResp struct {
+	Success   bool  `json:"success"`
+	LikeCount int64 `json:"like_count"`
+}
+
+type ListCommentsReq struct {
+	FeedID   int64  `path:"feedId"`
+	Cursor   string `form:"cursor,optional"`
+	PageSize int64  `form:"page_size,default=20"`
+}
+
+type ListCommentsResp struct {
+	HotComments []CommentEntry `json:"hot_comments"`
+	List        []CommentEntry `json:"list"`
+	NextCursor  string         `json:"next_cursor"`
+	HasMore     bool           `json:"has_more"`
+}
+
+type ListRepliesReq struct {
+	RootID   int64  `path:"rootId"`
+	Cursor   string `form:"cursor,optional"`
+	PageSize int64  `form:"page_size,default=20"`
+}
+
+type ListRepliesResp struct {
+	List       []CommentReply `json:"list"`
+	NextCursor string         `json:"next_cursor"`
+	HasMore    bool           `json:"has_more"`
 }
 
 type LoginReq struct {
@@ -17,6 +255,16 @@ type LoginResp struct {
 	Token string `json:"token"`
 }
 
+type MyCollectsReq struct {
+	Cursor   string `form:"cursor,optional"`
+	PageSize int64  `form:"page_size,default=10"`
+}
+
+type MyLikesReq struct {
+	Cursor   string `form:"cursor,optional"`
+	PageSize int64  `form:"page_size,default=10"`
+}
+
 type RegisterReq struct {
 	Username string `json:"username" validate:"required"`
 	Password string `json:"password" validate:"required"`
@@ -26,6 +274,64 @@ type RegisterReq struct {
 type RegisterResp struct {
 	User  User   `json:"user"`
 	Token string `json:"token"`
+}
+
+type RelationUser struct {
+	ID          int64  `json:"id"`
+	Nickname    string `json:"nickname"`
+	Avatar      string `json:"avatar"`
+	Bio         string `json:"bio"`
+	IsFollowing bool   `json:"is_following"`
+}
+
+type RelationUserList struct {
+	List     []RelationUser `json:"list"`
+	Page     int64          `json:"page"`
+	PageSize int64          `json:"page_size"`
+	Total    int64          `json:"total"`
+	HasMore  bool           `json:"has_more"`
+}
+
+type TimelineReq struct {
+	Type     string `form:"type,options=recommend|follow|city,default=recommend"`
+	Cursor   string `form:"cursor,optional"`
+	PageSize int64  `form:"page_size,default=10"`
+}
+
+type UncollectFeedReq struct {
+	FeedID int64 `path:"feedId"`
+}
+
+type UncollectFeedResp struct {
+	Success      bool  `json:"success"`
+	CollectCount int64 `json:"collect_count"`
+}
+
+type UnfollowReq struct {
+	FolloweeID int64 `json:"followee_id" validate:"required"`
+}
+
+type UnfollowResp struct {
+	Success       bool  `json:"success"`
+	FollowerCount int64 `json:"follower_count"`
+}
+
+type UnlikeCommentReq struct {
+	CommentID int64 `path:"commentId"`
+}
+
+type UnlikeCommentResp struct {
+	Success   bool  `json:"success"`
+	LikeCount int64 `json:"like_count"`
+}
+
+type UnlikeFeedReq struct {
+	FeedID int64 `path:"feedId"`
+}
+
+type UnlikeFeedResp struct {
+	Success   bool  `json:"success"`
+	LikeCount int64 `json:"like_count"`
 }
 
 type UpdateUserReq struct {
@@ -79,4 +385,10 @@ type UserDetail struct {
 	FollowerCount  int64  `json:"follower_count"`
 	FeedCount      int64  `json:"feed_count"`
 	IsFollowing    bool   `json:"is_following"`
+}
+
+type UserFeedsReq struct {
+	UserID   int64  `path:"userId"`
+	Cursor   string `form:"cursor,optional"`
+	PageSize int64  `form:"page_size,default=10"`
 }

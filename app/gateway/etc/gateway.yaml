@@ -19,6 +19,37 @@ RelationRpc:
     Key: relation.rpc
   Timeout: 3000
 
+# Feed gRPC 服务客户端配置
+FeedRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2479
+    Key: feed.rpc
+  Timeout: 3000
+
+# Comment gRPC 服务客户端配置
+CommentRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2479
+    Key: comment.rpc
+  Timeout: 3000
+
+# Interaction gRPC 服务客户端配置
+InteractionRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2479
+    Key: interaction.rpc
+  Timeout: 3000
+
+# 同城流 IP 定位兜底配置：本地/内网开发环境统一按默认城市处理。
+# 生产环境接入真实 GeoIP 后可移除；三项均为空时定位失败返回业务码 12006。
+IPLocation:
+  DefaultCityCode: "440300"
+  DefaultCityName: "深圳"
+  DefaultProvince: "广东"
+
 # JWT 解析配置，必须与 User RPC 服务保持一致，否则网关无法解析登录 token。
 Auth:
   AccessSecret: "feed-user-service-jwt-secret-CHANGE-ME"
