@@ -50,11 +50,11 @@
 
 | 模块 | 状态 | 备注 |
 |------|------|------|
-| Proto 定义 | 待实现 | `api/proto/feed/feed.proto` 目前仅含包声明 |
-| 数据模型 | 设计中 | 参考本文档 01-data-model.md |
-| 帖子发布 | 未开始 | |
-| 关注流 | 未开始 | 最复杂模块，建议最后实现 |
-| 推荐流 | 未开始 | |
-| 同城流 | 未开始 | |
-| Worker | 未开始 | 需 Relation Service 提供批量粉丝接口 |
+| Proto 定义 | 已实现 | `api/proto/feed/feed.proto` 已定义 8 个 RPC（Create/Delete/Get/BatchGet/Recommend/Follow/City/UserFeeds） |
+| 数据模型 | 已实现 | 建表脚本见 `deploy/sql/feed.sql` |
+| 帖子发布 | 已实现 | CreateFeed / DeleteFeed |
+| 关注流 | 已实现 | GetFollowTimeline（推拉结合，收件箱/发件箱见 `feed_follow.go`） |
+| 推荐流 | 已实现 | GetRecommendTimeline |
+| 同城流 | 已实现 | GetCityTimeline |
+| Worker | 已实现 | 关注关系变更驱动的收件箱/缓存维护 |
 | 测试 | 未开始 | 参考 08-test-strategy.md |

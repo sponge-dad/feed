@@ -743,10 +743,10 @@ feed/
 ├── app/
 │   ├── user/rpc/           # User 服务入口：user.go，端口 9001
 │   ├── relation/rpc/       # Relation 服务入口：relation.go，端口 9002
-│   ├── feed/rpc/           # Feed 服务入口：feed.go，端口 9003（待实现）
-│   ├── comment/rpc/        # Comment 服务入口：comment.go，端口 9004（待实现）
-│   ├── interaction/rpc/    # Interaction 服务入口：interaction.go，端口 9005（待实现）
-│   └── gateway/            # HTTP 网关，端口 8080（待实现）
+│   ├── feed/rpc/           # Feed 服务入口：feed.go，端口 9003
+│   ├── comment/rpc/        # Comment 服务入口：comment.go，端口 9004
+│   ├── interaction/rpc/    # Interaction 服务入口：interaction.go，端口 9005
+│   └── gateway/            # HTTP 网关，端口 8080（已运行，仅接入 user/relation 路由）
 │       ├── api/            # *.api 接口定义文件
 │       └── cmd/api/        # 网关入口 main.go
 │

@@ -45,10 +45,10 @@ feed/
 ├── app/
 │   ├── user/rpc/           # 用户服务（9001）
 │   ├── relation/rpc/       # 关系服务（9002）
-│   ├── feed/rpc/           # Feed 服务（9003，待实现）
+│   ├── feed/rpc/           # Feed 服务（9003）
 │   ├── comment/rpc/        # 评论服务（9004）
-│   ├── interaction/rpc/    # 互动服务（9005，待实现）
-│   └── gateway/            # HTTP 网关（8080，待实现）
+│   ├── interaction/rpc/    # 互动服务（9005）
+│   └── gateway/            # HTTP 网关（8080，已运行，仅接入 user/relation 路由）
 ├── common/                 # 公共代码：errorx / idgen / jwtx / response 等
 ├── deploy/
 │   ├── sql/                # 建表脚本
