@@ -147,8 +147,8 @@ cd app/user/rpc && go run user.go -f etc/user.yaml
 - [x] Docker Compose 本地联调环境（MySQL/Redis/etcd/RocketMQ）
 - [x] User 服务实现（见 `app/user/rpc/README.md`）
 - [x] Relation 服务实现（见 `app/relation/rpc/README.md`）
+- [x] API Gateway 实现（见 `app/gateway/README.md`）
 - [ ] Feed 服务实现
 - [ ] Comment 服务实现
 - [ ] Interaction 服务实现
-- [ ] API Gateway 实现
 - [ ] K8s 部署

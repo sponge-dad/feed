@@ -1,0 +1,123 @@
+// feed.api
+//
+// 职责：Feed 模块对外 HTTP REST 接口的类型定义。
+// 说明：具体路由在 gateway.api 中注册，handler 通过 Feed RPC Client 调用 Feed 服务，
+//      并由网关聚合 User / Interaction 数据组装 FeedCard / FeedDetail（BFF）。
+// 契约来源：docs/design/api-spec/feed.md
+
+// 作者简要信息（FeedCard 列表用）
+type FeedAuthor {
+    ID       int64  `json:"id"`
+    Nickname string `json:"nickname"`
+    Avatar   string `json:"avatar"`
+}
+
+// 作者详情信息（FeedDetail 用，含是否已关注）
+type FeedAuthorDetail {
+    ID          int64  `json:"id"`
+    Nickname    string `json:"nickname"`
+    Avatar      string `json:"avatar"`
+    IsFollowing bool   `json:"is_following"`
+}
+
+// 帖子计数信息
+type FeedStatsInfo {
+    LikeCount    int64 `json:"like_count"`
+    CommentCount int64 `json:"comment_count"`
+    CollectCount int64 `json:"collect_count"`
+}
+
+// 当前用户与帖子的互动状态
+type FeedInteractionInfo {
+    IsLiked     bool `json:"is_liked"`
+    IsCollected bool `json:"is_collected"`
+}
+
+// FeedCard 信息流列表项（轻量，不含正文与媒体 URL）
+type FeedCard {
+    ID          int64               `json:"id"`
+    FeedType    int32               `json:"feed_type"`
+    Title       string              `json:"title"`
+    CoverURL    string              `json:"cover_url"`
+    Author      FeedAuthor          `json:"author"`
+    Stats       FeedStatsInfo       `json:"stats"`
+    Interaction FeedInteractionInfo `json:"interaction"`
+    CreatedAt   int64               `json:"created_at"`
+}
+
+// FeedCard 列表（信息流 / 个人主页 / 我的赞·收藏 通用返回结构）
+type FeedCardList {
+    List       []FeedCard `json:"list"`
+    NextCursor string     `json:"next_cursor"`
+    HasMore    bool       `json:"has_more"`
+}
+
+// 发布帖子
+type CreateFeedReq {
+    FeedType    int32    `json:"feed_type" validate:"required"`
+    Title       string   `json:"title,optional"`
+    Description string   `json:"description,optional"`
+    MediaUrls   []string `json:"media_urls" validate:"required"`
+    CoverURL    string   `json:"cover_url,optional"`
+}
+
+// 发布帖子返回的帖子完整信息
+type FeedInfo {
+    ID          int64    `json:"id"`
+    UserID      int64    `json:"user_id"`
+    FeedType    int32    `json:"feed_type"`
+    Title       string   `json:"title"`
+    Description string   `json:"description"`
+    MediaUrls   []string `json:"media_urls"`
+    CoverURL    string   `json:"cover_url"`
+    CityName    string   `json:"city_name"`
+    IPLocation  string   `json:"ip_location"`
+    CreatedAt   int64    `json:"created_at"`
+}
+
+type CreateFeedResp {
+    Feed FeedInfo `json:"feed"`
+}
+
+// 删除帖子
+type DeleteFeedReq {
+    FeedID int64 `path:"feedId"`
+}
+
+type DeleteFeedResp {
+    Success bool `json:"success"`
+}
+
+// 帖子详情
+type GetFeedDetailReq {
+    FeedID int64 `path:"feedId"`
+}
+
+type FeedDetail {
+    ID          int64               `json:"id"`
+    FeedType    int32               `json:"feed_type"`
+    Title       string              `json:"title"`
+    Description string              `json:"description"`
+    MediaUrls   []string            `json:"media_urls"`
+    CoverURL    string              `json:"cover_url"`
+    CityName    string              `json:"city_name"`
+    IPLocation  string              `json:"ip_location"`
+    CreatedAt   int64               `json:"created_at"`
+    Author      FeedAuthorDetail    `json:"author"`
+    Stats       FeedStatsInfo       `json:"stats"`
+    Interaction FeedInteractionInfo `json:"interaction"`
+}
+
+// 首页信息流（recommend/follow/city 三流合一）
+type TimelineReq {
+    Type     string `form:"type,options=recommend|follow|city,default=recommend"`
+    Cursor   string `form:"cursor,optional"`
+    PageSize int64  `form:"page_size,default=10"`
+}
+
+// 个人主页帖子列表
+type UserFeedsReq {
+    UserID   int64  `path:"userId"`
+    Cursor   string `form:"cursor,optional"`
+    PageSize int64  `form:"page_size,default=10"`
+}

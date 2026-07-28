@@ -39,29 +39,29 @@ func NewWithMsg(code int, msg string) *CodeError {
 
 // ---------- 通用错误码 ----------
 const (
-	Success       = 0
-	ServerError   = 1     // 服务器内部错误
-	ParamError    = 2     // 参数错误
-	Unauthorized  = 3     // 未认证
-	Forbidden     = 4     // 无权限
-	TooManyReq    = 5     // 请求过于频繁
+	Success      = 0
+	ServerError  = 1 // 服务器内部错误
+	ParamError   = 2 // 参数错误
+	Unauthorized = 3 // 未认证
+	Forbidden    = 4 // 无权限
+	TooManyReq   = 5 // 请求过于频繁
 )
 
 // ---------- User 服务 10000~10999 ----------
 const (
-	UserExists       = 10001 // 用户名已存在
+	UserExists        = 10001 // 用户名已存在
 	UserPasswordWrong = 10002 // 用户名或密码错误
-	UserNotFound     = 10003 // 用户不存在
-	UserPasswordWeak = 10004 // 密码格式不符合要求
-	UserDisabled     = 10005 // 用户已被禁用
-	UploadTokenFail  = 10006 // 获取上传凭证失败
+	UserNotFound      = 10003 // 用户不存在
+	UserPasswordWeak  = 10004 // 密码格式不符合要求
+	UserDisabled      = 10005 // 用户已被禁用
+	UploadTokenFail   = 10006 // 获取上传凭证失败
 )
 
 // ---------- Relation 服务 11000~11999 ----------
 const (
-	RelationSelf         = 11001 // 不能关注自己
-	RelationAlreadyFollow = 11002 // 已经关注该用户
-	RelationNotFollow    = 11003 // 未关注该用户
+	RelationSelf           = 11001 // 不能关注自己
+	RelationAlreadyFollow  = 11002 // 已经关注该用户
+	RelationNotFollow      = 11003 // 未关注该用户
 	RelationTargetNotFound = 11004 // 目标用户不存在
 )
 
@@ -77,11 +77,11 @@ const (
 
 // ---------- Comment 服务 13000~13999 ----------
 const (
-	CommentNotFound     = 13001 // 评论不存在
-	CommentFeedNotFound = 13002 // 帖子不存在
-	CommentNoPermission = 13003 // 无权限删除该评论
-	CommentEmpty        = 13004 // 评论内容为空
-	CommentTooLong      = 13005 // 评论内容超长
+	CommentNotFound       = 13001 // 评论不存在
+	CommentFeedNotFound   = 13002 // 帖子不存在
+	CommentNoPermission   = 13003 // 无权限删除该评论
+	CommentEmpty          = 13004 // 评论内容为空
+	CommentTooLong        = 13005 // 评论内容超长
 	CommentParentNotFound = 13006 // 父评论不存在
 )
 

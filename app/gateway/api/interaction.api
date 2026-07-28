@@ -1,0 +1,56 @@
+// interaction.api
+//
+// 职责：Interaction 模块对外 HTTP REST 接口的类型定义。
+// 说明：具体路由在 gateway.api 中注册，handler 通过 Interaction RPC Client 调用。
+//      「我的赞 / 我的收藏」返回 FeedCard 列表（类型定义在 feed.api），由网关聚合。
+// 契约来源：docs/design/api-spec/interaction.md
+
+// 点赞 / 取消点赞帖子
+type LikeFeedReq {
+    FeedID int64 `path:"feedId"`
+}
+
+type LikeFeedResp {
+    Success   bool  `json:"success"`
+    LikeCount int64 `json:"like_count"`
+}
+
+type UnlikeFeedReq {
+    FeedID int64 `path:"feedId"`
+}
+
+type UnlikeFeedResp {
+    Success   bool  `json:"success"`
+    LikeCount int64 `json:"like_count"`
+}
+
+// 收藏 / 取消收藏帖子
+type CollectFeedReq {
+    FeedID int64 `path:"feedId"`
+}
+
+type CollectFeedResp {
+    Success      bool  `json:"success"`
+    CollectCount int64 `json:"collect_count"`
+}
+
+type UncollectFeedReq {
+    FeedID int64 `path:"feedId"`
+}
+
+type UncollectFeedResp {
+    Success      bool  `json:"success"`
+    CollectCount int64 `json:"collect_count"`
+}
+
+// 我点赞过的帖子
+type MyLikesReq {
+    Cursor   string `form:"cursor,optional"`
+    PageSize int64  `form:"page_size,default=10"`
+}
+
+// 我收藏过的帖子
+type MyCollectsReq {
+    Cursor   string `form:"cursor,optional"`
+    PageSize int64  `form:"page_size,default=10"`
+}

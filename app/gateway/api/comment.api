@@ -1,0 +1,123 @@
+// comment.api
+//
+// 职责：Comment 模块对外 HTTP REST 接口的类型定义。
+// 说明：具体路由在 gateway.api 中注册，handler 通过 Comment RPC Client 调用 Comment 服务。
+//      评论作者昵称/头像由 Comment 服务批量填充（降级为空），网关直接映射。
+// 契约来源：docs/design/api-spec/comment.md
+
+// 评论作者简要信息
+type CommentAuthor {
+    ID       int64  `json:"id"`
+    Nickname string `json:"nickname"`
+    Avatar   string `json:"avatar"`
+}
+
+// 被回复者信息（一级评论时 id 为 0）
+type CommentReplyUser {
+    ID       int64  `json:"id"`
+    Nickname string `json:"nickname"`
+}
+
+// 子回复项
+type CommentReply {
+    ID        int64            `json:"id"`
+    Content   string           `json:"content"`
+    Author    CommentAuthor    `json:"author"`
+    ReplyUser CommentReplyUser `json:"reply_user"`
+    LikeCount int64            `json:"like_count"`
+    IsLiked   bool             `json:"is_liked"`
+    CreatedAt int64            `json:"created_at"`
+}
+
+// 一级评论项（含子回复预览）
+type CommentEntry {
+    ID         int64          `json:"id"`
+    Content    string         `json:"content"`
+    Author     CommentAuthor  `json:"author"`
+    LikeCount  int64          `json:"like_count"`
+    IsLiked    bool           `json:"is_liked"`
+    ReplyCount int64          `json:"reply_count"`
+    CreatedAt  int64          `json:"created_at"`
+    SubReplies []CommentReply `json:"sub_replies"`
+}
+
+// 发表评论 / 回复
+type CreateCommentReq {
+    FeedID      int64  `path:"feedId"`
+    Content     string `json:"content" validate:"required"`
+    RootID      int64  `json:"root_id,optional"`
+    ParentID    int64  `json:"parent_id,optional"`
+    ReplyUserID int64  `json:"reply_user_id,optional"`
+}
+
+// 发表评论返回的评论详情
+type CommentDetail {
+    ID        int64            `json:"id"`
+    FeedID    int64            `json:"feed_id"`
+    Content   string           `json:"content"`
+    RootID    int64            `json:"root_id"`
+    ParentID  int64            `json:"parent_id"`
+    Author    CommentAuthor    `json:"author"`
+    ReplyUser CommentReplyUser `json:"reply_user"`
+    LikeCount int64            `json:"like_count"`
+    CreatedAt int64            `json:"created_at"`
+}
+
+type CreateCommentResp {
+    Comment CommentDetail `json:"comment"`
+}
+
+// 一级评论列表
+type ListCommentsReq {
+    FeedID   int64  `path:"feedId"`
+    Cursor   string `form:"cursor,optional"`
+    PageSize int64  `form:"page_size,default=20"`
+}
+
+type ListCommentsResp {
+    HotComments []CommentEntry `json:"hot_comments"`
+    List        []CommentEntry `json:"list"`
+    NextCursor  string         `json:"next_cursor"`
+    HasMore     bool           `json:"has_more"`
+}
+
+// 子回复列表
+type ListRepliesReq {
+    RootID   int64  `path:"rootId"`
+    Cursor   string `form:"cursor,optional"`
+    PageSize int64  `form:"page_size,default=20"`
+}
+
+type ListRepliesResp {
+    List       []CommentReply `json:"list"`
+    NextCursor string         `json:"next_cursor"`
+    HasMore    bool           `json:"has_more"`
+}
+
+// 删除评论
+type DeleteCommentReq {
+    CommentID int64 `path:"commentId"`
+}
+
+type DeleteCommentResp {
+    Success bool `json:"success"`
+}
+
+// 点赞 / 取消点赞评论
+type LikeCommentReq {
+    CommentID int64 `path:"commentId"`
+}
+
+type LikeCommentResp {
+    Success   bool  `json:"success"`
+    LikeCount int64 `json:"like_count"`
+}
+
+type UnlikeCommentReq {
+    CommentID int64 `path:"commentId"`
+}
+
+type UnlikeCommentResp {
+    Success   bool  `json:"success"`
+    LikeCount int64 `json:"like_count"`
+}
