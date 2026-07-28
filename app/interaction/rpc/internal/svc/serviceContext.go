@@ -1,13 +1,56 @@
+// serviceContext.go
+//
+// 职责：Interaction RPC 服务的依赖装配（MySQL model、业务级 Redis、MQ 生产者/消费者、ID 生成器）。
+// 单元测试中可用 miniredis + model stub + Publisher stub 替换真实依赖。
 package svc
 
-import "github.com/sponge-dad/feed/app/interaction/rpc/internal/config"
+import (
+	"github.com/sponge-dad/feed/app/interaction/model"
+	"github.com/sponge-dad/feed/app/interaction/rpc/internal/config"
+	"github.com/sponge-dad/feed/common/idgen"
+	"github.com/sponge-dad/feed/common/mq"
 
-type ServiceContext struct {
-	Config config.Config
+	"github.com/zeromicro/go-zero/core/stores/redis"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
+)
+
+// Publisher MQ 生产者的最小接口抽象，*mq.Producer 天然满足；
+// 单元测试用 stub 实现捕获事件，避免依赖真实 RocketMQ。
+type Publisher interface {
+	SendSync(topic string, body []byte) error
 }
 
-func NewServiceContext(c config.Config) *ServiceContext {
-	return &ServiceContext{
-		Config: c,
+// ServiceContext Interaction 服务上下文。
+type ServiceContext struct {
+	Config           config.Config
+	Redis            *redis.Redis
+	LikesModel       model.LikesModel
+	CollectionsModel model.CollectionsModel
+	Producer         Publisher
+	Consumer         *mq.Consumer
+	IdGen            func() int64
+}
+
+// NewServiceContext 装配生产环境依赖。
+func NewServiceContext(c config.Config) (*ServiceContext, error) {
+	conn := sqlx.NewMysql(c.Mysql.DataSource)
+	// CacheRedis 第一个节点用于业务级 Redis 操作（互动 Set/ZSet/Hash）
+	rds := redis.MustNewRedis(c.CacheRedis[0].RedisConf)
+	producer, err := mq.NewProducer(c.RocketMQ.NameServer, c.RocketMQ.GroupName)
+	if err != nil {
+		return nil, err
 	}
+	consumer, err := mq.NewConsumer(c.RocketMQ.NameServer, c.RocketMQ.ConsumeGroup)
+	if err != nil {
+		return nil, err
+	}
+	return &ServiceContext{
+		Config:           c,
+		Redis:            rds,
+		LikesModel:       model.NewLikesModel(conn, c.CacheRedis),
+		CollectionsModel: model.NewCollectionsModel(conn, c.CacheRedis),
+		Producer:         producer,
+		Consumer:         consumer,
+		IdGen:            idgen.Next,
+	}, nil
 }
