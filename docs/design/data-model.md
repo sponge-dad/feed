@@ -211,16 +211,16 @@ time_decay_factor = 1 / (1 + hours_since_created / 24)
 
 ```sql
 CREATE TABLE comments (
-    id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    feed_id       BIGINT UNSIGNED NOT NULL,              -- 所属帖子
-    user_id       BIGINT UNSIGNED NOT NULL,              -- 评论者
-    content       VARCHAR(1000)   NOT NULL DEFAULT '',    -- 评论内容
-    root_id       BIGINT UNSIGNED NOT NULL DEFAULT 0,     -- 根评论ID（一级评论=0）
-    parent_id     BIGINT UNSIGNED NOT NULL DEFAULT 0,     -- 父评论ID（直接回复对象）
-    reply_user_id BIGINT UNSIGNED NOT NULL DEFAULT 0,     -- 被回复者ID（@谁）
-    like_count    INT UNSIGNED    NOT NULL DEFAULT 0,
-    reply_count   INT UNSIGNED    NOT NULL DEFAULT 0,      -- 子回复数（仅根评论维护）
-    status        TINYINT         NOT NULL DEFAULT 1,      -- 1:正常 2:已删除
+    id            BIGINT UNSIGNED NOT NULL,             -- Snowflake ID，应用层（common/idgen）生成写入
+    feed_id       BIGINT UNSIGNED NOT NULL,             -- 所属帖子
+    user_id       BIGINT UNSIGNED NOT NULL,             -- 评论者
+    content       VARCHAR(1000)   NOT NULL DEFAULT '',   -- 评论内容
+    root_id       BIGINT UNSIGNED NOT NULL DEFAULT 0,    -- 根评论ID（一级评论=0）
+    parent_id     BIGINT UNSIGNED NOT NULL DEFAULT 0,    -- 父评论ID（直接回复对象）
+    reply_user_id BIGINT UNSIGNED NOT NULL DEFAULT 0,    -- 被回复者ID（@谁）
+    like_count    INT UNSIGNED    NOT NULL DEFAULT 0,    -- 点赞数，由 Interaction 服务异步同步
+    reply_count   INT UNSIGNED    NOT NULL DEFAULT 0,    -- 子回复数（仅根评论维护）
+    status        TINYINT         NOT NULL DEFAULT 1,    -- 1:正常 2:已删除（软删除）
     created_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     KEY idx_feed_root (feed_id, root_id, created_at),
@@ -228,6 +228,8 @@ CREATE TABLE comments (
     KEY idx_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
+
+> **ID 生成（强制约束）**：`id` 由应用层 `common/idgen`（Snowflake）生成后写入，**禁止使用 `AUTO_INCREMENT`**。该约束与 `AGENTS.md` 第 4.5 节一致，也为未来分库分表铺路。完整落地脚本见 `deploy/sql/comment.sql`，其已按此约束去掉 `AUTO_INCREMENT`，与本文的 DDL 完全一致。
 
 ### 4.2 关键设计：root_id + parent_id 双字段
 

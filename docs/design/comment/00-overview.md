@@ -116,7 +116,7 @@ Comment 服务是**支持无限嵌套楼中楼的评论系统**，负责评论�
 2. 同步修正 `deploy/sql/comment.sql` 与 `docs/design/data-model.md` 第 4.1 节，将 `AUTO_INCREMENT` 改为应用层写入的 Snowflake ID，并去掉 `PRIMARY KEY` 上的自增属性。
 3. `01-data-model.md` 已将此作为强制约束写明。
 
-**落地状态**：`deploy/sql/comment.sql` 已按此约束落地（去掉 `AUTO_INCREMENT`，`id` 由应用层 Snowflake 写入）；`docs/design/data-model.md` 第 4.1 节的自增写法尚待统一修正，实施时一并处理以免误导。
+**落地状态**：`deploy/sql/comment.sql` 已按此约束落地（去掉 `AUTO_INCREMENT`，`id` 由应用层 Snowflake 写入）；`docs/design/data-model.md` 第 4.1 节的 `comments` 表 DDL 已同步修正为应用层 Snowflake ID，与 `AGENTS.md` 第 4.5 节及 `comment.sql` 完全一致。
 
 ---
 
