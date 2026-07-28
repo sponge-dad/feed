@@ -1,0 +1,34 @@
+# comment-test.yaml
+#
+# Comment RPC 服务集成测试专用配置。
+# 与 comment.yaml 的区别：
+# 1. MySQL 指向 feed_comment_test 测试库
+# 2. 不注册 etcd（测试客户端直连 ListenOn），监听 19004 避免与开发实例冲突
+# 3. Redis 由测试内嵌 miniredis 提供；User/Feed RPC 用 stub，MQ 不发送
+#    （下方 UserRpc/FeedRpc/RocketMQ 仅为满足配置结构加载，测试不会真正连接）
+
+Name: comment.rpc.test
+ListenOn: 127.0.0.1:19004
+
+Mysql:
+  DataSource: root:F3d!MysQL#r00T_2024xV@tcp(127.0.0.1:3306)/feed_comment_test?charset=utf8mb4&parseTime=true&loc=Local
+
+CacheRedis:
+  - Host: 127.0.0.1:6379
+    Type: node
+    Pass: "mUd0ZLc312DPJ4Acaf4PnIoF"
+
+UserRpc:
+  Endpoints:
+    - 127.0.0.1:9001
+  NonBlock: true
+
+FeedRpc:
+  Endpoints:
+    - 127.0.0.1:9003
+  NonBlock: true
+
+RocketMQ:
+  NameServer:
+    - 127.0.0.1:9876
+  GroupName: comment_producer_group_test
