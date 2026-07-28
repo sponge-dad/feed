@@ -27,6 +27,8 @@ Feed 是一个**类抖音/小红书的分布式 Feed 流系统**，基于 **go-z
 | 新增/修改 REST API 文档 | [`docs/agent/api-writing-guide.md`](docs/agent/api-writing-guide.md) |
 | 新增/修改 `.proto` | [`docs/agent/proto-writing-guide.md`](docs/agent/proto-writing-guide.md) |
 | 新增/修改 `.api` 网关文件 | [`docs/agent/go-zero-api-writing-guide.md`](docs/agent/go-zero-api-writing-guide.md) |
+| 新增/修改 Gateway 服务代码 | [`docs/agent/gateway-standard.md`](docs/agent/gateway-standard.md) |
+| 新增/修订 `docs/` 下任何文档 | [`docs/agent/doc-writing-guide.md`](docs/agent/doc-writing-guide.md) |
 | 了解系统架构 | [`docs/design/architecture.md`](docs/design/architecture.md) |
 | 了解服务拆分 | [`docs/design/service-design.md`](docs/design/service-design.md) |
 | 了解数据模型 | [`docs/design/data-model.md`](docs/design/data-model.md) |
