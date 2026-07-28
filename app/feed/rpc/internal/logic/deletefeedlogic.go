@@ -58,7 +58,7 @@ func (l *DeleteFeedLogic) DeleteFeed(in *feed.DeleteFeedReq) (*feed.DeleteFeedRe
 		return &feed.DeleteFeedResp{Success: true}, nil
 	}
 	// 发送消息
-	event := feedEvent.NewEventFeedDeleted(in.FeedId, in.UserId, existing.CityCode)
+	event := feedEvent.NewEventFeedDeleted(in.FeedId, in.UserId, existing.IsVipFeed == 1, existing.CityCode)
 	body, err := json.Marshal(event)
 	if err != nil {
 		l.Errorf("marshal feed.deleted event failed feedId=%d err=%v", in.FeedId, err)

@@ -8,6 +8,7 @@ import (
 	"github.com/sponge-dad/feed/app/feed/rpc/internal/config"
 	"github.com/sponge-dad/feed/app/feed/rpc/internal/server"
 	"github.com/sponge-dad/feed/app/feed/rpc/internal/svc"
+	"github.com/sponge-dad/feed/app/feed/rpc/internal/worker"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/service"
@@ -27,6 +28,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	wk := worker.NewWorker(ctx)
+	// 启动后台消费者（订阅 feed.created / feed.deleted），进程退出时关闭。
+	if err := wk.Start(); err != nil {
+		panic(err)
+	}
+	defer ctx.Consumer.Shutdown()
 
 	s := zrpc.MustNewServer(c.RpcServerConf, func(grpcServer *grpc.Server) {
 		feed.RegisterFeedServer(grpcServer, server.NewFeedServer(ctx))

@@ -5,10 +5,12 @@ go 1.21
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/alicebob/miniredis/v2 v2.33.0
+	github.com/apache/rocketmq-client-go/v2 v2.1.1
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
+	github.com/redis/go-redis/v9 v9.7.0
 	github.com/stretchr/testify v1.9.0
 	github.com/zeromicro/go-zero v1.7.3
 	golang.org/x/crypto v0.28.0
@@ -19,7 +21,6 @@ require (
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/alicebob/gopher-json v0.0.0-20230218143504-906a9b012302 // indirect
-	github.com/apache/rocketmq-client-go/v2 v2.1.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -62,7 +63,6 @@ require (
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
-	github.com/redis/go-redis/v9 v9.7.0 // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.4.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect

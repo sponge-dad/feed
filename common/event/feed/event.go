@@ -44,15 +44,17 @@ type EventFeedDeleted struct {
 	EventType string `json:"event_type"`
 	FeedID    int64  `json:"feed_id"`
 	UserID    int64  `json:"user_id"`
+	IsVipFeed bool   `json:"is_vip_feed"`
 	CityCode  string `json:"city_code"`
 }
 
-func NewEventFeedDeleted(feedId, userId int64, cityCode string) *EventFeedDeleted {
+func NewEventFeedDeleted(feedId, userId int64, isVipFeed bool, cityCode string) *EventFeedDeleted {
 	return &EventFeedDeleted{
 		EventID:   uuid.NewString(), // TODO 应该需要修改
 		EventType: TopicFeedDeleted,
 		FeedID:    feedId,
 		UserID:    userId,
+		IsVipFeed: isVipFeed,
 		CityCode:  cityCode,
 	}
 }

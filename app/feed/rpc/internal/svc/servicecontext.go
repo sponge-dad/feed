@@ -19,6 +19,7 @@ type ServiceContext struct {
 	IdGen       func() int64
 	RelationRpc relationclient.Relation
 	Producer    *mq.Producer
+	Consumer    *mq.Consumer
 }
 
 func NewServiceContext(c config.Config) (*ServiceContext, error) {
@@ -26,6 +27,10 @@ func NewServiceContext(c config.Config) (*ServiceContext, error) {
 	// CacheRedis 第一个节点用于业务级 Redis 操作
 	rds := redis.MustNewRedis(c.CacheRedis[0].RedisConf)
 	producer, err := mq.NewProducer(c.RocketMQ.NameServer, c.RocketMQ.GroupName)
+	if err != nil {
+		return nil, err
+	}
+	consumer, err := mq.NewConsumer(c.RocketMQ.NameServer, c.RocketMQ.ConsumeGroup)
 	if err != nil {
 		return nil, err
 	}
@@ -37,5 +42,6 @@ func NewServiceContext(c config.Config) (*ServiceContext, error) {
 		IdGen:       idgen.Next,
 		RelationRpc: relationclient.NewRelation(zrpc.MustNewClient(c.RelationRpc)),
 		Producer:    producer,
+		Consumer:    consumer,
 	}, nil
 }
