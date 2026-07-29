@@ -31,7 +31,8 @@ func TestGetUserInteractionStatus_Liked(t *testing.T) {
 	assert.False(t, resp.Status.IsCollected)
 }
 
-// TestGetUserInteractionStatus_NoRecord 未互动且 MySQL 无记录：返回 false 且不写入 Redis。
+// TestGetUserInteractionStatus_NoRecord 未互动且 MySQL 无记录：返回 false，
+// 并写入仅含哨兵的「已加载空集合」标记（防止后续并发查询重复回源击穿）。
 func TestGetUserInteractionStatus_NoRecord(t *testing.T) {
 	env := newTestEnv(t)
 	ctx := context.Background()
@@ -41,8 +42,15 @@ func TestGetUserInteractionStatus_NoRecord(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, resp.Status.IsLiked)
 	assert.False(t, resp.Status.IsCollected)
-	assert.False(t, env.mr.Exists(keys.LikeFeed(100)), "无互动记录不应创建 Set")
-	assert.False(t, env.mr.Exists(keys.CollectFeed(100)))
+
+	// 空集合以哨兵形式落 Redis：key 存在、仅含哨兵、带 TTL
+	for _, key := range []string{keys.LikeFeed(100), keys.CollectFeed(100)} {
+		require.True(t, env.mr.Exists(key), "空集合应写入已加载标记 key: %s", key)
+		members, err := env.svcCtx.Redis.Smembers(key)
+		require.NoError(t, err)
+		assert.Equal(t, []string{keys.SetSentinel}, members, "空集合只含哨兵成员")
+		assert.Greater(t, int64(env.mr.TTL(key)), int64(0), "空集合标记必须有 TTL")
+	}
 }
 
 // TestGetUserInteractionStatus_AfterUnlike 已取消：取消时即时移除 Set，返回 false。

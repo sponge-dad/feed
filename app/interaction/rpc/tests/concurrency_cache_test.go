@@ -77,9 +77,17 @@ func TestConcurrency_SameUserLikeUnlike(t *testing.T) {
 	status := getStatus(t, user, feed)
 	assert.Equal(t, stats.LikeCount == 1, status.IsLiked, "计数与互动状态应一致")
 
-	// 集合基数与计数一致（防止 Set 与 Hash 漂移）
-	card, err := testCtx.Redis.ScardCtx(ctx, keys.LikeFeed(feed))
+	// 集合真实基数与计数一致（防止 Set 与 Hash 漂移）。
+	// Set 携带 keys.SetSentinel「已加载」哨兵成员，统计时必须剔除，
+	// 禁止直接用 SCARD 作为计数（见 keys.SetSentinel 注释）。
+	members, err := testCtx.Redis.SmembersCtx(ctx, keys.LikeFeed(feed))
 	require.NoError(t, err)
+	var card int64
+	for _, m := range members {
+		if m != keys.SetSentinel {
+			card++
+		}
+	}
 	assert.Equal(t, stats.LikeCount, card)
 }
 

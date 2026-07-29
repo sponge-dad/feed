@@ -176,12 +176,19 @@ func TestLikeFeed_ConcurrentFlipConsistency(t *testing.T) {
 	}
 	wg.Wait()
 
-	card, err := env.svcCtx.Redis.Scard(keys.LikeFeed(100))
+	// 集合含哨兵成员，真实成员数需剔除哨兵后统计
+	members, err := env.svcCtx.Redis.Smembers(keys.LikeFeed(100))
 	require.NoError(t, err)
-	assert.Contains(t, []int64{0, 1}, card, "单用户集合基数只能是 0 或 1")
+	var card int64
+	for _, m := range members {
+		if m != keys.SetSentinel {
+			card++
+		}
+	}
+	assert.Contains(t, []int64{0, 1}, card, "单用户集合真实基数只能是 0 或 1")
 
 	cnt := env.mr.HGet(keys.FeedStats(100), keys.FieldLikeCount)
-	assert.Equal(t, strconv.FormatInt(card, 10), cnt, "计数必须与集合基数一致")
+	assert.Equal(t, strconv.FormatInt(card, 10), cnt, "计数必须与集合真实基数一致（不含哨兵）")
 }
 
 // TestLikeFeed_ParamError 参数校验：非法 user_id / feed_id 返回参数错误。

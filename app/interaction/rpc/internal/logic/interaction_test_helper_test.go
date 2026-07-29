@@ -39,9 +39,10 @@ type interRow struct {
 type stubStore struct {
 	mu   sync.Mutex
 	rows map[string]*interRow // key: "user:feed"
-	// countCalls / listCalls 用于断言"缓存命中时不回源"。
-	countCalls int
-	listCalls  int
+	// countCalls / listCalls / feedUserCalls 用于断言"缓存命中时不回源"。
+	countCalls    int
+	listCalls     int
+	feedUserCalls int
 	// failFirstFind 为 true 时首次 FindOneByUserIdFeedId 强制返回 ErrNotFound，
 	// 用于模拟并发插入撞唯一键的场景。
 	failFirstFind bool
@@ -127,6 +128,7 @@ func (s *stubStore) countByFeeds(feedIDs []uint64) map[uint64]int64 {
 func (s *stubStore) userIDsByFeed(feedID uint64) []uint64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.feedUserCalls++
 	var out []uint64
 	for _, r := range s.rows {
 		if r.feedID == feedID && r.status == 1 {

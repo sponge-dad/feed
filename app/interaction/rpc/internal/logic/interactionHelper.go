@@ -212,7 +212,12 @@ func (h *interactHelper) statusMapByUserFeeds(userID int64, feedIDs []int64) (ma
 
 // ensureSet 保证 like:feed / collect:feed Set 可用。
 // 返回 existed=true 表示 key 已存在（成员以 Redis 为准）；
-// existed=false 表示刚从 MySQL 重建，members 为回源得到的成员集合（可能为空，为空则不建 key）。
+// existed=false 表示刚从 MySQL 重建，members 为回源得到的成员集合。
+//
+// 重建时无论回源结果是否为空，都会写入 keys.SetSentinel 哨兵成员并设置 TTL：
+//  1. 「已加载但为空」的集合 key 依然存在，读路径不会把空集合误判为冷缓存
+//     再次回源 MySQL（修复取消点赞后 MQ 未消费窗口内误报已点赞的竞态）；
+//  2. 空集合首查后即建 key，后续并发查询直接命中 Redis，不会重复回源击穿。
 func (h *interactHelper) ensureSet(feedID int64) (existed bool, members map[int64]struct{}, err error) {
 	key := h.setKey(feedID)
 	exists, err := h.svcCtx.Redis.ExistsCtx(h.ctx, key)
@@ -227,18 +232,17 @@ func (h *interactHelper) ensureSet(feedID int64) (existed bool, members map[int6
 		return false, nil, err
 	}
 	members = make(map[int64]struct{}, len(userIDs))
-	if len(userIDs) > 0 {
-		values := make([]any, 0, len(userIDs))
-		for _, uid := range userIDs {
-			members[int64(uid)] = struct{}{}
-			values = append(values, strconv.FormatUint(uid, 10))
-		}
-		if _, err = h.svcCtx.Redis.SaddCtx(h.ctx, key, values...); err != nil {
-			return false, nil, err
-		}
-		if err = h.svcCtx.Redis.ExpireCtx(h.ctx, key, keys.TTLFeedSet); err != nil {
-			h.logger.Errorf("interaction: expire %s failed: %v", key, err)
-		}
+	values := make([]any, 0, len(userIDs)+1)
+	values = append(values, keys.SetSentinel)
+	for _, uid := range userIDs {
+		members[int64(uid)] = struct{}{}
+		values = append(values, strconv.FormatUint(uid, 10))
+	}
+	if _, err = h.svcCtx.Redis.SaddCtx(h.ctx, key, values...); err != nil {
+		return false, nil, err
+	}
+	if err = h.svcCtx.Redis.ExpireCtx(h.ctx, key, keys.TTLFeedSet); err != nil {
+		h.logger.Errorf("interaction: expire %s failed: %v", key, err)
 	}
 	return false, members, nil
 }
@@ -313,10 +317,12 @@ func (h *interactHelper) ensureStats(feedID int64) error {
 // ---------- 写路径 ----------
 
 // addScript 原子执行点赞/收藏翻转：SADD 成功才 ZADD + HINCRBY。
+// 先补写哨兵成员（幂等），保证 Set 永远携带「已加载」标记（兼容历史无哨兵 key）。
 // KEYS[1]=set KEYS[2]=zset KEYS[3]=stats
-// ARGV[1]=userID ARGV[2]=feedID ARGV[3]=score ARGV[4]=statsField
+// ARGV[1]=userID ARGV[2]=feedID ARGV[3]=score ARGV[4]=statsField ARGV[5]=sentinel
 // 返回 1 表示新增互动，0 表示重复操作。
 var addScript = redis.NewScript(`
+redis.call('SADD', KEYS[1], ARGV[5])
 local added = redis.call('SADD', KEYS[1], ARGV[1])
 if added == 1 then
   redis.call('ZADD', KEYS[2], ARGV[3], ARGV[2])
@@ -327,10 +333,13 @@ return added
 
 // removeScript 原子执行取消点赞/取消收藏：SREM 成功才扣减计数（带非负保护），
 // ZREM 无条件执行保证列表不残留。
+// 先补写哨兵成员：移除最后一个真实成员后 Set 仍持有哨兵而不会被 Redis 删除，
+// 「已加载的空集合」不会在下次查询时被误判为冷缓存回源到（MQ 尚未落库的）旧 MySQL 状态。
 // KEYS/ARGV 含义同 addScript。返回 1 表示确实取消，0 表示本无互动。
 var removeScript = redis.NewScript(`
-local removed = redis.call('SREM', KEYS[1], ARGV[1])
+redis.call('SADD', KEYS[1], ARGV[5])
 redis.call('ZREM', KEYS[2], ARGV[2])
+local removed = redis.call('SREM', KEYS[1], ARGV[1])
 if removed == 1 then
   local cur = tonumber(redis.call('HGET', KEYS[3], ARGV[4]) or '0')
   if cur > 0 then
@@ -348,6 +357,7 @@ func (h *interactHelper) flip(script *redis.Script, userID, feedID int64) (bool,
 		strconv.FormatInt(feedID, 10),
 		strconv.FormatInt(time.Now().Unix(), 10),
 		h.statsField(),
+		keys.SetSentinel,
 	)
 	if err != nil {
 		return false, err

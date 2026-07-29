@@ -41,6 +41,7 @@ import (
 	event "github.com/sponge-dad/feed/common/event/interaction"
 	"github.com/sponge-dad/feed/common/idgen"
 	"github.com/sponge-dad/feed/common/mq"
+	"github.com/sponge-dad/feed/common/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zeromicro/go-zero/core/conf"
@@ -160,13 +161,24 @@ func run(m *testing.M) (int, error) {
 		ctx.Producer = bridgePublisher{wk: wk}
 	}
 
+	// 动态申请空闲端口，避免与业务服务或其他测试包冲突；客户端直连实际地址。
+	listenOn, err := testutil.FreePort()
+	if err != nil {
+		return 0, err
+	}
+	c.ListenOn = listenOn
+
 	srv := zrpc.MustNewServer(c.RpcServerConf, func(grpcServer *grpc.Server) {
 		interaction.RegisterInteractionServer(grpcServer, server.NewInteractionServer(ctx))
 	})
 	srv.AddUnaryInterceptors(serverinterceptors.ErrorInterceptor)
 
+	var grpcConn *grpc.ClientConn
 	testStop = func() {
 		srv.Stop()
+		if grpcConn != nil {
+			_ = grpcConn.Close()
+		}
 		if testDB != nil {
 			_ = testDB.Close()
 		}
@@ -176,9 +188,13 @@ func run(m *testing.M) (int, error) {
 		fmt.Printf("Starting integration test rpc server at %s...\n", c.ListenOn)
 		srv.Start()
 	}()
-	time.Sleep(300 * time.Millisecond)
+	// 轮询等待服务就绪，替代固定 Sleep。
+	if err := testutil.WaitReady(listenOn, 5*time.Second); err != nil {
+		testStop()
+		return 0, err
+	}
 
-	grpcConn, err := grpc.Dial(c.ListenOn, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	grpcConn, err = grpc.NewClient(listenOn, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		testStop()
 		return 0, err
