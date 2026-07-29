@@ -18,8 +18,9 @@ import (
 
 // TestCommentLifecycle 端到端：发表 -> 列表(预览) -> 全部回复翻页 -> 计数 -> 删除 -> 幂等。
 func TestCommentLifecycle(t *testing.T) {
+	requireEnv(t)
 	ctx := context.Background()
-	const feedID = int64(9001)
+	feedID := nextID() // 运行期唯一，替代固定 ID + TRUNCATE
 
 	// 1. 发一级评论
 	root, err := testClient.CreateComment(ctx, &comment.CreateCommentReq{
@@ -125,8 +126,9 @@ func TestCommentLifecycle(t *testing.T) {
 // TestConcurrentCreate_CountConsistency 并发发表 50 条（同楼回复），
 // 最终 comment_count 缓存与 MySQL COUNT 一致，根 reply_count 正确。
 func TestConcurrentCreate_CountConsistency(t *testing.T) {
+	requireEnv(t)
 	ctx := context.Background()
-	const feedID = int64(9002)
+	feedID := nextID() // 运行期唯一，替代固定 ID + TRUNCATE
 	const workers = 50
 
 	root, err := testClient.CreateComment(ctx, &comment.CreateCommentReq{

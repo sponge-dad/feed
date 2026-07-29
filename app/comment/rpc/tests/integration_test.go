@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync/atomic"
 	"time"
 
 	"testing"
@@ -35,6 +36,7 @@ import (
 	userpb "github.com/sponge-dad/feed/app/user/rpc/user"
 	"github.com/sponge-dad/feed/app/user/rpc/userClient"
 	"github.com/sponge-dad/feed/common/idgen"
+	"github.com/sponge-dad/feed/common/testutil"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/stores/redis"
@@ -47,7 +49,25 @@ var (
 	testClient comment.CommentClient
 	testCtx    *svc.ServiceContext
 	testDB     *sql.DB
+	// skipReason 非空表示外部基础设施不可用，所有集成测试统一 Skip。
+	skipReason string
+	// idSeq 运行期唯一 ID 序列（时间戳打底），保证多次运行数据互不污染。
+	idSeq atomic.Int64
 )
+
+// requireEnv 集成测试统一环境探活入口：仅当基础设施缺失时 Skip。
+func requireEnv(t *testing.T) {
+	t.Helper()
+	if skipReason != "" {
+		t.Skip("integration dependency unavailable: " + skipReason)
+	}
+}
+
+// nextID 生成本次运行内唯一的业务 ID（feed/user 通用），
+// 替代固定 ID + TRUNCATE，测试之间及多次运行之间互不污染。
+func nextID() int64 {
+	return idSeq.Add(1)
+}
 
 // stubUserRpc 返回固定昵称，避免依赖真实 User 服务。
 type stubUserRpc struct {
@@ -76,9 +96,9 @@ func (s *stubFeedRpc) GetFeed(_ context.Context, in *feedpb.GetFeedReq, _ ...grp
 func TestMain(m *testing.M) {
 	code, err := run(m)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "integration test setup: %v\n", err)
-		// 基础设施不可用视为跳过而非失败，保证无 MySQL 环境下测试链路仍绿
-		os.Exit(0)
+		// 只有环境探活通过后仍出错才算 setup 失败；探活失败走 skipReason 路径。
+		fmt.Fprintf(os.Stderr, "integration test setup failed: %v\n", err)
+		os.Exit(1)
 	}
 	os.Exit(code)
 }
@@ -87,6 +107,7 @@ func run(m *testing.M) (int, error) {
 	if err := idgen.Init(1); err != nil {
 		return 0, err
 	}
+	idSeq.Store(time.Now().UnixNano() / 1000) // 微秒级基准，每次运行唯一
 
 	_, currentFile, _, ok := runtime.Caller(0)
 	if !ok {
@@ -97,18 +118,21 @@ func run(m *testing.M) (int, error) {
 	var c config.Config
 	conf.MustLoad(configPath, &c)
 
-	// MySQL 必须可达，否则跳过整包
+	// 统一环境探活（短超时）：仅 MySQL 为硬依赖（Redis 用 miniredis、RPC 用 stub）。
+	// 不可用时置 skipReason，用例通过 requireEnv 统一 Skip，而不是掩盖 setup 错误。
+	if addr := testutil.MySQLAddrFromDSN(c.Mysql.DataSource); !testutil.DialOK(addr) {
+		skipReason = "mysql(" + addr + ")"
+		return m.Run(), nil
+	}
+
 	db, err := sql.Open("mysql", c.Mysql.DataSource)
 	if err != nil {
 		return 0, err
 	}
 	if err := db.Ping(); err != nil {
-		return 0, fmt.Errorf("mysql unreachable, skip integration tests: %w", err)
+		return 0, fmt.Errorf("mysql ping failed: %w", err)
 	}
 	testDB = db
-	if _, err := db.Exec("TRUNCATE TABLE comments"); err != nil {
-		return 0, err
-	}
 
 	// Redis 用内嵌 miniredis，保证测试自包含
 	mr, err := miniredis.Run()
@@ -127,6 +151,13 @@ func run(m *testing.M) (int, error) {
 		FeedRpc:      &stubFeedRpc{},
 	}
 
+	// 动态申请空闲端口，避免与业务服务或其他测试包冲突；客户端直连实际地址。
+	listenOn, err := testutil.FreePort()
+	if err != nil {
+		return 0, err
+	}
+	c.ListenOn = listenOn
+
 	srv := zrpc.MustNewServer(c.RpcServerConf, func(grpcServer *grpc.Server) {
 		comment.RegisterCommentServer(grpcServer, server.NewCommentServer(testCtx))
 	})
@@ -137,9 +168,12 @@ func run(m *testing.M) (int, error) {
 		fmt.Printf("Starting integration test rpc server at %s...\n", c.ListenOn)
 		srv.Start()
 	}()
-	time.Sleep(300 * time.Millisecond)
+	// 轮询等待服务就绪，替代固定 Sleep。
+	if err := testutil.WaitReady(listenOn, 5*time.Second); err != nil {
+		return 0, err
+	}
 
-	conn, err := grpc.NewClient(c.ListenOn, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(listenOn, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return 0, err
 	}
