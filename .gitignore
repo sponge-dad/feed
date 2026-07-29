@@ -21,8 +21,9 @@ tmp/
 # 本地配置（含密钥，不入库）
 *.local.yaml
 deploy/config/*.prod.yaml
-
+.xac/
 # proto 生成的 pb 代码（由 goctl 在 CVM 本地生成，不入库）
 # 如需入库可注释掉下面两行
 #app/*/rpc/*/*.pb.go
 #app/*/rpc/*/*_grpc.pb.go
+
