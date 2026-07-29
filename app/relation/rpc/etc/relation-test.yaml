@@ -2,16 +2,17 @@
 #
 # Relation RPC 服务集成测试专用配置。
 # 与 relation.yaml 的区别：
-# 1. MySQL 指向 feed_relation_test 测试库
-# 2. Redis 使用独立 DB（select 1），避免污染开发/生产缓存
-# 3. 监听随机端口，避免与本地 9002 开发实例冲突
+# 1. MySQL 指向 feed_relation_test 测试库，与开发/生产数据物理隔离
+# 2. Redis 与开发/生产共用同一实例（注意：go-zero 的 redis.RedisConf 不含 DB 字段，
+#    无法 select 独立 DB）。测试隔离依赖：
+#      - TestMain 启动时清理 cache:relations:* 与共享 key user:vip_users；
+#      - 每个用例前后按随机 testUserBase 清理 user:follow/fans/fans_count:*。
+#    因此即使共用 DB 0 也不会污染业务缓存。
+# 3. ListenOn 仅为占位：TestMain 会动态申请空闲端口并覆盖，
+#    不注册 etcd（测试代码会清空 Etcd 配置），测试客户端直连实际监听地址
 
 Name: relation.rpc.test
-ListenOn: 0.0.0.0:9003
-Etcd:
-  Hosts:
-  - 127.0.0.1:2479
-  Key: relation.rpc.test
+ListenOn: 127.0.0.1:0
 
 Mysql:
   DataSource: "root:F3d!MysQL#r00T_2024xV@tcp(127.0.0.1:3306)/feed_relation_test?charset=utf8mb4&parseTime=true&loc=Local"

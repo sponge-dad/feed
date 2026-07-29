@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -19,19 +21,20 @@ import (
 	"github.com/sponge-dad/feed/app/relation/rpc/relation"
 	"github.com/sponge-dad/feed/common/errorx"
 	"github.com/sponge-dad/feed/common/idgen"
+	"github.com/sponge-dad/feed/common/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zeromicro/go-zero/core/conf"
-	"github.com/zeromicro/go-zero/core/service"
+	"github.com/zeromicro/go-zero/core/discov"
 	"github.com/zeromicro/go-zero/zrpc"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
-const (
-	// testUserBase 测试用户 ID 起始值，避免与开发数据冲突。
-	testUserBase = 10_000_000
-)
+// testUserBase 测试用户 ID 起始值。每次运行随机化，保证：
+// 1. 不与开发数据冲突；2. 多次运行/并行运行之间数据互相隔离。
+// uid 偏移量 < 10_000，因此不同 run 之间的 base 间隔取 10_000 的整数倍。
+var testUserBase = 10_000_000_000 + rand.Int63n(1_000_000_000)*10_000
 
 var (
 	// 由 TestMain 初始化，所有测试共享同一个服务实例和 gRPC 客户端。
@@ -39,7 +42,18 @@ var (
 	testCtx    *svc.ServiceContext
 	testDB     *sql.DB
 	testStop   func()
+	// skipReason 非空表示外部基础设施不可用，所有集成测试统一 Skip。
+	skipReason string
 )
+
+// requireEnv 集成测试统一环境探活入口：基础设施缺失时 Skip，
+// 只允许因外部依赖不可用而跳过，探活在 TestMain 中一次性完成。
+func requireEnv(t *testing.T) {
+	t.Helper()
+	if skipReason != "" {
+		t.Skip("integration dependency unavailable: " + skipReason)
+	}
+}
 
 func TestMain(m *testing.M) {
 	code, err := run(m)
@@ -64,11 +78,37 @@ func run(m *testing.M) (int, error) {
 	var c config.Config
 	conf.MustLoad(configPath, &c)
 
+	// 统一环境探活（短超时）：MySQL 与 Redis 缺一不可。
+	// 不可用时不启动服务，所有测试通过 requireEnv 统一 Skip。
+	var missing []string
+	if addr := testutil.MySQLAddrFromDSN(c.Mysql.DataSource); !testutil.DialOK(addr) {
+		missing = append(missing, "mysql("+addr+")")
+	}
+	if len(c.CacheRedis) > 0 && !testutil.DialOK(c.CacheRedis[0].Host) {
+		missing = append(missing, "redis("+c.CacheRedis[0].Host+")")
+	}
+	if len(missing) > 0 {
+		skipReason = strings.Join(missing, ", ")
+		return m.Run(), nil
+	}
+
+	// 动态申请空闲端口，避免与业务服务（如 Feed RPC 9003）或其他测试包端口冲突；
+	// 同时清空 etcd 注册配置：测试客户端直连实际监听地址，
+	// 绝不依赖 etcd 中开发环境的 Relation 服务注册信息。
+	listenOn, err := testutil.FreePort()
+	if err != nil {
+		return 0, err
+	}
+	c.ListenOn = listenOn
+	c.Etcd = discov.EtcdConf{}
+
 	ctx := svc.NewServiceContext(c)
 	testCtx = ctx
 
 	// 清理历史 model 缓存，避免之前测试运行的 stale 缓存影响当前测试。
 	cleanupRelationModelCache()
+	// 清理跨用户共享 key（如全局大V集合），防止跨运行串扰。
+	cleanupSharedKeys()
 
 	db, err := sql.Open("mysql", c.Mysql.DataSource)
 	if err != nil {
@@ -78,14 +118,15 @@ func run(m *testing.M) (int, error) {
 
 	srv := zrpc.MustNewServer(c.RpcServerConf, func(grpcServer *grpc.Server) {
 		relation.RegisterRelationServer(grpcServer, server.NewRelationServer(ctx))
-		if c.Mode == service.DevMode || c.Mode == service.TestMode {
-			reflection.Register(grpcServer)
-		}
 	})
 	srv.AddUnaryInterceptors(serverinterceptors.ErrorInterceptor)
 
+	var conn *grpc.ClientConn
 	testStop = func() {
 		srv.Stop()
+		if conn != nil {
+			_ = conn.Close()
+		}
 		if testDB != nil {
 			_ = testDB.Close()
 		}
@@ -96,10 +137,13 @@ func run(m *testing.M) (int, error) {
 		srv.Start()
 	}()
 
-	// 等待服务启动
-	time.Sleep(300 * time.Millisecond)
+	// 轮询等待服务就绪，替代固定 Sleep。
+	if err := testutil.WaitReady(listenOn, 5*time.Second); err != nil {
+		testStop()
+		return 0, err
+	}
 
-	conn, err := grpc.Dial(c.ListenOn, grpc.WithInsecure())
+	conn, err = grpc.NewClient(listenOn, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		testStop()
 		return 0, err
@@ -121,6 +165,7 @@ func uid(n int64) int64 {
 }
 
 func TestIntegration_FollowAndUnfollow(t *testing.T) {
+	requireEnv(t)
 	ctx := newTestCtx()
 	a, b := uid(1), uid(2)
 
@@ -166,6 +211,7 @@ func TestIntegration_FollowAndUnfollow(t *testing.T) {
 }
 
 func TestIntegration_FollowSelf(t *testing.T) {
+	requireEnv(t)
 	ctx := newTestCtx()
 	a := uid(3)
 
@@ -178,6 +224,7 @@ func TestIntegration_FollowSelf(t *testing.T) {
 }
 
 func TestIntegration_InvalidParam(t *testing.T) {
+	requireEnv(t)
 	ctx := newTestCtx()
 
 	_, err := testClient.Follow(ctx, &relation.FollowReq{FollowerId: -1, FolloweeId: uid(4)})
@@ -188,6 +235,7 @@ func TestIntegration_InvalidParam(t *testing.T) {
 }
 
 func TestIntegration_IsVipRebuild(t *testing.T) {
+	requireEnv(t)
 	ctx := newTestCtx()
 	vipUser := uid(100)
 	threshold := int64(5)
@@ -205,6 +253,7 @@ func TestIntegration_IsVipRebuild(t *testing.T) {
 }
 
 func TestIntegration_ConcurrentFollow(t *testing.T) {
+	requireEnv(t)
 	ctx := newTestCtx()
 	a, b := uid(200), uid(201)
 

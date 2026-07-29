@@ -32,6 +32,13 @@ func cleanupRelationModelCache() {
 	_, _ = testCtx.Redis.Eval(script, []string{}, "cache:relations:*")
 }
 
+// cleanupSharedKeys 清理跨用户共享的 Redis key。
+// user:vip_users 是全局 Set（大V用户集合），不受随机 testUserBase 隔离保护，
+// 若某次运行产生大V会残留到后续运行；测试启动时统一清空，防止跨运行串扰。
+func cleanupSharedKeys() {
+	_, _ = testCtx.Redis.Del("user:vip_users")
+}
+
 func parseInt64(s string) int64 {
 	v, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
@@ -76,6 +83,7 @@ func redisZScore(key string, member string) (int64, bool) {
 
 // C-001：并发 Follow/Unfollow 最终态一致
 func TestConcurrency_FollowUnfollowFinalState(t *testing.T) {
+	requireEnv(t)
 	a, b := uid(300), uid(301)
 	cleanupUserKeys(a, b)
 	cleanupDBRelations(t, a, b)
@@ -133,6 +141,7 @@ func TestConcurrency_FollowUnfollowFinalState(t *testing.T) {
 
 // C-002：关注后立即查询，缓存应在 500ms 内收敛
 func TestConcurrency_FollowThenReadConvergence(t *testing.T) {
+	requireEnv(t)
 	a, b := uid(302), uid(303)
 	cleanupUserKeys(a, b)
 	cleanupDBRelations(t, a, b)
@@ -163,6 +172,7 @@ func TestConcurrency_FollowThenReadConvergence(t *testing.T) {
 
 // C-003：取关后立即查询，缓存应在 500ms 内收敛
 func TestConcurrency_UnfollowThenReadConvergence(t *testing.T) {
+	requireEnv(t)
 	a, b := uid(304), uid(305)
 	cleanupUserKeys(a, b)
 	cleanupDBRelations(t, a, b)
@@ -197,6 +207,7 @@ func TestConcurrency_UnfollowThenReadConvergence(t *testing.T) {
 
 // C-004：多设备交叉操作最终态一致
 func TestConcurrency_CrossDeviceOperations(t *testing.T) {
+	requireEnv(t)
 	a, b := uid(306), uid(307)
 	cleanupUserKeys(a, b)
 	cleanupDBRelations(t, a, b)
@@ -254,6 +265,7 @@ func TestConcurrency_CrossDeviceOperations(t *testing.T) {
 
 // C-005：读写并发稳定性
 func TestConcurrency_ReadWriteMixed(t *testing.T) {
+	requireEnv(t)
 	a, b := uid(308), uid(309)
 	cleanupUserKeys(a, b)
 	cleanupDBRelations(t, a, b)
@@ -312,6 +324,7 @@ func TestConcurrency_ReadWriteMixed(t *testing.T) {
 
 // K-001：关注后缓存命中
 func TestCache_FollowThenCacheHit(t *testing.T) {
+	requireEnv(t)
 	a, b := uid(310), uid(311)
 	cleanupUserKeys(a, b)
 	cleanupDBRelations(t, a, b)
@@ -334,6 +347,7 @@ func TestCache_FollowThenCacheHit(t *testing.T) {
 
 // K-002：取关后缓存失效
 func TestCache_UnfollowThenCacheInvalidated(t *testing.T) {
+	requireEnv(t)
 	a, b := uid(312), uid(313)
 	cleanupUserKeys(a, b)
 	cleanupDBRelations(t, a, b)
@@ -363,6 +377,7 @@ func TestCache_UnfollowThenCacheInvalidated(t *testing.T) {
 
 // K-003：缓存穿透保护（无关注用户首次查询后不应反复查 DB）
 func TestCache_PenetrationProtection(t *testing.T) {
+	requireEnv(t)
 	x := uid(314)
 	cleanupUserKeys(x)
 	cleanupDBRelations(t, x)
@@ -387,6 +402,7 @@ func TestCache_PenetrationProtection(t *testing.T) {
 
 // K-007：粉丝数与粉丝列表一致性
 func TestCache_FansCountMatchesList(t *testing.T) {
+	requireEnv(t)
 	b := uid(315)
 	cleanupUserKeys(b)
 	cleanupDBRelations(t, b)
