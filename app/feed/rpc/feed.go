@@ -7,6 +7,7 @@ import (
 	"github.com/sponge-dad/feed/app/feed/rpc/feed"
 	"github.com/sponge-dad/feed/app/feed/rpc/internal/config"
 	"github.com/sponge-dad/feed/app/feed/rpc/internal/server"
+	"github.com/sponge-dad/feed/app/feed/rpc/internal/serverinterceptors"
 	"github.com/sponge-dad/feed/app/feed/rpc/internal/svc"
 	"github.com/sponge-dad/feed/app/feed/rpc/internal/worker"
 
@@ -43,6 +44,7 @@ func main() {
 			reflection.Register(grpcServer)
 		}
 	})
+	s.AddUnaryInterceptors(serverinterceptors.ErrorInterceptor)
 	defer s.Stop()
 
 	fmt.Printf("Starting rpc server at %s...\n", c.ListenOn)
