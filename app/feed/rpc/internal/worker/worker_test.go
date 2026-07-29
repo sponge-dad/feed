@@ -31,7 +31,8 @@ func (s *stubFeedsModel) IncrCommentCount(_ context.Context, feedID uint64, delt
 }
 
 // newTestWorker 构造带 miniredis 与桩依赖的 Worker（无 Comment RPC 依赖）。
-func newTestWorker(t *testing.T, sm *stubFeedsModel) *Worker {
+// sm 仅实现 IncrCommentCount，调用方注入 model.FeedsModel 桩即可。
+func newTestWorker(t *testing.T, sm model.FeedsModel) *Worker {
 	t.Helper()
 	mr, err := miniredis.Run()
 	require.NoError(t, err)

@@ -159,6 +159,38 @@ func TestBuildFeedCards_Empty(t *testing.T) {
 	}
 }
 
+// TestBuildFeedCards_ZeroMirrorBaseline 验证 R-P1-5：互动服务无实时计数时计数回落为 Feed 镜像值；
+// 当镜像值本身为 0 时，卡片计数必须显式为 0（不丢精度、不为脏值），互动状态默认 false。
+func TestBuildFeedCards_ZeroMirrorBaseline(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	svcCtx, userRpc, _, _, interactionRpc := newTestSvcCtx(ctrl)
+
+	items := ItemsFromBriefs([]*feedClient.FeedBrief{
+		{FeedId: 201, AuthorId: 21, FeedType: 1, Title: "zero", CoverUrl: "c", LikeCount: 0, CommentCount: 0, CreatedAt: 100},
+	})
+	userRpc.EXPECT().BatchGetUsers(gomock.Any(), gomock.Any()).Return(&userClient.BatchGetUsersResp{
+		Users: []*userClient.UserBrief{{Id: 21, Nickname: "u21"}},
+	}, nil)
+	// 互动服务成功返回空统计（无 201 的实时数据） -> 走镜像降级
+	interactionRpc.EXPECT().BatchGetFeedStats(gomock.Any(), gomock.Any()).Return(&interactionClient.BatchGetFeedStatsResp{}, nil)
+	interactionRpc.EXPECT().BatchGetUserInteractionStatus(gomock.Any(), gomock.Any()).Return(&interactionClient.BatchGetUserInteractionStatusResp{}, nil)
+
+	cards, err := BuildFeedCards(context.Background(), svcCtx, 1, items)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cards) != 1 {
+		t.Fatalf("want 1 card, got %d", len(cards))
+	}
+	if cards[0].Stats.LikeCount != 0 || cards[0].Stats.CommentCount != 0 || cards[0].Stats.CollectCount != 0 {
+		t.Errorf("R-P1-5: mirror 0 baseline mismatch: %+v", cards[0].Stats)
+	}
+	if cards[0].Interaction.IsLiked || cards[0].Interaction.IsCollected {
+		t.Errorf("R-P1-5: interaction should default false: %+v", cards[0].Interaction)
+	}
+}
+
 func TestPageFromCursor(t *testing.T) {
 	cases := []struct {
 		cursor  string

@@ -50,9 +50,15 @@ func (l *GetFansLogic) GetFans(in *relation.GetFansReq) (*relation.GetFansResp, 
 
 	members, err := l.svcCtx.Redis.Zrevrange(fansKey(in.UserId), int64(start), int64(stop))
 	if err == nil && len(members) > 0 {
+		// R-LS-02：Total 取缓存 ZSet 基数（全量计数），而非分页片段长度，
+		// 保证网关展示的粉丝数与真实粉丝数一致。ZCARD 异常时回退为片段长度。
+		total := int64(len(members))
+		if card, zerr := l.svcCtx.Redis.Zcard(fansKey(in.UserId)); zerr == nil {
+			total = int64(card)
+		}
 		return &relation.GetFansResp{
 			FollowerIds: parseIds(members),
-			Total:       int64(len(members)),
+			Total:       total,
 		}, nil
 	}
 
