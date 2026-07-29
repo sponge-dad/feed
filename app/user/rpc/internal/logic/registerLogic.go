@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"errors"
 
+	mysqldriver "github.com/go-sql-driver/mysql"
 	"time"
 
 	usermodel "github.com/sponge-dad/feed/app/user/model"
@@ -72,6 +73,15 @@ func (l *RegisterLogic) Register(in *user.RegisterReq) (*user.RegisterResp, erro
 		Phone:    sql.NullString{Valid: false},
 	}
 	if _, err := l.svcCtx.UserModel.Insert(l.ctx, newUser); err != nil {
+		// 并发同名注册场景下，后到的请求会穿过 FindOneByUsername 查重窗口，
+		// 在 Insert 阶段撞 uk_username 唯一索引，MySQL 返回 1062。
+		// 必须识别为 UsernameExists(10001)，而不是把原始 *mysql.MySQLError 透传、
+		// 最终被 ErrorInterceptor 退化为 ServerError(1)，从而丢失"用户名已存在"语义。
+		// 仅按错误码识别，不做字符串匹配。
+		var mysqlErr *mysqldriver.MySQLError
+		if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
+			return nil, errorx.New(errorx.UserExists)
+		}
 		return nil, err
 	}
 

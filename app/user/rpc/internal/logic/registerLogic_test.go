@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	mysqldriver "github.com/go-sql-driver/mysql"
 	usermodel "github.com/sponge-dad/feed/app/user/model"
 	"github.com/sponge-dad/feed/app/user/rpc/user"
 	"github.com/sponge-dad/feed/common/errorx"
@@ -176,10 +175,10 @@ func TestRegister_InsertFails_PropagatesError(t *testing.T) {
 	assert.Empty(t, m.byUsername, "插入失败后不应存在用户记录")
 }
 
-// Baseline: U-REG-05（单元版并发同名注册）/ Risk baseline: R-P0-4
-// 当前行为基线：并发同名注册时，仅一个请求成功；后到请求命中唯一索引 1062，
-// 该错误未被兜底转换为 10001，而是以原始 *mysql.MySQLError 透传（网关侧退化为 code=1）。
-func TestRegister_ConcurrentSameUsername_OnlyOneSucceedsOthersGet1062Baseline(t *testing.T) {
+// Baseline: U-REG-05（单元版并发同名注册）
+// 最小修复后行为：并发同名注册时，仅一个请求成功；后到请求命中唯一索引 1062，
+// 已被 registerLogic 识别并转换为 UsernameExists(10001)，不再以原始 *mysql.MySQLError 透传。
+func TestRegister_ConcurrentSameUsername_OnlyOneSucceedsOthersGetUserExists(t *testing.T) {
 	m := newStubUsersModel()
 	svcCtx, _ := newTestServiceContext(t, m)
 
@@ -201,26 +200,22 @@ func TestRegister_ConcurrentSameUsername_OnlyOneSucceedsOthersGet1062Baseline(t 
 	start.Done()
 	wg.Wait()
 
-	var successCount, dupCount, existsCount int
+	var successCount, existsCount int
 	for _, err := range errs {
 		switch {
 		case err == nil:
 			successCount++
 		default:
-			var myErr *mysqldriver.MySQLError
 			var codeErr *errorx.CodeError
-			if errors.As(err, &myErr) && myErr.Number == 1062 {
-				dupCount++ // 当前基线：原始 1062 透传
-			} else if errors.As(err, &codeErr) && codeErr.Code == errorx.UserExists {
-				existsCount++ // 查重窗口内已可见 → 10001
-			} else {
-				t.Errorf("并发注册出现未预期错误: %v", err)
-			}
+			require.ErrorAs(t, err, &codeErr, "并发撞唯一键必须被兜底为 UserExists(10001)")
+			assert.Equal(t, errorx.UserExists, codeErr.Code,
+				"1062 应转为 UsernameExists，不应透传原始 *mysql.MySQLError")
+			existsCount++
 		}
 	}
 
 	assert.Equal(t, 1, successCount, "同一用户名最终只能注册成功一次")
-	assert.Equal(t, workers, successCount+dupCount+existsCount)
+	assert.Equal(t, workers, successCount+existsCount)
 	// 数据库最终仅一条记录
 	assert.Len(t, m.byUsername, 1)
 	assert.NotNil(t, m.byUsername["same-name"])
