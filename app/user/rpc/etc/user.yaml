@@ -30,7 +30,7 @@ Etcd:
 
 # MySQL 连接配置
 Mysql:
-  DataSource: root:root@tcp(127.0.0.1:3306)/feed_user?charset=utf8mb4&parseTime=true&loc=Local
+  DataSource: "root:F3d!MysQL#r00T_2024xV@tcp(127.0.0.1:3306)/feed_user?charset=utf8mb4&parseTime=true&loc=Local"
 
 # Redis 缓存配置（go-zero cache.CacheConf 是数组，支持配置多节点分片，单机场景写一个节点）
 CacheRedis:

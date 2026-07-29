@@ -14,8 +14,9 @@ import "github.com/google/uuid"
 }
 */
 
-const TopicFeedCreated = "feed.created"
-const TopicFeedDeleted = "feed.deleted"
+// Topic 命名注意：RocketMQ topic 仅允许 ^[%|a-zA-Z0-9_-]+$，不能含 "."，故用连字符。
+const TopicFeedCreated = "feed-created"
+const TopicFeedDeleted = "feed-deleted"
 
 type EventFeedCreate struct {
 	EventID   string `json:"event_id"`

@@ -14,7 +14,7 @@ Etcd:
   Key: relation.rpc.test
 
 Mysql:
-  DataSource: root:root@tcp(127.0.0.1:3306)/feed_relation_test?charset=utf8mb4&parseTime=true&loc=Local
+  DataSource: "root:F3d!MysQL#r00T_2024xV@tcp(127.0.0.1:3306)/feed_relation_test?charset=utf8mb4&parseTime=true&loc=Local"
 
 CacheRedis:
 - Host: 127.0.0.1:6379

@@ -242,12 +242,12 @@
 
 | Topic | 生产者 | 消费者 |
 |-------|--------|--------|
-| `feed.created` | Feed Service | Feed Worker（推送到收件箱） |
-| `feed.deleted` | Feed Service | Feed Worker（清理缓存） |
+| `feed-created` | Feed Service | Feed Worker（推送到收件箱） |
+| `feed-deleted` | Feed Service | Feed Worker（清理缓存） |
 | `relation.created` | Relation Service | Feed Worker（拉历史帖子到粉丝 inbox） |
 | `relation.deleted` | Relation Service | Feed Worker（清理 inbox） |
-| `interaction.event` | Interaction Service | 通知服务、计数同步 |
-| `comment.event` | Comment Service | 通知服务 |
+| `interaction-event` | Interaction Service | 通知服务、计数同步（规划） |
+| `comment-event` | Comment Service | Feed 服务（维护 `feeds.comment_count` 镜像列，已实现）；通知服务（规划） |
 | `user.updated` | User Service | Feed Service（刷新作者缓存） |
 | `audit.log` | 所有服务 | 审计服务（写审计日志） |
 

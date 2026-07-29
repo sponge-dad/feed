@@ -122,6 +122,7 @@ func (l *GetFeedDetailLogic) GetFeedDetail(req *types.GetFeedDetailReq) (*types.
 		return nil
 	})
 
+	// 评论计数：直接取 feeds.comment_count 镜像值（由 Feed Worker 消费 comment-event 增量维护）。
 	// viewer 互动状态：失败降级 false。
 	g.Go(func() error {
 		resp, serr := l.svcCtx.InteractionRpc.GetUserInteractionStatus(gctx, &interactionClient.GetUserInteractionStatusReq{

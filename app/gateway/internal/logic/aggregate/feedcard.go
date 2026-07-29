@@ -101,9 +101,10 @@ func BuildFeedCards(ctx context.Context, svcCtx *svc.ServiceContext, viewerID in
 	}
 
 	var (
-		userMap  = make(map[int64]*userClient.UserBrief, len(authorIDs))
-		statsMap = make(map[int64]*interactionClient.FeedStats, len(feedIDs))
-		stateMap = make(map[int64]*interactionClient.UserInteractionStatus, len(feedIDs))
+		userMap     = make(map[int64]*userClient.UserBrief, len(authorIDs))
+		statsMap    = make(map[int64]*interactionClient.FeedStats, len(feedIDs))
+		stateMap    = make(map[int64]*interactionClient.UserInteractionStatus, len(feedIDs))
+		commentsMap = make(map[int64]int64, len(feedIDs))
 	)
 
 	g, gctx := errgroup.WithContext(ctx)
@@ -136,6 +137,12 @@ func BuildFeedCards(ctx context.Context, svcCtx *svc.ServiceContext, viewerID in
 		}
 		return nil
 	})
+
+	// 评论计数：直接取 feeds.comment_count 镜像值（由 Feed Worker 消费 comment-event 增量维护）。
+	// 无需额外调用 Comment RPC，避免循环依赖。
+	for _, it := range items {
+		commentsMap[it.FeedID] = it.CommentCount
+	}
 
 	// 当前用户互动状态：失败降级为 false。
 	g.Go(func() error {
@@ -187,6 +194,9 @@ func BuildFeedCards(ctx context.Context, svcCtx *svc.ServiceContext, viewerID in
 		if s, ok := statsMap[it.FeedID]; ok {
 			card.Stats.LikeCount = s.LikeCount
 			card.Stats.CollectCount = s.CollectCount
+		}
+		if c, ok := commentsMap[it.FeedID]; ok {
+			card.Stats.CommentCount = c
 		}
 		if st, ok := stateMap[it.FeedID]; ok {
 			card.Interaction = types.FeedInteractionInfo{

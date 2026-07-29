@@ -116,9 +116,10 @@ services:
       JAVA_OPT_EXT: "-Xms512m -Xmx512m"
       # 让 Broker 用容器服务名注册地址，避免宿主机/其他容器解析不到
       BROKER_IP1: "rmq-broker"
-    command: sh mqbroker
+    command: sh mqbroker -c /home/rocketmq/broker.conf
     volumes:
       - rmq_broker_data:/home/rocketmq/store
+      - ./broker.conf:/home/rocketmq/broker.conf:ro
 
   # ------------------------------------------------------------------
   # RocketMQ Dashboard：可视化管理界面，方便查看 Topic/消息堆积/消费情况

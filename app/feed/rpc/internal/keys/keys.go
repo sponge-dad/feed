@@ -42,3 +42,9 @@ func Timeline(tab string, userID, page int64) string {
 	}
 	return fmt.Sprintf("timeline:%s:%d", tab, page)
 }
+
+// CommentEventDedup 返回评论事件消费幂等去重 key：comment_event:{eventID}。
+// Feed Worker 消费 comment-event 时以 event_id 去重，TTL 24h。
+func CommentEventDedup(eventID string) string {
+	return "comment_event:" + eventID
+}

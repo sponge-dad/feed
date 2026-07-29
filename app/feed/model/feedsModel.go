@@ -7,11 +7,14 @@ package model
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/stores/cache"
+	"github.com/zeromicro/go-zero/core/stores/sqlc"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
@@ -34,6 +37,9 @@ type (
 		FindByIds(ctx context.Context, ids []uint64) ([]*Feeds, error)
 		// SoftDeleteByUserId 将指定用户的帖子标记为已删除，并使主键缓存失效。
 		SoftDeleteByUserId(ctx context.Context, feedId, userId uint64) (bool, error)
+		// IncrCommentCount 增量更新某帖的评论数镜像列（由 comment-event 消费者按 CREATE +1 / DELETE -1 调用）。
+		// delta 可正可负；SQL 层保证下限为 0（GREATEST(comment_count + delta, 0)），不会出现负数。
+		IncrCommentCount(ctx context.Context, feedID uint64, delta int64) error
 	}
 
 	customFeedsModel struct {
@@ -51,13 +57,68 @@ type redisCache interface {
 
 // NewFeedsModel 创建 feeds 表的 model 实例。
 // conn 为 MySQL 连接；rds 为业务 Redis（详情缓存 feed:{feed_id} 的失效依赖）。
-// go-zero 自带主键缓存已关闭（传空 cache.CacheConf），详情缓存统一走业务 Hash。
-func NewFeedsModel(conn sqlx.SqlConn, rds redisCache, opts ...cache.Option) FeedsModel {
+// go-zero 自带主键缓存已关闭（注入直通 no-op cache），详情缓存统一走业务 Hash。
+// 注意：不能传空 cache.CacheConf 给 sqlc.NewConn，会触发 "no cache nodes" fatal。
+func NewFeedsModel(conn sqlx.SqlConn, rds redisCache, _ ...cache.Option) FeedsModel {
 	return &customFeedsModel{
-		defaultFeedsModel: newFeedsModel(conn, cache.CacheConf{}, opts...),
-		rds:               rds,
+		defaultFeedsModel: &defaultFeedsModel{
+			CachedConn: sqlc.NewConnWithCache(conn, noopCache{}),
+			table:      "`feeds`",
+		},
+		rds: rds,
 	}
 }
+
+// noopCache 是直通缓存实现：所有读操作直接回源 DB，写操作为空操作。
+// 用于关闭 goctl 生成 model 的内置主键缓存，同时满足 CachedConn 对 cache.Cache 的依赖。
+type noopCache struct{}
+
+// Del 空操作，无内置缓存可删。
+func (noopCache) Del(...string) error { return nil }
+
+// DelCtx 空操作，无内置缓存可删。
+func (noopCache) DelCtx(context.Context, ...string) error { return nil }
+
+// Get 恒返回未命中。
+func (noopCache) Get(string, any) error { return sql.ErrNoRows }
+
+// GetCtx 恒返回未命中。
+func (noopCache) GetCtx(context.Context, string, any) error { return sql.ErrNoRows }
+
+// IsNotFound 判断是否为未命中错误。
+func (noopCache) IsNotFound(err error) bool { return errors.Is(err, sql.ErrNoRows) }
+
+// Set 空操作，不写缓存。
+func (noopCache) Set(string, any) error { return nil }
+
+// SetCtx 空操作，不写缓存。
+func (noopCache) SetCtx(context.Context, string, any) error { return nil }
+
+// SetWithExpire 空操作，不写缓存。
+func (noopCache) SetWithExpire(string, any, time.Duration) error { return nil }
+
+// SetWithExpireCtx 空操作，不写缓存。
+func (noopCache) SetWithExpireCtx(context.Context, string, any, time.Duration) error { return nil }
+
+// Take 直接回源查询。
+func (noopCache) Take(val any, _ string, query func(any) error) error { return query(val) }
+
+// TakeCtx 直接回源查询。
+func (noopCache) TakeCtx(_ context.Context, val any, _ string, query func(any) error) error {
+	return query(val)
+}
+
+// TakeWithExpire 直接回源查询。
+func (noopCache) TakeWithExpire(val any, _ string, query func(any, time.Duration) error) error {
+	return query(val, time.Minute)
+}
+
+// TakeWithExpireCtx 直接回源查询。
+func (noopCache) TakeWithExpireCtx(_ context.Context, val any, _ string, query func(any, time.Duration) error) error {
+	return query(val, time.Minute)
+}
+
+var _ cache.Cache = noopCache{}
 
 // FindByUserId 分页查询用户主页帖子，按发布时间和主键倒序保证稳定分页。
 func (m *customFeedsModel) FindByUserId(ctx context.Context, userId, limit, offset uint64) ([]*Feeds, error) {
@@ -121,4 +182,15 @@ func (m *customFeedsModel) SoftDeleteByUserId(ctx context.Context, feedId, userI
 		return false, err
 	}
 	return affected > 0, nil
+}
+
+// IncrCommentCount 增量更新 feeds.comment_count 镜像列。
+// 由 Feed Worker 消费 comment-event 时按 action_type 调用：CREATE +1，DELETE -1。
+// SQL 使用 GREATEST(comment_count + delta, 0) 保证计数不会因异常 DELETE 事件变为负数。
+func (m *customFeedsModel) IncrCommentCount(ctx context.Context, feedID uint64, delta int64) error {
+	query := fmt.Sprintf("update %s set `comment_count` = GREATEST(`comment_count` + ?, 0) where `id` = ?", m.table)
+	_, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+		return conn.ExecCtx(ctx, query, delta, feedID)
+	})
+	return err
 }

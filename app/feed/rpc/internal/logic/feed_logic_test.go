@@ -86,6 +86,11 @@ func (s *stubFeedsModel) SoftDeleteByUserId(_ context.Context, feedID, _ uint64)
 	return true, nil
 }
 
+// IncrCommentCount 测试桩实现：镜像列增量更新不落库，仅满足接口。
+func (s *stubFeedsModel) IncrCommentCount(_ context.Context, _ uint64, _ int64) error {
+	return nil
+}
+
 // slicePage 按 offset/limit 截取（与 model 的 offset 分页语义一致）。
 func slicePage(list []*model.Feeds, limit, offset uint64) []*model.Feeds {
 	if offset >= uint64(len(list)) {

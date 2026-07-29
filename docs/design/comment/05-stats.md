@@ -22,8 +22,9 @@
 
 **与 Feed 服务的关系**：
 - `feeds` 表有 `comment_count` 字段，但与 Comment 服务是跨服务，禁止 Comment 直接写 Feed 库。
-- 规范：Feed 帖子详情展示的评论数，由 Feed 服务**读取 Comment 服务的计数**（`GetCommentCount` / `BatchGetCommentCount`），或 Feed 消费 `comment.event` 异步同步自身 `feeds.comment_count`。
+- 规范：Feed 帖子详情展示的评论数，由 Feed 服务**读取 Comment 服务的计数**（`GetCommentCount` / `BatchGetCommentCount`），或 Feed 消费 `comment-event` 异步同步自身 `feeds.comment_count`。
 - 二选一，推荐 **Feed 直接读 Comment 计数接口 + 缓存**，避免双写不一致。
+- **当前实现**：Gateway 聚合层采用推荐路径，直接调用 Comment 服务 `BatchGetCommentCount`（失败降级读 `feeds.comment_count` 镜像列）；同时 Feed Worker 已实现消费 `comment-event`，拉取 Comment 权威计数覆盖 `feeds.comment_count` 镜像列（见 `07-mq-event.md` 第 3 节），使降级路径也能拿到真实评论数。两条路径并存、互不冲突。
 
 ---
 

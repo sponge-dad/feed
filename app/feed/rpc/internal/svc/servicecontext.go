@@ -12,13 +12,21 @@ import (
 	"github.com/zeromicro/go-zero/zrpc"
 )
 
+// Publisher 事件发布接口。生产实现为 *mq.Producer；
+// 单元测试可注入可记录调用的桩实现（与 interaction 服务的 Publisher 抽象保持一致）。
+type Publisher interface {
+	SendSync(topic string, body []byte) error
+}
+
+// ServiceContext Feed 服务依赖集合。
+// 注意：Feed 服务不依赖 Comment RPC（单向依赖：Comment → Feed），避免循环依赖导致启动死锁。
 type ServiceContext struct {
 	Config      config.Config
 	FeedModel   model.FeedsModel
 	Redis       *redis.Redis
 	IdGen       func() int64
 	RelationRpc relationclient.Relation
-	Producer    *mq.Producer
+	Producer    Publisher
 	Consumer    *mq.Consumer
 }
 

@@ -14,7 +14,8 @@ import (
 )
 
 // TopicInteractionEvent 互动事件统一 Topic。
-const TopicInteractionEvent = "interaction.event"
+// 注意：RocketMQ topic 仅允许 ^[%|a-zA-Z0-9_-]+$，不能含 "."，故用连字符。
+const TopicInteractionEvent = "interaction-event"
 
 // 互动动作类型（action_type）。
 const (

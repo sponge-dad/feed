@@ -21,20 +21,18 @@ import (
 )
 
 // newTestSvcCtx 构造注入 mock 客户端的 ServiceContext。
-func newTestSvcCtx(ctrl *gomock.Controller) (*svc.ServiceContext, *mocks.MockUser, *mocks.MockRelation, *mocks.MockFeed, *mocks.MockComment, *mocks.MockInteraction) {
+func newTestSvcCtx(ctrl *gomock.Controller) (*svc.ServiceContext, *mocks.MockUser, *mocks.MockRelation, *mocks.MockFeed, *mocks.MockInteraction) {
 	userRpc := mocks.NewMockUser(ctrl)
 	relationRpc := mocks.NewMockRelation(ctrl)
 	feedRpc := mocks.NewMockFeed(ctrl)
-	commentRpc := mocks.NewMockComment(ctrl)
 	interactionRpc := mocks.NewMockInteraction(ctrl)
 	svcCtx := &svc.ServiceContext{
 		UserRpc:        userRpc,
 		RelationRpc:    relationRpc,
 		FeedRpc:        feedRpc,
-		CommentRpc:     commentRpc,
 		InteractionRpc: interactionRpc,
 	}
-	return svcCtx, userRpc, relationRpc, feedRpc, commentRpc, interactionRpc
+	return svcCtx, userRpc, relationRpc, feedRpc, interactionRpc
 }
 
 func briefs() []*feedClient.FeedBrief {
@@ -47,7 +45,7 @@ func briefs() []*feedClient.FeedBrief {
 func TestBuildFeedCards_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	svcCtx, userRpc, _, _, _, interactionRpc := newTestSvcCtx(ctrl)
+	svcCtx, userRpc, _, _, interactionRpc := newTestSvcCtx(ctrl)
 
 	userRpc.EXPECT().BatchGetUsers(gomock.Any(), gomock.Any()).Return(&userClient.BatchGetUsersResp{
 		Users: []*userClient.UserBrief{
@@ -73,13 +71,19 @@ func TestBuildFeedCards_Success(t *testing.T) {
 	if len(cards) != 2 {
 		t.Fatalf("want 2 cards, got %d", len(cards))
 	}
-	// feed 101 使用 Interaction 实时计数与状态
+	// feed 101 使用 Interaction 实时计数与状态，评论计数取 Feed 镜像值
 	if cards[0].Stats.LikeCount != 50 || cards[0].Stats.CollectCount != 7 || !cards[0].Interaction.IsLiked {
 		t.Errorf("card 101 stats/interaction mismatch: %+v", cards[0])
+	}
+	if cards[0].Stats.CommentCount != 2 {
+		t.Errorf("card 101 should use feed mirror comment count 2: %+v", cards[0].Stats)
 	}
 	// feed 102 无实时计数，降级为 Feed 镜像值
 	if cards[1].Stats.LikeCount != 3 || cards[1].Interaction.IsLiked {
 		t.Errorf("card 102 should use mirror counts: %+v", cards[1])
+	}
+	if cards[1].Stats.CommentCount != 1 {
+		t.Errorf("card 102 should keep mirror comment count 1: %+v", cards[1].Stats)
 	}
 	if cards[0].Author.Nickname != "u11" || cards[1].Author.Nickname != "u12" {
 		t.Errorf("author mismatch: %+v, %+v", cards[0].Author, cards[1].Author)
@@ -89,7 +93,7 @@ func TestBuildFeedCards_Success(t *testing.T) {
 func TestBuildFeedCards_InteractionDegrade(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	svcCtx, userRpc, _, _, _, interactionRpc := newTestSvcCtx(ctrl)
+	svcCtx, userRpc, _, _, interactionRpc := newTestSvcCtx(ctrl)
 
 	userRpc.EXPECT().BatchGetUsers(gomock.Any(), gomock.Any()).Return(&userClient.BatchGetUsersResp{
 		Users: []*userClient.UserBrief{{Id: 11, Nickname: "u11"}, {Id: 12, Nickname: "u12"}},
@@ -108,12 +112,15 @@ func TestBuildFeedCards_InteractionDegrade(t *testing.T) {
 	if cards[0].Stats.LikeCount != 5 || cards[0].Interaction.IsLiked {
 		t.Errorf("should degrade to mirror counts and false state: %+v", cards[0])
 	}
+	if cards[0].Stats.CommentCount != 2 {
+		t.Errorf("should keep mirror comment count 2: %+v", cards[0].Stats)
+	}
 }
 
 func TestBuildFeedCards_UserRpcFail(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	svcCtx, userRpc, _, _, _, interactionRpc := newTestSvcCtx(ctrl)
+	svcCtx, userRpc, _, _, interactionRpc := newTestSvcCtx(ctrl)
 
 	userRpc.EXPECT().BatchGetUsers(gomock.Any(), gomock.Any()).Return(nil, status.Error(codes.Unavailable, "down"))
 	interactionRpc.EXPECT().BatchGetFeedStats(gomock.Any(), gomock.Any()).Return(&interactionClient.BatchGetFeedStatsResp{}, nil).AnyTimes()
@@ -127,7 +134,7 @@ func TestBuildFeedCards_UserRpcFail(t *testing.T) {
 func TestBuildFeedCards_SkipMissingAuthor(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	svcCtx, userRpc, _, _, _, interactionRpc := newTestSvcCtx(ctrl)
+	svcCtx, userRpc, _, _, interactionRpc := newTestSvcCtx(ctrl)
 
 	// 只返回 11，author 12 已注销
 	userRpc.EXPECT().BatchGetUsers(gomock.Any(), gomock.Any()).Return(&userClient.BatchGetUsersResp{

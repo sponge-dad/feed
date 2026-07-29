@@ -3,113 +3,107 @@ package worker
 import (
 	"context"
 	"encoding/json"
-	"strconv"
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/apache/rocketmq-client-go/v2/primitive"
-	"github.com/sponge-dad/feed/app/feed/rpc/internal/keys"
+	red "github.com/apache/rocketmq-client-go/v2/primitive"
+	"github.com/sponge-dad/feed/app/feed/model"
 	"github.com/sponge-dad/feed/app/feed/rpc/internal/svc"
-	"github.com/sponge-dad/feed/app/relation/rpc/relationclient"
-	feedEvent "github.com/sponge-dad/feed/common/event/feed"
-	"github.com/stretchr/testify/assert"
+	commentEvent "github.com/sponge-dad/feed/common/event/comment"
+	"github.com/stretchr/testify/require"
 	"github.com/zeromicro/go-zero/core/stores/redis"
-	"google.golang.org/grpc"
 )
 
-// stubRelation 实现 relationclient.Relation，仅 GetFans 返回预设粉丝列表，其余方法测试中不调用。
-type stubRelation struct {
-	relationclient.Relation
-	fans []int64
+// stubFeedsModel 是 model.FeedsModel 的部分桩，仅实现 IncrCommentCount，
+// 记录最近一次调用参数，供断言使用。
+type stubFeedsModel struct {
+	model.FeedsModel
+	lastFeedID uint64
+	lastDelta  int64
+	updCnt     int
 }
 
-func (s *stubRelation) GetFans(ctx context.Context, in *relationclient.GetFansReq, opts ...grpc.CallOption) (*relationclient.GetFansResp, error) {
-	return &relationclient.GetFansResp{FollowerIds: s.fans}, nil
+func (s *stubFeedsModel) IncrCommentCount(_ context.Context, feedID uint64, delta int64) error {
+	s.lastFeedID = feedID
+	s.lastDelta = delta
+	s.updCnt++
+	return nil
 }
 
-// newTestWorker 使用 miniredis 与 Relation 桩构造 Worker，不依赖真实存储。
-func newTestWorker(t *testing.T, fans []int64) *Worker {
+// newTestWorker 构造带 miniredis 与桩依赖的 Worker（无 Comment RPC 依赖）。
+func newTestWorker(t *testing.T, sm *stubFeedsModel) *Worker {
 	t.Helper()
 	mr, err := miniredis.Run()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	t.Cleanup(mr.Close)
-	rdb := redis.MustNewRedis(redis.RedisConf{Host: mr.Addr(), Type: redis.NodeType})
-	return &Worker{svcCtx: &svc.ServiceContext{Redis: rdb, RelationRpc: &stubRelation{fans: fans}}}
+	rdb := redis.MustNewRedis(redis.RedisConf{Type: "node", Host: mr.Addr()})
+	ctx := &svc.ServiceContext{
+		Redis:     rdb,
+		FeedModel: sm,
+	}
+	return NewWorker(ctx)
 }
 
-// memberExists 判断 member 是否在 zset key 中（利用 Zscore 查成员）。
-func memberExists(t *testing.T, rdb *redis.Redis, key, member string) bool {
-	t.Helper()
-	_, err := rdb.Zscore(key, member)
-	return err == nil
-}
-
-func createMsg(t *testing.T, ev interface{}) *primitive.MessageExt {
+func newCommentMsg(t *testing.T, ev commentEvent.Event) *red.MessageExt {
 	t.Helper()
 	body, err := json.Marshal(ev)
-	assert.NoError(t, err)
-	return &primitive.MessageExt{Message: primitive.Message{Body: body}}
+	require.NoError(t, err)
+	return &red.MessageExt{Message: red.Message{Body: body}}
 }
 
-// 普通用户发帖：应写入粉丝 inbox、作者 outbox、推荐池、同城池。
-func TestHandleFeedCreate_NormalUser_PushToFans(t *testing.T) {
-	wk := newTestWorker(t, []int64{1001, 1002})
-	ev := feedEvent.NewEventFeedCreated(9001, 555, false, "440300", 1752998400000)
-	assert.NoError(t, wk.handleFeedCreate(context.Background(), createMsg(t, ev)))
+// TestHandleCommentEvent_CreateIncr 验证：收到 CREATE 事件后 comment_count +1。
+func TestHandleCommentEvent_CreateIncr(t *testing.T) {
+	sm := &stubFeedsModel{}
+	wk := newTestWorker(t, sm)
 
-	member := "9001"
-	assert.True(t, memberExists(t, wk.svcCtx.Redis, keys.Inbox(1001), member))
-	assert.True(t, memberExists(t, wk.svcCtx.Redis, keys.Inbox(1002), member))
-	assert.True(t, memberExists(t, wk.svcCtx.Redis, keys.Outbox(555), member))
-	assert.True(t, memberExists(t, wk.svcCtx.Redis, keys.Recommend(), member))
-	assert.True(t, memberExists(t, wk.svcCtx.Redis, keys.City("440300"), member))
+	ev := commentEvent.Event{EventID: "evt-create-1", FeedID: 2082031676489207808, ActionType: commentEvent.ActionCreate}
+	require.NoError(t, wk.handleCommentEvent(context.Background(), newCommentMsg(t, ev)))
+
+	require.Equal(t, 1, sm.updCnt, "应增量更新一次")
+	require.Equal(t, uint64(2082031676489207808), sm.lastFeedID)
+	require.Equal(t, int64(1), sm.lastDelta, "CREATE 应 +1")
 }
 
-// 大V发帖：只写 outbox，不推粉丝 inbox（拉模式）。
-func TestHandleFeedCreate_VipUser_NoPush(t *testing.T) {
-	wk := newTestWorker(t, []int64{1001})
-	ev := feedEvent.NewEventFeedCreated(9002, 556, true, "", 1752998400000)
-	assert.NoError(t, wk.handleFeedCreate(context.Background(), createMsg(t, ev)))
+// TestHandleCommentEvent_DeleteDecr 验证：收到 DELETE 事件后 comment_count -1。
+func TestHandleCommentEvent_DeleteDecr(t *testing.T) {
+	sm := &stubFeedsModel{}
+	wk := newTestWorker(t, sm)
 
-	assert.False(t, memberExists(t, wk.svcCtx.Redis, keys.Inbox(1001), "9002"))
-	assert.True(t, memberExists(t, wk.svcCtx.Redis, keys.Outbox(556), "9002"))
+	ev := commentEvent.Event{EventID: "evt-delete-1", FeedID: 42, ActionType: commentEvent.ActionDelete}
+	require.NoError(t, wk.handleCommentEvent(context.Background(), newCommentMsg(t, ev)))
+
+	require.Equal(t, 1, sm.updCnt)
+	require.Equal(t, int64(-1), sm.lastDelta, "DELETE 应 -1")
 }
 
-// 普通用户删帖：应从粉丝 inbox、推荐池、outbox 移除。
-func TestHandleFeedDelete_NormalUser_RemoveFromFans(t *testing.T) {
-	wk := newTestWorker(t, []int64{1001})
-	ev := feedEvent.NewEventFeedCreated(9003, 557, false, "440300", 1752998400000)
-	assert.NoError(t, wk.handleFeedCreate(context.Background(), createMsg(t, ev)))
-	assert.True(t, memberExists(t, wk.svcCtx.Redis, keys.Inbox(1001), "9003"))
+// TestHandleCommentEvent_Idempotent 验证：同 event_id 重放只处理一次（Redis SETNX 去重）。
+func TestHandleCommentEvent_Idempotent(t *testing.T) {
+	sm := &stubFeedsModel{}
+	wk := newTestWorker(t, sm)
 
-	del := feedEvent.NewEventFeedDeleted(9003, 557, false, "440300")
-	assert.NoError(t, wk.handleFeedDelete(context.Background(), createMsg(t, del)))
+	ev := commentEvent.Event{EventID: "evt-idem-1", FeedID: 42, ActionType: commentEvent.ActionCreate}
+	require.NoError(t, wk.handleCommentEvent(context.Background(), newCommentMsg(t, ev)))
+	require.NoError(t, wk.handleCommentEvent(context.Background(), newCommentMsg(t, ev))) // 重放
 
-	assert.False(t, memberExists(t, wk.svcCtx.Redis, keys.Inbox(1001), "9003"))
-	assert.False(t, memberExists(t, wk.svcCtx.Redis, keys.Recommend(), "9003"))
-	assert.False(t, memberExists(t, wk.svcCtx.Redis, keys.Outbox(557), "9003"))
+	require.Equal(t, 1, sm.updCnt, "去重后只增量一次")
+	require.Equal(t, int64(1), sm.lastDelta)
 }
 
-// 大V删帖：仅清理 outbox，不触碰粉丝 inbox（大V本就不推 inbox）。
-func TestHandleFeedDelete_VipUser_OnlyOutbox(t *testing.T) {
-	wk := newTestWorker(t, []int64{1001})
-	del := feedEvent.NewEventFeedDeleted(9004, 558, true, "")
-	assert.NoError(t, wk.handleFeedDelete(context.Background(), createMsg(t, del)))
-	assert.False(t, memberExists(t, wk.svcCtx.Redis, keys.Outbox(558), "9004"))
+// TestHandleCommentEvent_BadBody 验证：消息体损坏时返回 nil（避免死信堆积），不触发更新。
+func TestHandleCommentEvent_BadBody(t *testing.T) {
+	sm := &stubFeedsModel{}
+	wk := newTestWorker(t, sm)
+
+	require.NoError(t, wk.handleCommentEvent(context.Background(), &red.MessageExt{Message: red.Message{Body: []byte("not-json")}}))
+	require.Equal(t, 0, sm.updCnt)
 }
 
-// inbox 超过容量时应被裁剪到 inboxCap 条（保留最新）。
-func TestInboxCapacityTrim(t *testing.T) {
-	wk := newTestWorker(t, []int64{1001})
-	for i := int64(0); i < 1200; i++ {
-		ev := feedEvent.NewEventFeedCreated(10000+i, 557, false, "", 1752998400000+i*1000)
-		assert.NoError(t, wk.handleFeedCreate(context.Background(), createMsg(t, ev)))
-	}
-	card, err := wk.svcCtx.Redis.Zcard(keys.Inbox(1001))
-	assert.NoError(t, err)
-	assert.Equal(t, inboxCap, card)
-	// 最早发布的 feed 应已被裁剪移除。
-	assert.False(t, memberExists(t, wk.svcCtx.Redis, keys.Inbox(1001), strconv.FormatInt(10000, 10)))
-	// 最新发布的 feed 应保留。
-	assert.True(t, memberExists(t, wk.svcCtx.Redis, keys.Inbox(1001), strconv.FormatInt(10000+1199, 10)))
+// TestHandleCommentEvent_UnknownAction 验证：未知 action_type 不更新计数、不报错。
+func TestHandleCommentEvent_UnknownAction(t *testing.T) {
+	sm := &stubFeedsModel{}
+	wk := newTestWorker(t, sm)
+
+	ev := commentEvent.Event{EventID: "evt-unknown-1", FeedID: 99, ActionType: "UNKNOWN"}
+	require.NoError(t, wk.handleCommentEvent(context.Background(), newCommentMsg(t, ev)))
+	require.Equal(t, 0, sm.updCnt, "未知动作不应更新计数")
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/sponge-dad/feed/app/feed/rpc/internal/keys"
 	"github.com/sponge-dad/feed/app/feed/rpc/internal/svc"
 	"github.com/sponge-dad/feed/app/relation/rpc/relationclient"
+	commentEvent "github.com/sponge-dad/feed/common/event/comment"
 	feedEvent "github.com/sponge-dad/feed/common/event/feed"
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/stores/redis"
@@ -70,6 +71,10 @@ func (wk *Worker) Start() error {
 		return err
 	}
 	if err := wk.svcCtx.Consumer.Subscribe(feedEvent.TopicFeedDeleted, wk.handleFeedDelete); err != nil {
+		return err
+	}
+	// 评论事件：异步维护 feeds.comment_count 镜像列（增量 +1/-1，不依赖 Comment RPC）。
+	if err := wk.svcCtx.Consumer.Subscribe(commentEvent.TopicCommentEvent, wk.handleCommentEvent); err != nil {
 		return err
 	}
 	return wk.svcCtx.Consumer.Start()
@@ -195,6 +200,52 @@ func (wk *Worker) removeFromFans(ctx context.Context, authorID int64, feedID int
 			break
 		}
 		page++
+	}
+	return nil
+}
+
+// handleCommentEvent 处理评论事件（CREATE / DELETE 共用）：按 action_type 对 feeds.comment_count
+// 做增量更新（CREATE +1，DELETE -1），不再调用 Comment RPC，彻底消除 Feed → Comment 循环依赖。
+// 计数下限为 0（不会因异常 DELETE 事件出现负数）。
+// 幂等：以 event_id 去重（Redis SETNX，TTL 24h）；重复事件不会重复增减。
+func (wk *Worker) handleCommentEvent(ctx context.Context, msg *red.MessageExt) error {
+	var ev commentEvent.Event
+	if err := json.Unmarshal(msg.Body, &ev); err != nil {
+		// 不可恢复：消息体损坏，记录后返回 nil 避免死信堆积。
+		logx.Errorf("unmarshal comment-event failed body=%s err=%v", string(msg.Body), err)
+		return nil
+	}
+
+	// 幂等去重：已处理过则直接返回。
+	dedupKey := keys.CommentEventDedup(ev.EventID)
+	ok, derr := wk.svcCtx.Redis.Setnx(dedupKey, "1")
+	if derr != nil {
+		// 去重标记写失败不阻塞主流程，继续执行增量更新（UPDATE 本身幂等，重复执行结果一致）。
+		logx.Errorf("comment-event dedup setnx failed event_id=%s err=%v", ev.EventID, derr)
+	} else if !ok {
+		return nil
+	}
+	if eerr := wk.svcCtx.Redis.Expire(dedupKey, 24*3600); eerr != nil {
+		logx.Errorf("comment-event dedup expire failed event_id=%s err=%v", ev.EventID, eerr)
+	}
+
+	// 按动作类型计算增量：CREATE +1，DELETE -1。
+	var delta int64
+	switch ev.ActionType {
+	case commentEvent.ActionCreate:
+		delta = 1
+	case commentEvent.ActionDelete:
+		delta = -1
+	default:
+		logx.Errorf("comment-event unknown action_type=%s event_id=%s", ev.ActionType, ev.EventID)
+		return nil
+	}
+
+	// 增量更新 feeds.comment_count，SQL 层保证下限为 0（GREATEST(comment_count + delta, 0)）。
+	if uerr := wk.svcCtx.FeedModel.IncrCommentCount(ctx, uint64(ev.FeedID), delta); uerr != nil {
+		logx.Errorf("comment-event IncrCommentCount failed event_id=%s feed_id=%d delta=%d err=%v", ev.EventID, ev.FeedID, delta, uerr)
+		wk.svcCtx.Redis.Del(dedupKey)
+		return uerr
 	}
 	return nil
 }

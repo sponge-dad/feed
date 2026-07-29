@@ -23,7 +23,8 @@ import "github.com/google/uuid"
 */
 
 // TopicCommentEvent 评论事件 Topic，CREATE / DELETE 共用，靠 action_type 区分。
-const TopicCommentEvent = "comment.event"
+// 注意：RocketMQ topic 仅允许 ^[%|a-zA-Z0-9_-]+$，不能含 "."，故用连字符。
+const TopicCommentEvent = "comment-event"
 
 // 事件动作类型。
 const (

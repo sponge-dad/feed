@@ -136,7 +136,7 @@ CREATE TABLE feeds (
     status        TINYINT         NOT NULL DEFAULT 1,       -- 1:正常 2:已删除 3:审核中
     is_vip_feed   TINYINT         NOT NULL DEFAULT 0,       -- 0:普通 1:大V发帖
     like_count    INT UNSIGNED    NOT NULL DEFAULT 0,
-    comment_count INT UNSIGNED    NOT NULL DEFAULT 0,
+    comment_count INT UNSIGNED    NOT NULL DEFAULT 0,       -- 评论数镜像列；由 Feed Worker 消费 comment-event 异步维护（拉取 Comment 服务 BatchGetCommentCount 权威值覆盖），非实时强一致
     collect_count INT UNSIGNED    NOT NULL DEFAULT 0,
     created_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
