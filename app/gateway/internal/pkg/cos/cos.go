@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
+	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/profile"
 	sts "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sts/v20180813"
 	cosSdk "github.com/tencentyun/cos-go-sdk-v5"
 
@@ -28,7 +29,7 @@ type Client struct {
 // New 根据配置构造 COS 客户端，初始化 STS 与签名两个底层客户端。
 func New(conf config.CosConf) (*Client, error) {
 	credential := common.NewCredential(conf.SecretId, conf.SecretKey)
-	stsClient, err := sts.NewClient(credential, conf.Region, nil)
+	stsClient, err := sts.NewClient(credential, conf.Region, profile.NewClientProfile())
 	if err != nil {
 		return nil, fmt.Errorf("init sts client: %w", err)
 	}
