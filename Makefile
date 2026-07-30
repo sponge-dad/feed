@@ -77,6 +77,44 @@ build: ## 编译所有服务（仅编译已实际生成 rpc 骨架的服务，�
 		go build -o $(BUILD_DIR)/gateway ./app/gateway/cmd/api; \
 	fi
 
+# ---------------- 运行服务（后台） ----------------
+LOG_DIR := ./logs
+
+# run：后台启动 5 个 RPC 服务 + 网关。用 setsid 使进程脱离当前 shell 会话，
+# 即使 make 退出 / 终端关闭也不会被杀。日志按服务名写入 $(LOG_DIR)/<svc>.log。
+# 前置：先 make build 生成 ./bin 下二进制；基础设施需已 make up。
+.PHONY: run
+run: ## 后台启动全部 RPC 服务 + 网关（需先 make build，日志见 logs/）
+	@mkdir -p $(LOG_DIR)
+	@for s in $(SERVICES); do \
+		echo "$(GREEN)starting $$s-rpc...$(NC)"; \
+		setsid $(BUILD_DIR)/$$s-rpc -f app/$$s/rpc/etc/$$s.yaml > $(LOG_DIR)/$$s.log 2>&1 < /dev/null & \
+	done
+	@echo "$(GREEN)starting gateway...$(NC)"
+	@setsid $(BUILD_DIR)/gateway -f app/gateway/etc/gateway.yaml > $(LOG_DIR)/gateway.log 2>&1 < /dev/null &
+	@echo "services started -> status: make status | logs: make svclogs"
+
+.PHONY: stop
+stop: ## 停止全部后台运行的服务
+	@for s in $(SERVICES); do pkill -9 -f "$$s-rpc" 2>/dev/null || true; done
+	@pkill -9 -f "bin/gateway" 2>/dev/null || true
+	@echo "services stopped"
+
+.PHONY: restart
+restart: stop run ## 重启全部服务
+
+.PHONY: status
+status: ## 查看服务运行状态与端口占用
+	@ps aux | grep -E "$(BUILD_DIR)/(user|relation|feed|comment|interaction)-rpc|$(BUILD_DIR)/gateway" | grep -v grep || echo "no service running"
+	@echo "--- listening ports ---"
+	@for p in 8080 9001 9002 9003 9004 9005; do \
+		if (exec 3<>/dev/tcp/127.0.0.1/$$p) 2>/dev/null; then echo "$$p OPEN"; exec 3>&-; else echo "$$p free"; fi; \
+	done
+
+.PHONY: svclogs
+svclogs: ## 跟踪全部服务日志（Ctrl+C 退出）
+	@tail -f $(LOG_DIR)/*.log
+
 # ---------------- 测试 ----------------
 .PHONY: test
 test: ## 运行测试

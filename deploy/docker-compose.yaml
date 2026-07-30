@@ -74,7 +74,13 @@ services:
     restart: unless-stopped
     environment:
       ALLOW_NONE_AUTHENTICATION: "yes"
-      ETCD_ADVERTISE_CLIENT_URLS: http://etcd:2379
+      # 关键修复：监听容器内所有网卡（2379），但向客户端"通告"宿主机可达的地址。
+      # 之前通告的是 http://etcd:2379（容器内网 IP，如 172.18.0.7:2379），
+      # 宿主机上的 RPC/Gateway 通过 127.0.0.1:2479 连上 etcd 后，会被重定向去直连
+      # 这个容器内网 IP 而 connection refused，导致服务发现全部失败。
+      # 改成 127.0.0.1:2479 后，客户端始终走宿主机端口映射，可正常发现彼此。
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+      ETCD_ADVERTISE_CLIENT_URLS: http://127.0.0.1:2479
     ports:
       # 宿主机端口改用 2479，避开 2379——这台机器同时是 K8s master 节点，
       # K8s 控制平面自带的 etcd 就占用着宿主机的 2379，会导致端口冲突。

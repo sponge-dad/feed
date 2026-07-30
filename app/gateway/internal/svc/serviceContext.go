@@ -5,6 +5,7 @@ import (
 	commentClient "github.com/sponge-dad/feed/app/comment/rpc/commentClient"
 	feedClient "github.com/sponge-dad/feed/app/feed/rpc/feedclient"
 	"github.com/sponge-dad/feed/app/gateway/internal/config"
+	"github.com/sponge-dad/feed/app/gateway/internal/pkg/cos"
 	interactionClient "github.com/sponge-dad/feed/app/interaction/rpc/interactionClient"
 	relationClient "github.com/sponge-dad/feed/app/relation/rpc/relationclient"
 	userClient "github.com/sponge-dad/feed/app/user/rpc/userClient"
@@ -24,6 +25,9 @@ type ServiceContext struct {
 
 	// IPResolver 请求 IP -> 城市 的解析器（同城流、发帖 IP 属地用）。
 	IPResolver ipx.Resolver
+
+	// Cos 腾讯云 COS 客户端（STS 临时凭证签发 / 下载签名 URL）。
+	Cos *cos.Client
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -44,5 +48,6 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		CommentRpc:     commentClient.NewComment(zrpc.MustNewClient(c.CommentRpc)),
 		InteractionRpc: interactionClient.NewInteraction(zrpc.MustNewClient(c.InteractionRpc)),
 		IPResolver:     ipx.NewStaticResolver(defaultCity),
+		Cos:            cos.MustNew(c.Cos),
 	}
 }
