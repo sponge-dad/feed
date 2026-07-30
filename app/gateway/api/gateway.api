@@ -39,6 +39,9 @@ service gateway {
 
 	@handler uploadToken
 	post /upload/token (UploadTokenReq) returns (UploadTokenResp)
+
+	@handler signUrl
+	post /upload/sign-url (SignUrlReq) returns (SignUrlResp)
 }
 
 // Relation 模块（全部需登录）：关注/取关/关注列表/粉丝列表/是否关注

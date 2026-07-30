@@ -36,6 +36,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 		[]rest.Route{
 			{
 				Method:  http.MethodPost,
+				Path:    "/upload/sign-url",
+				Handler: signUrlHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
 				Path:    "/upload/token",
 				Handler: uploadTokenHandler(serverCtx),
 			},

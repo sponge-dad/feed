@@ -292,6 +292,16 @@ type RelationUserList struct {
 	HasMore  bool           `json:"has_more"`
 }
 
+type SignUrlReq struct {
+	FileKey  string `json:"file_key" validate:"required"` // 对象键，须为用户本人资源
+	Duration int64  `json:"duration,optional"`            // 签名有效期(秒)，<=0 时取配置默认
+}
+
+type SignUrlResp struct {
+	SignedURL string `json:"signed_url"` // 临时可访问的私有桶对象地址
+	ExpiredAt int64  `json:"expired_at"` // 签名过期时间（Unix 秒）
+}
+
 type TimelineReq struct {
 	Type     string `form:"type,options=recommend|follow|city,default=recommend"`
 	Cursor   string `form:"cursor,optional"`

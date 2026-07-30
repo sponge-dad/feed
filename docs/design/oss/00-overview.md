@@ -238,12 +238,12 @@ presigned, err := cosClient.ObjectGetSignature(ctx, key, time.Duration(signDur)*
 
 ## 8. 演进与 TODO
 
-- [ ] `UploadTokenLogic` 占位实现需按 §6.4 落地（接 STS SDK）。
-- [ ] 新增下载签名 URL 接口（头像/视频播放）。
+- [x] `UploadTokenLogic` 占位实现需按 §6.4 落地（接 STS SDK）。
+- [x] 新增下载签名 URL 接口（头像/视频播放）。
 - [ ] 视频/大图转码、缩略图、截图：引入 COS 数据万象（CI），上传完成后异步处理，输出多分辨率/多尺寸 URL。
 - [ ] 高频读场景接入 CDN + 时间戳防盗链，降低签名 URL 计算开销。
 - [ ] 孤儿文件清理：定期扫描 COS 前缀，清理未被任何业务记录引用的文件。
-- [ ] 修正 `architecture.md` 中 "Object Storage (MinIO)" 的描述，统一为腾讯云 COS（见 §关联文档）。
+- [x] 修正 `architecture.md` 中 "Object Storage (MinIO)" 的描述，统一为腾讯云 COS（见 §关联文档）。
 
 ## 关联文档
 

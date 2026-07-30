@@ -87,3 +87,16 @@ type UploadTokenResp {
     FileKey     string            `json:"file_key"`
     FileURL     string            `json:"file_url"`
 }
+
+// 下载签名 URL 请求：为私有桶对象生成临时可访问地址。
+// FileKey 须为用户本人资源（网关校验归属前缀），杜绝越权签名他人文件。
+type SignUrlReq {
+    FileKey  string `json:"file_key" validate:"required"` // 对象键，须为用户本人资源
+    Duration int64  `json:"duration,optional"`            // 签名有效期(秒)，<=0 时取配置默认
+}
+
+// 下载签名 URL 响应
+type SignUrlResp {
+    SignedURL string `json:"signed_url"` // 临时可访问的私有桶对象地址
+    ExpiredAt int64  `json:"expired_at"` // 签名过期时间（Unix 秒）
+}
