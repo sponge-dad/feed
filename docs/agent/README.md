@@ -12,6 +12,7 @@
 | [go-zero-api-writing-guide.md](./go-zero-api-writing-guide.md) | go-zero 网关 `.api` 文件编写规范（类型、路由、鉴权、生成规则） | 新增或修改 `app/gateway/api/` 下 api 文件前 |
 | [gateway-standard.md](./gateway-standard.md) | Gateway 服务开发标准手册（目录结构、API、配置、ServiceContext、Handler/Logic、中间件、鉴权、错误处理、安全、代码生成、测试部署） | 新增或修改 Gateway 服务（`app/gateway/`）代码前 |
 | [doc-writing-guide.md](./doc-writing-guide.md) | 文档编写规范（全仓库 `docs/` 下文档的生成、修订与组织统一标准） | 新增或修订 `docs/` 下任何文档前 |
+| [bug-summary-sop.md](./bug-summary-sop.md) | Bug 总结文档编写 SOP（排查流程 + 产出模板，归档于 `docs/problem/`） | 用户要求「总结 / 记录某个 bug」并产出文档前 |
 
 ## 使用原则
 
