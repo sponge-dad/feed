@@ -523,7 +523,7 @@ function handle(method: string, path: string, params: Record<string, unknown>, b
     return { success: true, follower_count: t?.follower_count ?? 0 };
   }
   if (path === '/relations/follow' && method === 'DELETE') {
-    const tid = String(body.followee_id);
+    const tid = String(params.followee_id ?? body.followee_id);
     followingSet.delete(tid);
     const me = users.get(uid)!;
     const t = users.get(tid);
