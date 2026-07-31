@@ -16,8 +16,12 @@ type FollowResp {
 }
 
 // 取关用户
+// 注意：路由为 DELETE /relations/follow，按 REST 语义不带请求体，
+//      故只使用 form tag（query 传参）。若同时保留 json tag，
+//      go-zero 的 httpx.Parse 会先后执行 ParseForm 与 ParseJsonBody，
+//      两个 required tag 必有一次落空，导致参数解析失败。
 type UnfollowReq {
-    FolloweeID int64 `json:"followee_id" validate:"required"`
+    FolloweeID int64 `form:"followee_id" validate:"required"`
 }
 
 type UnfollowResp {

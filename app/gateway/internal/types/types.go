@@ -318,7 +318,7 @@ type UncollectFeedResp struct {
 }
 
 type UnfollowReq struct {
-	FolloweeID int64 `json:"followee_id" validate:"required"`
+	FolloweeID int64 `form:"followee_id" validate:"required"`
 }
 
 type UnfollowResp struct {
