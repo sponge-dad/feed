@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { getTimeline } from '@/api/feed';
 import type { FeedCard, TimelineType } from '@/types/feed';
 import { useCursorList, type CursorResp } from '@/hooks/useCursorList';
@@ -35,6 +36,7 @@ export default function HomePage() {
         ))}
       </div>
       <FeedCardGrid items={items} loading={loading} hasMore={hasMore} sentinelRef={sentinelRef} />
+      <Link to="/publish" className="fab" aria-label="发布帖子">+</Link>
     </>
   );
 }

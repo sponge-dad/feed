@@ -111,32 +111,33 @@ export default function PublishPage() {
   };
 
   return (
-    <div className="card" style={{ maxWidth: 560, margin: '24px auto' }}>
-      <h2 style={{ fontSize: 18, marginBottom: 16 }}>发布帖子</h2>
-      <div className="field" style={{ marginBottom: 12 }}>
+    <div className="card publish-card">
+      <h2 className="section-title" style={{ marginBottom: 'var(--space-4)' }}>发布帖子</h2>
+      <div className="field" style={{ marginBottom: 'var(--space-3)' }}>
         <input
-          style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8 }}
+          className="input"
           placeholder="标题（选填）"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
       </div>
-      <div className="field" style={{ marginBottom: 12 }}>
+      <div className="field" style={{ marginBottom: 'var(--space-3)' }}>
         <textarea
-          style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8, minHeight: 100, resize: 'vertical' }}
+          className="textarea"
+          style={{ minHeight: 100 }}
           placeholder="说点什么…（必填）"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
       </div>
-      <div className="field" style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 13, color: '#888', marginBottom: 6 }}>媒体（图片或视频）</div>
+      <div className="field" style={{ marginBottom: 'var(--space-3)' }}>
+        <div className="text-muted" style={{ marginBottom: 'var(--space-2)' }}>媒体（图片或视频）</div>
         <input type="file" accept="image/*,video/*" multiple onChange={onPickMedia} disabled={uploading} />
-        {uploading && <div style={{ fontSize: 13, color: '#888', marginTop: 6 }}>上传中… {progress}%</div>}
+        {uploading && <div className="text-muted" style={{ marginTop: 'var(--space-2)' }}>上传中… {progress}%</div>}
         <div className="upload-preview">
           {media.map((m) =>
             m.kind === 'video' ? (
-              <video key={m.signed} src={m.signed} controls preload="metadata" style={{ maxWidth: '100%', borderRadius: 8 }} />
+              <video key={m.signed} src={m.signed} controls preload="metadata" style={{ maxWidth: '100%', borderRadius: 'var(--radius-md)' }} />
             ) : (
               <img key={m.signed} src={m.signed} alt="" />
             ),
@@ -145,10 +146,10 @@ export default function PublishPage() {
       </div>
 
       {isVideo && (
-        <div className="field" style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 13, color: '#888', marginBottom: 6 }}>视频封面（必填，图片）</div>
+        <div className="field" style={{ marginBottom: 'var(--space-3)' }}>
+          <div className="text-muted" style={{ marginBottom: 'var(--space-2)' }}>视频封面（必填，图片）</div>
           <input type="file" accept="image/*" onChange={onPickCover} disabled={uploading} />
-          {cover && <img src={cover.signed} alt="封面预览" style={{ maxWidth: 160, borderRadius: 8, marginTop: 6 }} />}
+          {cover && <img src={cover.signed} alt="封面预览" className="cover-preview" />}
         </div>
       )}
 

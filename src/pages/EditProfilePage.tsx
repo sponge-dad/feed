@@ -101,14 +101,14 @@ export default function EditProfilePage() {
       </div>
       <div className="field">
         <label>个人简介</label>
-        <textarea
-          value={bio}
-          onChange={(e) => setBio(e.target.value)}
-          rows={3}
-          maxLength={200}
-          placeholder="介绍一下自己…"
-          style={{ resize: 'vertical' }}
-        />
+          <textarea
+            className="textarea"
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            rows={3}
+            maxLength={200}
+            placeholder="介绍一下自己…"
+          />
       </div>
       <div className="field">
         <label>城市</label>

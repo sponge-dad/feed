@@ -45,8 +45,8 @@ export default function LoginPage() {
       <button className="btn block" disabled={submitting}>
         {submitting ? '登录中…' : '登录'}
       </button>
-      <p style={{ marginTop: 14, fontSize: 13, textAlign: 'center', color: '#888' }}>
-        没有账号？<Link to="/register" style={{ color: '#e5484d' }}>去注册</Link>
+      <p className="form-hint">
+        没有账号？<Link to="/register" className="text-brand">去注册</Link>
       </p>
     </form>
   );

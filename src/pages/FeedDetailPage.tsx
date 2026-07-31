@@ -127,7 +127,7 @@ export default function FeedDetailPage() {
     <>
       <div className="card">
         {/* 作者栏 */}
-        <div className="user-row" style={{ borderBottom: 'none', padding: 0 }}>
+        <div className="user-row flush">
           <Link to={`/users/${feed.author.id}`}>
             <Avatar src={feed.author.avatar} size={40} />
           </Link>
@@ -152,8 +152,8 @@ export default function FeedDetailPage() {
           )}
         </div>
 
-        <h2 style={{ margin: '12px 0 8px', fontSize: 18 }}>{feed.title}</h2>
-        <p style={{ fontSize: 14, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{feed.description}</p>
+        <h2 className="section-title">{feed.title}</h2>
+        <p className="feed-desc">{feed.description}</p>
 
         {/* 媒体：feed_type 语义待后端确认，暂按 URL/类型猜测视频 */}
         <div className="media-grid">
@@ -179,7 +179,7 @@ export default function FeedDetailPage() {
           >
             ⭐ 收藏 {feed.stats.collect_count}
           </button>
-          <span style={{ alignSelf: 'center', fontSize: 13, color: '#888' }}>
+          <span className="text-muted" style={{ alignSelf: 'center' }}>
             💬 评论 {feed.stats.comment_count}
           </span>
         </div>
@@ -188,16 +188,22 @@ export default function FeedDetailPage() {
       {/* 评论输入 */}
       <div className="card">
         {replyTarget && (
-          <div style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>
+          <div className="text-muted" style={{ marginBottom: 'var(--space-2)' }}>
             回复 @{replyTarget.nickname}{' '}
-            <span style={{ cursor: 'pointer', color: '#e5484d' }} onClick={() => setReplyTarget(null)}>
+            <button
+              type="button"
+              className="link-action-btn"
+              style={{ color: 'var(--color-brand)' }}
+              onClick={() => setReplyTarget(null)}
+            >
               取消
-            </span>
+            </button>
           </div>
         )}
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
           <input
-            style={{ flex: 1, padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8 }}
+            className="input"
+            style={{ flex: 1 }}
             placeholder={replyTarget ? `回复 @${replyTarget.nickname}` : '说点什么…'}
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
@@ -217,10 +223,15 @@ export default function FeedDetailPage() {
               <div>{c.content}</div>
               <div className="comment-actions">
                 <span className="time">{formatRelative(c.created_at)}</span>
-                <span className={c.is_liked ? 'liked' : ''} onClick={() => toggleCommentLike(c)}>
+                <button
+                  type="button"
+                  className={c.is_liked ? 'liked' : ''}
+                  onClick={() => toggleCommentLike(c)}
+                >
                   {c.is_liked ? '❤️' : '🤍'} {c.like_count}
-                </span>
-                <span
+                </button>
+                <button
+                  type="button"
                   onClick={() =>
                     setReplyTarget({
                       rootId: c.id,
@@ -231,9 +242,11 @@ export default function FeedDetailPage() {
                   }
                 >
                   回复
-                </span>
+                </button>
                 {me?.id === c.author.id && (
-                  <span onClick={() => onDeleteComment(c.id)}>删除</span>
+                  <button type="button" onClick={() => onDeleteComment(c.id)}>
+                    删除
+                  </button>
                 )}
               </div>
 
@@ -241,15 +254,16 @@ export default function FeedDetailPage() {
               {(expandedReplies[c.id] || c.sub_replies || []).length > 0 && (
                 <div className="sub-replies">
                   {(expandedReplies[c.id] || c.sub_replies).map((r) => (
-                    <div key={r.id} style={{ fontSize: 13, padding: '4px 0' }}>
+                    <div key={r.id} className="text-muted" style={{ padding: 'var(--space-1) 0' }}>
                       <span className="nick">{r.author.nickname}</span>
                       {r.reply_user?.id ? (
                         <span className="nick"> 回复 {r.reply_user.nickname}</span>
                       ) : null}
                       ：{r.content}
-                      <span
-                        className="nick"
-                        style={{ marginLeft: 8, cursor: 'pointer' }}
+                      <button
+                        type="button"
+                        className="link-action-btn"
+                        style={{ marginLeft: 'var(--space-2)' }}
                         onClick={() =>
                           setReplyTarget({
                             rootId: c.id,
@@ -260,16 +274,18 @@ export default function FeedDetailPage() {
                         }
                       >
                         回复
-                      </span>
+                      </button>
                     </div>
                   ))}
                   {!expandedReplies[c.id] && c.reply_count > (c.sub_replies?.length || 0) && (
-                    <div
-                      style={{ fontSize: 12, color: '#e5484d', cursor: 'pointer', marginTop: 4 }}
+                    <button
+                      type="button"
+                      className="link-action-btn"
+                      style={{ marginTop: 'var(--space-1)', color: 'var(--color-brand)' }}
                       onClick={() => loadReplies(c.id)}
                     >
                       展开全部 {c.reply_count} 条回复
-                    </div>
+                    </button>
                   )}
                 </div>
               )}

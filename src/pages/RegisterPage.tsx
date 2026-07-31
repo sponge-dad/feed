@@ -49,8 +49,8 @@ export default function RegisterPage() {
       <button className="btn block" disabled={submitting}>
         {submitting ? '注册中…' : '注册'}
       </button>
-      <p style={{ marginTop: 14, fontSize: 13, textAlign: 'center', color: '#888' }}>
-        已有账号？<Link to="/login" style={{ color: '#e5484d' }}>去登录</Link>
+      <p className="form-hint">
+        已有账号？<Link to="/login" className="text-brand">去登录</Link>
       </p>
     </form>
   );

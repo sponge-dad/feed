@@ -44,10 +44,10 @@ export default function ProfilePage() {
   return (
     <>
       <div className="card">
-        <div className="user-row" style={{ borderBottom: 'none', padding: 0 }}>
+        <div className="user-row flush">
           <Avatar src={user.avatar} size={64} />
           <div className="info">
-            <h2 style={{ fontSize: 18 }}>{user.nickname}</h2>
+            <h2 className="section-title">{user.nickname}</h2>
             <div className="bio">@{user.username}{user.city_name ? ` · ${user.city_name}` : ''}</div>
           </div>
           {me && me.id === user.id ? (
@@ -65,7 +65,7 @@ export default function ProfilePage() {
             )
           )}
         </div>
-        {user.bio && <p style={{ fontSize: 14, color: '#555', marginTop: 10 }}>{user.bio}</p>}
+        {user.bio && <p className="text-secondary" style={{ marginTop: 'var(--space-3)' }}>{user.bio}</p>}
         <div className="stats-row">
           <Link className="stat" to={`/users/${user.id}/relations/following`}>
             <div className="num">{user.following_count}</div>
