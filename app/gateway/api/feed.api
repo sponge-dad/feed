@@ -112,12 +112,12 @@ type FeedDetail {
 type TimelineReq {
     Type     string `form:"type,options=recommend|follow|city,default=recommend"`
     Cursor   string `form:"cursor,optional"`
-    PageSize int64  `form:"page_size,default=10"`
+    PageSize int64  `form:"page_size,default=15"`
 }
 
 // 个人主页帖子列表
 type UserFeedsReq {
     UserID   int64  `path:"userId"`
     Cursor   string `form:"cursor,optional"`
-    PageSize int64  `form:"page_size,default=10"`
+    PageSize int64  `form:"page_size,default=15"`
 }

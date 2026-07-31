@@ -305,7 +305,7 @@ type SignUrlResp struct {
 type TimelineReq struct {
 	Type     string `form:"type,options=recommend|follow|city,default=recommend"`
 	Cursor   string `form:"cursor,optional"`
-	PageSize int64  `form:"page_size,default=10"`
+	PageSize int64  `form:"page_size,default=15"`
 }
 
 type UncollectFeedReq struct {
@@ -400,5 +400,5 @@ type UserDetail struct {
 type UserFeedsReq struct {
 	UserID   int64  `path:"userId"`
 	Cursor   string `form:"cursor,optional"`
-	PageSize int64  `form:"page_size,default=10"`
+	PageSize int64  `form:"page_size,default=15"`
 }
