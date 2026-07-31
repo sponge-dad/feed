@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -28,6 +30,17 @@ type Client struct {
 
 // New 根据配置构造 COS 客户端，初始化 STS 与签名两个底层客户端。
 func New(conf config.CosConf) (*Client, error) {
+	// go-zero v1.7.3 的 conf.Load 不会替换 yaml 中的 ${ENV} 占位符，
+	// 这里兜底用 os.Expand 解析，确保密钥等配置可经环境变量注入（与 uptest 行为一致）。
+	conf.SecretId = os.Expand(conf.SecretId, os.Getenv)
+	conf.SecretKey = os.Expand(conf.SecretKey, os.Getenv)
+	conf.Bucket = os.Expand(conf.Bucket, os.Getenv)
+	conf.Region = os.Expand(conf.Region, os.Getenv)
+	conf.Env = os.Expand(conf.Env, os.Getenv)
+	conf.BaseURL = os.Expand(conf.BaseURL, os.Getenv)
+	if conf.SecretId == "" || conf.SecretKey == "" {
+		return nil, fmt.Errorf("COS 配置缺失：SecretId/SecretKey 未设置（请通过环境变量注入）")
+	}
 	credential := common.NewCredential(conf.SecretId, conf.SecretKey)
 	stsClient, err := sts.NewClient(credential, conf.Region, profile.NewClientProfile())
 	if err != nil {
@@ -100,6 +113,47 @@ func (c *Client) SignGet(key string, dur int64) (string, error) {
 		return "", fmt.Errorf("cos GetPresignedURL: %w", err)
 	}
 	return u.String(), nil
+}
+
+// Exists 判断对象是否已上传到 COS（使用永久密钥 HEAD）。
+// 用于业务写入前校验客户端声明的资源确实已落盘，避免存储失效/未上传的引用。
+func (c *Client) Exists(key string) (bool, error) {
+	ok, err := c.cosClient.Object.IsExist(context.Background(), key)
+	if err != nil {
+		return false, err
+	}
+	return ok, nil
+}
+
+// cosKeyRe 限制 COS 对象 key 仅含安全字符，防止路径穿越与非法字符注入。
+var cosKeyRe = regexp.MustCompile(`^[A-Za-z0-9._\-/]+$`)
+
+// SignURLFromRaw 将存储的 COS 对象地址（完整 URL 或 file_key）转换为带签名的临时访问地址。
+// 入参可以是：本桶完整 URL（含或不含签名参数）、或裸 file_key；非本桶外链原样返回。空串返回空串。
+func (c *Client) SignURLFromRaw(raw string, dur int64) (string, error) {
+	if raw == "" {
+		return "", nil
+	}
+	base := strings.TrimSuffix(c.conf.BaseURL, "/")
+	if strings.HasPrefix(raw, base+"/") {
+		// 兼容回传的签名 URL（带 ? 查询参数）。
+		key := raw
+		if i := strings.IndexByte(key, '?'); i >= 0 {
+			key = key[:i]
+		}
+		key = strings.TrimPrefix(key, base+"/")
+		// 防止路径穿越（如 ../../etc/passwd）与非法字符注入。
+		if !cosKeyRe.MatchString(key) {
+			return "", fmt.Errorf("invalid cos key: %s", key)
+		}
+		return c.SignGet(key, dur)
+	}
+	// 完整外链（历史数据），原样返回。
+	if strings.Contains(raw, "://") {
+		return raw, nil
+	}
+	// 否则按裸 file_key 处理（历史仅存 key 的数据）。
+	return c.SignGet(raw, dur)
 }
 
 // Credential 是 STS 临时凭证的扁平结构，便于直接映射给 UploadTokenResp。

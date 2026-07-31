@@ -12,6 +12,7 @@ import (
 	"context"
 
 	feedClient "github.com/sponge-dad/feed/app/feed/rpc/feedclient"
+	gwlogic "github.com/sponge-dad/feed/app/gateway/internal/logic"
 	"github.com/sponge-dad/feed/app/gateway/internal/middleware"
 	"github.com/sponge-dad/feed/app/gateway/internal/svc"
 	"github.com/sponge-dad/feed/app/gateway/internal/types"
@@ -60,13 +61,19 @@ func (l *GetFeedDetailLogic) GetFeedDetail(req *types.GetFeedDetailReq) (*types.
 		return nil, errorx.New(errorx.FeedNotFound)
 	}
 
+	// 私有桶媒体地址统一签名后下发，客户端可直接访问。
+	signedMedia := make([]string, 0, len(f.MediaUrls))
+	for _, u := range f.MediaUrls {
+		signedMedia = append(signedMedia, gwlogic.SignCosRef(l.svcCtx, u))
+	}
+
 	detail := &types.FeedDetail{
 		ID:          f.FeedId,
 		FeedType:    f.FeedType,
 		Title:       f.Title,
 		Description: f.Description,
-		MediaUrls:   f.MediaUrls,
-		CoverURL:    f.CoverUrl,
+		MediaUrls:   signedMedia,
+		CoverURL:    gwlogic.SignCosRef(l.svcCtx, f.CoverUrl),
 		CityName:    f.CityName,
 		IPLocation:  f.IpLocation,
 		CreatedAt:   f.CreatedAt,
@@ -89,7 +96,7 @@ func (l *GetFeedDetailLogic) GetFeedDetail(req *types.GetFeedDetailReq) (*types.
 		if resp.User != nil {
 			detail.Author.ID = resp.User.Id
 			detail.Author.Nickname = resp.User.Nickname
-			detail.Author.Avatar = resp.User.Avatar
+			detail.Author.Avatar = gwlogic.SignCosRef(l.svcCtx, resp.User.Avatar)
 		}
 		return nil
 	})

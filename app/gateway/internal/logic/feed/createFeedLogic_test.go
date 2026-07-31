@@ -31,25 +31,68 @@ func TestCreateFeed_Success_ReturnsMappedFeed(t *testing.T) {
 			if in.AuthorId != 5 {
 				t.Errorf("AuthorId mapping mismatch: %d", in.AuthorId)
 			}
-			if !slices.Contains(in.MediaUrls, "u1.jpg") {
+			const wantMedia = "https://feed-test-bucket.cos.ap-guangzhou.myqcloud.com/dev/image/5/20260101/123.png"
+			if !slices.Contains(in.MediaUrls, wantMedia) {
 				t.Errorf("MediaUrls mapping mismatch: %v", in.MediaUrls)
+			}
+			const wantCover = "https://feed-test-bucket.cos.ap-guangzhou.myqcloud.com/dev/cover/5/20260101/c.png"
+			if in.CoverUrl != wantCover {
+				t.Errorf("CoverUrl mapping mismatch: %v", in.CoverUrl)
 			}
 			if in.IpLocation == "" {
 				t.Error("IpLocation should be resolved from client ip")
 			}
-			return &feedClient.CreateFeedResp{Feed: &feedClient.FeedInfo{FeedId: 99, AuthorId: 5}}, nil
+			return &feedClient.CreateFeedResp{
+				Feed: &feedClient.FeedInfo{
+					FeedId:    99,
+					AuthorId:  5,
+					MediaUrls: []string{"dev/image/5/20260101/123.png"},
+					CoverUrl:  "",
+				},
+			}, nil
 		})
 
 	resp, err := NewCreateFeedLogic(
 		ipx.WithClientIP(middleware.WithUserID(context.Background(), 5), "1.2.3.4"), svcCtx,
 	).CreateFeed(&types.CreateFeedReq{
-		FeedType: 1, Title: "t", Description: "d", MediaUrls: []string{"u1.jpg"}, CoverURL: "c",
+		FeedType: 1, Title: "t", Description: "d",
+		MediaUrls: []string{"dev/image/5/20260101/123.png"}, CoverURL: "dev/cover/5/20260101/c.png",
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if resp.Feed.ID != 99 {
 		t.Errorf("feed id mapping mismatch: %d", resp.Feed.ID)
+	}
+}
+
+// TestCreateFeed_InvalidMedia_ReturnsForbidden 验证引用非本人/非法 COS 资源被拒绝。
+func TestCreateFeed_InvalidMedia_ReturnsForbidden(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	svcCtx := mocks.NewTestServiceContext(ctrl)
+
+	_, err := NewCreateFeedLogic(middleware.WithUserID(context.Background(), 5), svcCtx).CreateFeed(&types.CreateFeedReq{
+		FeedType: 1, MediaUrls: []string{"u1.jpg"},
+	})
+	ce, ok := errorx.TryParse(err)
+	if !ok || ce.Code != errorx.Forbidden {
+		t.Fatalf("expected Forbidden, got %v", err)
+	}
+}
+
+// TestCreateFeed_MediaTypeMismatch_ReturnsParamError 验证媒体类型与帖子类型不匹配被拒绝。
+func TestCreateFeed_MediaTypeMismatch_ReturnsParamError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	svcCtx := mocks.NewTestServiceContext(ctrl)
+
+	_, err := NewCreateFeedLogic(middleware.WithUserID(context.Background(), 5), svcCtx).CreateFeed(&types.CreateFeedReq{
+		FeedType: 1, MediaUrls: []string{"dev/video/5/20260101/123.mp4"},
+	})
+	ce, ok := errorx.TryParse(err)
+	if !ok || ce.Code != errorx.ParamError {
+		t.Fatalf("expected ParamError, got %v", err)
 	}
 }
 

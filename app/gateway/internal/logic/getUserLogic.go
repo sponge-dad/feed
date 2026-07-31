@@ -36,7 +36,7 @@ func (l *GetUserLogic) GetUser(req *types.GetUserReq) (*types.UserDetail, error)
 		return nil, err
 	}
 
-	detail := userInfoToDetail(userResp.User)
+	detail := userInfoToDetail(l.svcCtx, userResp.User)
 	if detail == nil {
 		return nil, nil
 	}

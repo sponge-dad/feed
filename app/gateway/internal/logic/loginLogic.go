@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/sponge-dad/feed/app/gateway/internal/svc"
 	"github.com/sponge-dad/feed/app/gateway/internal/types"
@@ -33,8 +34,12 @@ func (l *LoginLogic) Login(req *types.LoginReq) (*types.LoginResp, error) {
 		return nil, err
 	}
 
+	user := userInfoToUser(l.svcCtx, rpcResp.User)
+	if user == nil {
+		return nil, fmt.Errorf("user info is nil after login")
+	}
 	return &types.LoginResp{
-		User:  *userInfoToUser(rpcResp.User),
+		User:  *user,
 		Token: rpcResp.Token,
 	}, nil
 }

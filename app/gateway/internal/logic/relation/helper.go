@@ -7,6 +7,7 @@ package relation
 import (
 	"context"
 
+	gwlogic "github.com/sponge-dad/feed/app/gateway/internal/logic"
 	"github.com/sponge-dad/feed/app/gateway/internal/svc"
 	"github.com/sponge-dad/feed/app/gateway/internal/types"
 	relationClient "github.com/sponge-dad/feed/app/relation/rpc/relationclient"
@@ -78,7 +79,7 @@ func buildRelationUsers(ctx context.Context, svcCtx *svc.ServiceContext, viewerI
 		list = append(list, types.RelationUser{
 			ID:          u.Id,
 			Nickname:    u.Nickname,
-			Avatar:      u.Avatar,
+			Avatar:      gwlogic.SignCosRef(svcCtx, u.Avatar),
 			Bio:         "", // UserBrief 不含 bio，暂返回空串
 			IsFollowing: followMap[id],
 		})

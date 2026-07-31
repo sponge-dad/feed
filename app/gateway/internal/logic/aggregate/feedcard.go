@@ -11,6 +11,7 @@ import (
 	"strconv"
 
 	feedClient "github.com/sponge-dad/feed/app/feed/rpc/feedclient"
+	gwlogic "github.com/sponge-dad/feed/app/gateway/internal/logic"
 	"github.com/sponge-dad/feed/app/gateway/internal/svc"
 	"github.com/sponge-dad/feed/app/gateway/internal/types"
 	interactionClient "github.com/sponge-dad/feed/app/interaction/rpc/interactionClient"
@@ -178,11 +179,11 @@ func BuildFeedCards(ctx context.Context, svcCtx *svc.ServiceContext, viewerID in
 			ID:       it.FeedID,
 			FeedType: it.FeedType,
 			Title:    it.Title,
-			CoverURL: it.CoverURL,
+			CoverURL: gwlogic.SignCosRef(svcCtx, it.CoverURL),
 			Author: types.FeedAuthor{
 				ID:       author.Id,
 				Nickname: author.Nickname,
-				Avatar:   author.Avatar,
+				Avatar:   gwlogic.SignCosRef(svcCtx, author.Avatar),
 			},
 			Stats: types.FeedStatsInfo{
 				LikeCount:    it.LikeCount,

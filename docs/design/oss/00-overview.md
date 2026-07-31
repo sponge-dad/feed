@@ -211,7 +211,14 @@ func (l *UploadTokenLogic) UploadToken(req *types.UploadTokenReq) (*types.Upload
 
 ### 6.5 下载签名 URL 生成
 
-读路径（如头像、视频播放）由网关提供独立接口（或聚合层）生成临时签名 URL，避免把私有桶文件直接暴露：
+读路径（如头像、视频播放、Feed 媒体）不把私有桶原始地址直接暴露给客户端，而是由**网关聚合层统一生成临时签名 URL**后下发：
+
+- 头像：`userInfoToDetail` / `userInfoToUser`（getMe / getUser / login / register / updateMe 响应）。
+- Feed 媒体与封面：`getFeedDetail` 与列表卡片 `BuildFeedCards`（timeline / userFeeds / 列表）。
+- 关系列表头像：`relation` 聚合辅助 `buildRelationUsers`（关注/粉丝列表）。
+- 独立按需签名接口：`SignUrl`（`POST /cos/sign`）供前端对已持有 `file_key` 的对象临时签名。
+
+统一实现：`logic.SignCosRef(svcCtx, raw)` → `cos.Client.SignURLFromRaw(raw, dur)`，对裸 `file_key`、本桶完整 URL、带签名参数的回传 URL 均可处理；非本桶外链原样透传；`svcCtx.Cos` 为空时降级为原值（单测/降级场景）。
 
 ```go
 // 使用 cos-go-sdk-v5 生成 GET 预签名 URL
@@ -227,7 +234,7 @@ presigned, err := cosClient.ObjectGetSignature(ctx, key, time.Duration(signDur)*
 - `file_key` 由服务端生成，客户端不可指定；`uid` 取自登录态而非入参。
 - 扩展名/文件类型白名单；视频限制大小上限（如 200MB），图片限制（如 20MB）。
 - 密钥仅来自环境变量；含密钥的 YAML 不入库（`.gitignore` 排除）。
-- 上传后建议做**服务端校验**：可选 COS 上传回调，或在业务写入时校验 URL 归属前缀，防止客户端伪造他人 URL。
+- 写入时做**服务端校验**（已实现，`logic.CanonicalizeCosRef`）：业务写入前校验资源 URL 归属前缀（`{env}/{biz}/{uid}/...`，复用 `ownsFileKey`）确保是本人资源；并用永久密钥 `HEAD` 校验对象已真实上传（防失效/未上传引用）；拒绝任意外部链接。校验失败返回 `Forbidden` / `ParamError`。`svcCtx.Cos` 为空时跳过存在性校验（单测场景）。
 - 防刷：对 `/upload/token` 做用户级限流（网关已有限流能力）。
 
 ## 7. 缓存与一致性
@@ -240,6 +247,8 @@ presigned, err := cosClient.ObjectGetSignature(ctx, key, time.Duration(signDur)*
 
 - [x] `UploadTokenLogic` 占位实现需按 §6.4 落地（接 STS SDK）。
 - [x] 新增下载签名 URL 接口（头像/视频播放）。
+- [x] 读路径在聚合层统一签名（getMe/getUser/getFeedDetail/列表卡片/关系列表头像），私有桶地址不再裸下发。
+- [x] 写路径服务端校验资源归属与存在性（CanonicalizeCosRef），防止引用他人或失效资源。
 - [ ] 视频/大图转码、缩略图、截图：引入 COS 数据万象（CI），上传完成后异步处理，输出多分辨率/多尺寸 URL。
 - [ ] 高频读场景接入 CDN + 时间戳防盗链，降低签名 URL 计算开销。
 - [ ] 孤儿文件清理：定期扫描 COS 前缀，清理未被任何业务记录引用的文件。

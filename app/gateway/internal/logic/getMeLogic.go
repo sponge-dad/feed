@@ -38,5 +38,5 @@ func (l *GetMeLogic) GetMe() (*types.UserDetail, error) {
 		return nil, err
 	}
 
-	return userInfoToDetail(userResp.User), nil
+	return userInfoToDetail(l.svcCtx, userResp.User), nil
 }

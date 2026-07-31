@@ -46,6 +46,10 @@ func zAddTrim(rdb *redis.Redis, key string, score float64, member int64, cap int
 	if err := zAdd(rdb, key, score, member); err != nil {
 		return err
 	}
+	// ZREMRANGEBYRANK key start stop 用于按照集合成员从小到大顺序删除从 start 到 stop 的成员。
+	// 因为是时间流，所以分数小的成员更旧，start=0 表示删除第 0 条，stop=-(cap+1) 表示删除倒数第 (cap+1) 条。
+	// start=0 stop=-(cap+1) 表示删除第 0 条到倒数第 (cap+1) 条，即删除最旧数据。
+	// 这样剩下的元素数量就是 cap。
 	_, err := rdb.Zremrangebyrank(key, 0, int64(-(cap + 1)))
 	return err
 }
@@ -91,7 +95,7 @@ func (wk *Worker) handleFeedCreate(ctx context.Context, msg *red.MessageExt) err
 	scoreSec := float64(ev.CreatedAt / 1000)
 	rdb := wk.svcCtx.Redis
 
-	// 1. 作者 outbox：普通用户与大V均写，供拉模式及个人主页使用。
+	// 1. 作者 outbox：普通用户与大V均写，供拉模式及个人主页使用。（outbox中的旧数据会被删除）
 	if err := zAddTrim(rdb, keys.Outbox(ev.UserID), scoreSec, ev.FeedID, outboxCap); err != nil {
 		return err
 	}
