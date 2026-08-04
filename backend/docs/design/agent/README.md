@@ -17,14 +17,16 @@
 | [06-backend-gaps.md](./06-backend-gaps.md) | 后端扩展清单：`feeds` 表扩列、`UpdateFeed` RPC、轻量 stats 服务（SQL/proto 草案） |
 | [07-observability.md](./07-observability.md) | 可观测性：工具调用留痕、run 追踪、token 成本统计、幻觉校验 |
 | [08-api.md](./08-api.md) | Agent 对外 HTTP REST 接口、DeepSeek（OpenAI 兼容）配置、鉴权设计 |
+| [09-product-requirements.md](./09-product-requirements.md) | 补充 FeedMind 的运营 Copilot 需求、后端产品化能力、分期路线与验收标准 |
 
 ## 阅读顺序
 
 1. 先读 `00-overview.md`，了解 Agent 定位与「哪些场景现在能做、哪些要先补后端」。
-2. 再读 `01-architecture.md` 与 `02-tools.md`，理解编排结构与工具面。
-3. 之后读 `03-state-session.md` 与 `04-approval.md`，掌握状态与人机协作机制。
-4. 按需查阅 `05-scenarios.md`（分版本实施）、`06-backend-gaps.md`（后端排期依据）。
-5. 实现 HTTP 层与运维时参考 `08-api.md` 与 `07-observability.md`。
+2. 产品立项和研发排期读 `09-product-requirements.md`，确认需求、范围、依赖与验收标准。
+3. 再读 `01-architecture.md` 与 `02-tools.md`，理解编排结构与工具面。
+4. 之后读 `03-state-session.md` 与 `04-approval.md`，掌握状态与人机协作机制。
+5. 按需查阅 `05-scenarios.md`（分版本实施）、`06-backend-gaps.md`（首批技术改造草案）。
+6. 实现 HTTP 层与运维时参考 `08-api.md` 与 `07-observability.md`。
 
 ## 关联文档
 

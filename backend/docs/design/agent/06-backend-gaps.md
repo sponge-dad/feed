@@ -8,6 +8,8 @@
 
 以下缺口均已核对现有 `api/proto/**/*.proto` 与 `deploy/sql/*.sql` 确认不存在。改造分三批，与 [00-overview.md](./00-overview.md) §6 的实施阶段对应：
 
+本文聚焦最初提出的内容元数据、`UpdateFeed` 与 Stats 三项技术草案。完整产品化还需要 RBAC、内容条件检索、持久化 run、可靠事件、操作审计、负反馈与实验能力，统一见 [09-product-requirements.md](./09-product-requirements.md) §8.1。
+
 | 批次 | 内容 | 解锁能力 | 工作量 |
 |---|---|---|---|
 | 一 | `feeds` 加 `category`/`duration_sec`/`tags` | V1-full 条件推荐 | 小 |
@@ -153,5 +155,6 @@ service Stats {
 - [Agent 服务总览](./00-overview.md)
 - [工具契约](./02-tools.md)
 - [场景分版设计](./05-scenarios.md)
+- [产品需求与建设路线](./09-product-requirements.md)
 - [数据模型总览](../data-model.md)
 - [服务拆分方案](../service-design.md)
