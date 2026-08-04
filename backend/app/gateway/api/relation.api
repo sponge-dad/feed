@@ -1,0 +1,71 @@
+// relation.api
+//
+// 职责：Relation 模块对外 HTTP REST 接口的类型定义。
+// 说明：具体路由在 gateway.api 中注册，Relation 服务只存 ID 关系，
+//      列表接口的用户信息与互关状态由网关并行聚合（User.BatchGetUsers + Relation.IsFollow）。
+// 契约来源：docs/design/api-spec/relation.md
+
+// 关注用户
+type FollowReq {
+    FolloweeID int64 `json:"followee_id" validate:"required"`
+}
+
+type FollowResp {
+    Success       bool  `json:"success"`
+    FollowerCount int64 `json:"follower_count"`
+}
+
+// 取关用户
+// 注意：路由为 DELETE /relations/follow，按 REST 语义不带请求体，
+//      故只使用 form tag（query 传参）。若同时保留 json tag，
+//      go-zero 的 httpx.Parse 会先后执行 ParseForm 与 ParseJsonBody，
+//      两个 required tag 必有一次落空，导致参数解析失败。
+type UnfollowReq {
+    FolloweeID int64 `form:"followee_id" validate:"required"`
+}
+
+type UnfollowResp {
+    Success       bool  `json:"success"`
+    FollowerCount int64 `json:"follower_count"`
+}
+
+// 关注/粉丝列表项（网关聚合 User 信息与互关状态）
+type RelationUser {
+    ID          int64  `json:"id"`
+    Nickname    string `json:"nickname"`
+    Avatar      string `json:"avatar"`
+    Bio         string `json:"bio"`
+    IsFollowing bool   `json:"is_following"`
+}
+
+// 关注列表（我关注了谁）
+type FollowingListReq {
+    UserID   int64 `form:"user_id,optional"`
+    Page     int64 `form:"page,default=1"`
+    PageSize int64 `form:"page_size,default=20"`
+}
+
+// 粉丝列表（谁关注了我）
+type FollowerListReq {
+    UserID   int64 `form:"user_id,optional"`
+    Page     int64 `form:"page,default=1"`
+    PageSize int64 `form:"page_size,default=20"`
+}
+
+// 关注/粉丝列表通用返回
+type RelationUserList {
+    List     []RelationUser `json:"list"`
+    Page     int64          `json:"page"`
+    PageSize int64          `json:"page_size"`
+    Total    int64          `json:"total"`
+    HasMore  bool           `json:"has_more"`
+}
+
+// 是否关注某人
+type IsFollowingReq {
+    TargetID int64 `form:"target_id" validate:"required"`
+}
+
+type IsFollowingResp {
+    IsFollowing bool `json:"is_following"`
+}

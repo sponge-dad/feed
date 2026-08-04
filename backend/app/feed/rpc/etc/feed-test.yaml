@@ -1,0 +1,34 @@
+# feed-test.yaml
+#
+# Feed RPC 集成测试专用配置。与 feed.yaml 的区别：
+# 1. MySQL 指向 feed_feed_test 测试库，与开发/生产数据物理隔离。
+# 2. Redis 与开发/生产共用同一实例（go-zero redis.RedisConf 无 DB 字段）。
+#    测试隔离依赖 TestMain 启动时清理 feed:* 业务缓存 + 每用例清理 feeds 表记录。
+# 3. ListenOn 仅为占位：TestMain 动态申请空闲端口并覆盖，
+#    不注册 etcd（测试代码清空 Etcd 配置），测试客户端直连实际监听地址。
+# 4. RelationRpc / RocketMQ 为 Feed 服务依赖；DeleteFeed 仅用 FeedModel + Producer，
+#    两者均为惰性连接，不主动拨号，测试无需真实 Relation 服务或消费者在线。
+
+Name: feed.rpc.test
+ListenOn: 127.0.0.1:0
+
+Mysql:
+  DataSource: "root:F3d!MysQL#r00T_2024xV@tcp(127.0.0.1:3306)/feed_feed_test?charset=utf8mb4&parseTime=true&loc=Local"
+
+CacheRedis:
+  - Host: 127.0.0.1:6379
+    Type: node
+    Pass: "mUd0ZLc312DPJ4Acaf4PnIoF"
+
+RelationRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2479
+    Key: relation.rpc
+  Timeout: 3000
+
+RocketMQ:
+  NameServer:
+    - 127.0.0.1:9876
+  GroupName: feed-pg-test
+  ConsumeGroup: feed-cg-test

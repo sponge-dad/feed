@@ -1,0 +1,722 @@
+.
+├── AGENTS.md
+├── api
+│   └── proto
+│       ├── comment
+│       │   └── comment.proto
+│       ├── feed
+│       │   └── feed.proto
+│       ├── interaction
+│       │   └── interaction.proto
+│       ├── relation
+│       │   └── relation.proto
+│       └── user
+│           └── user.proto
+├── app
+│   ├── comment
+│   │   ├── cmd
+│   │   │   └── rpc
+│   │   ├── model
+│   │   │   ├── commentsModel_gen.go
+│   │   │   ├── commentsModel.go
+│   │   │   └── vars.go
+│   │   └── rpc
+│   │       ├── comment
+│   │       │   ├── comment_grpc.pb.go
+│   │       │   └── comment.pb.go
+│   │       ├── commentClient
+│   │       │   └── comment.go
+│   │       ├── comment.go
+│   │       ├── etc
+│   │       │   ├── comment-test.yaml
+│   │       │   └── comment.yaml
+│   │       ├── internal
+│   │       │   ├── config
+│   │       │   │   └── config.go
+│   │       │   ├── keys
+│   │       │   │   └── keys.go
+│   │       │   ├── logic
+│   │       │   │   ├── batchGetCommentCountLogic.go
+│   │       │   │   ├── comment_logic_test.go
+│   │       │   │   ├── common.go
+│   │       │   │   ├── createCommentLogic.go
+│   │       │   │   ├── create_comment_test.go
+│   │       │   │   ├── deleteCommentLogic.go
+│   │       │   │   ├── delete_comment_test.go
+│   │       │   │   ├── getCommentCountLogic.go
+│   │       │   │   ├── getHotCommentsLogic.go
+│   │       │   │   ├── listCommentsLogic.go
+│   │       │   │   ├── list_comment_test.go
+│   │       │   │   ├── listRepliesLogic.go
+│   │       │   │   └── stats_test.go
+│   │       │   ├── server
+│   │       │   │   └── commentServer.go
+│   │       │   ├── serverinterceptors
+│   │       │   │   └── error.go
+│   │       │   └── svc
+│   │       │       └── serviceContext.go
+│   │       ├── pb
+│   │       └── tests
+│   │           ├── comment_flow_test.go
+│   │           └── integration_test.go
+│   ├── feed
+│   │   ├── cmd
+│   │   │   └── rpc
+│   │   ├── model
+│   │   │   ├── feedsModel_gen.go
+│   │   │   ├── feedsModel.go
+│   │   │   ├── feedsModel_test.go
+│   │   │   └── vars.go
+│   │   └── rpc
+│   │       ├── etc
+│   │       │   └── feed.yaml
+│   │       ├── feed
+│   │       │   ├── feed_grpc.pb.go
+│   │       │   └── feed.pb.go
+│   │       ├── feedclient
+│   │       │   └── feed.go
+│   │       ├── feed.go
+│   │       ├── internal
+│   │       │   ├── config
+│   │       │   │   └── config.go
+│   │       │   ├── keys
+│   │       │   │   └── keys.go
+│   │       │   ├── logic
+│   │       │   │   ├── batchgetfeedslogic.go
+│   │       │   │   ├── batchgetfeedslogic_test.go
+│   │       │   │   ├── createfeedlogic.go
+│   │       │   │   ├── deletefeedlogic.go
+│   │       │   │   ├── feed_cache.go
+│   │       │   │   ├── feed_convert.go
+│   │       │   │   ├── feed_follow.go
+│   │       │   │   ├── feed_logic_test.go
+│   │       │   │   ├── getcitytimelinelogic.go
+│   │       │   │   ├── getcitytimelinelogic_test.go
+│   │       │   │   ├── getfeedlogic.go
+│   │       │   │   ├── getfeedlogic_test.go
+│   │       │   │   ├── getfollowtimelinelogic.go
+│   │       │   │   ├── getfollowtimelinelogic_test.go
+│   │       │   │   ├── getrecommendtimelinelogic.go
+│   │       │   │   ├── getrecommendtimelinelogic_test.go
+│   │       │   │   ├── getuserfeedslogic.go
+│   │       │   │   └── getuserfeedslogic_test.go
+│   │       │   ├── server
+│   │       │   │   └── feedserver.go
+│   │       │   ├── svc
+│   │       │   │   └── servicecontext.go
+│   │       │   └── worker
+│   │       │       ├── worker.go
+│   │       │       └── worker_test.go
+│   │       ├── pb
+│   │       └── README.md
+│   ├── gateway
+│   │   ├── api
+│   │   │   ├── comment.api
+│   │   │   ├── feed.api
+│   │   │   ├── gateway.api
+│   │   │   ├── interaction.api
+│   │   │   ├── relation.api
+│   │   │   └── user.api
+│   │   ├── cmd
+│   │   │   └── api
+│   │   │       └── gateway.go
+│   │   ├── etc
+│   │   │   └── gateway.yaml
+│   │   ├── internal
+│   │   │   ├── config
+│   │   │   │   └── config.go
+│   │   │   ├── handler
+│   │   │   │   ├── comment
+│   │   │   │   │   ├── createCommentHandler.go
+│   │   │   │   │   ├── deleteCommentHandler.go
+│   │   │   │   │   ├── likeCommentHandler.go
+│   │   │   │   │   ├── listCommentsHandler.go
+│   │   │   │   │   ├── listRepliesHandler.go
+│   │   │   │   │   └── unlikeCommentHandler.go
+│   │   │   │   ├── feed
+│   │   │   │   │   ├── createFeedHandler.go
+│   │   │   │   │   ├── deleteFeedHandler.go
+│   │   │   │   │   ├── getFeedDetailHandler.go
+│   │   │   │   │   ├── timelineHandler.go
+│   │   │   │   │   └── userFeedsHandler.go
+│   │   │   │   ├── getMeHandler.go
+│   │   │   │   ├── getUserHandler.go
+│   │   │   │   ├── helper.go
+│   │   │   │   ├── interaction
+│   │   │   │   │   ├── collectFeedHandler.go
+│   │   │   │   │   ├── likeFeedHandler.go
+│   │   │   │   │   ├── myCollectsHandler.go
+│   │   │   │   │   ├── myLikesHandler.go
+│   │   │   │   │   ├── uncollectFeedHandler.go
+│   │   │   │   │   └── unlikeFeedHandler.go
+│   │   │   │   ├── loginHandler.go
+│   │   │   │   ├── registerHandler.go
+│   │   │   │   ├── relation
+│   │   │   │   │   ├── followerListHandler.go
+│   │   │   │   │   ├── followHandler.go
+│   │   │   │   │   ├── followingListHandler.go
+│   │   │   │   │   ├── isFollowingHandler.go
+│   │   │   │   │   └── unfollowHandler.go
+│   │   │   │   ├── routes.go
+│   │   │   │   ├── updateMeHandler.go
+│   │   │   │   └── uploadTokenHandler.go
+│   │   │   ├── logic
+│   │   │   │   ├── aggregate
+│   │   │   │   │   ├── feedcard.go
+│   │   │   │   │   └── feedcard_test.go
+│   │   │   │   ├── comment
+│   │   │   │   │   ├── createCommentLogic.go
+│   │   │   │   │   ├── deleteCommentLogic.go
+│   │   │   │   │   ├── helper.go
+│   │   │   │   │   ├── likeCommentLogic.go
+│   │   │   │   │   ├── listCommentsLogic.go
+│   │   │   │   │   ├── listCommentsLogic_test.go
+│   │   │   │   │   ├── listRepliesLogic.go
+│   │   │   │   │   └── unlikeCommentLogic.go
+│   │   │   │   ├── feed
+│   │   │   │   │   ├── createFeedLogic.go
+│   │   │   │   │   ├── deleteFeedLogic.go
+│   │   │   │   │   ├── deleteFeedLogic_test.go
+│   │   │   │   │   ├── getFeedDetailLogic.go
+│   │   │   │   │   ├── timelineLogic.go
+│   │   │   │   │   ├── timelineLogic_test.go
+│   │   │   │   │   └── userFeedsLogic.go
+│   │   │   │   ├── getMeLogic.go
+│   │   │   │   ├── getUserLogic.go
+│   │   │   │   ├── helper.go
+│   │   │   │   ├── interaction
+│   │   │   │   │   ├── collectFeedLogic.go
+│   │   │   │   │   ├── helper.go
+│   │   │   │   │   ├── interactionlogic_test.go
+│   │   │   │   │   ├── likeFeedLogic.go
+│   │   │   │   │   ├── myCollectsLogic.go
+│   │   │   │   │   ├── myLikesLogic.go
+│   │   │   │   │   ├── uncollectFeedLogic.go
+│   │   │   │   │   └── unlikeFeedLogic.go
+│   │   │   │   ├── loginLogic.go
+│   │   │   │   ├── registerLogic.go
+│   │   │   │   ├── relation
+│   │   │   │   │   ├── followerListLogic.go
+│   │   │   │   │   ├── followingListLogic.go
+│   │   │   │   │   ├── followLogic.go
+│   │   │   │   │   ├── helper.go
+│   │   │   │   │   ├── isFollowingLogic.go
+│   │   │   │   │   ├── relationlogic_test.go
+│   │   │   │   │   └── unfollowLogic.go
+│   │   │   │   ├── updateMeLogic.go
+│   │   │   │   └── uploadTokenLogic.go
+│   │   │   ├── middleware
+│   │   │   │   ├── auth.go
+│   │   │   │   └── clientip.go
+│   │   │   ├── mocks
+│   │   │   │   ├── comment_mock.go
+│   │   │   │   ├── feed_mock.go
+│   │   │   │   ├── interaction_mock.go
+│   │   │   │   ├── relation_mock.go
+│   │   │   │   └── user_mock.go
+│   │   │   ├── svc
+│   │   │   │   └── serviceContext.go
+│   │   │   └── types
+│   │   │       └── types.go
+│   │   └── README.md
+│   ├── interaction
+│   │   ├── cmd
+│   │   │   └── rpc
+│   │   ├── model
+│   │   │   ├── collectionsModel_gen.go
+│   │   │   ├── collectionsModel.go
+│   │   │   ├── likesModel_gen.go
+│   │   │   ├── likesModel.go
+│   │   │   └── vars.go
+│   │   └── rpc
+│   │       ├── etc
+│   │       │   ├── interaction-test.yaml
+│   │       │   └── interaction.yaml
+│   │       ├── interaction
+│   │       │   ├── interaction_grpc.pb.go
+│   │       │   └── interaction.pb.go
+│   │       ├── interactionClient
+│   │       │   └── interaction.go
+│   │       ├── interaction.go
+│   │       ├── internal
+│   │       │   ├── config
+│   │       │   │   └── config.go
+│   │       │   ├── keys
+│   │       │   │   └── keys.go
+│   │       │   ├── logic
+│   │       │   │   ├── batchGetFeedStatsLogic.go
+│   │       │   │   ├── batchGetUserInteractionStatusLogic.go
+│   │       │   │   ├── collectFeedLogic.go
+│   │       │   │   ├── collectFeedLogic_test.go
+│   │       │   │   ├── getFeedStatsLogic.go
+│   │       │   │   ├── getFeedStatsLogic_test.go
+│   │       │   │   ├── getUserCollectedFeedsLogic.go
+│   │       │   │   ├── getUserInteractionStatusLogic.go
+│   │       │   │   ├── getUserInteractionStatusLogic_test.go
+│   │       │   │   ├── getUserLikedFeedsLogic.go
+│   │       │   │   ├── getUserLikedFeedsLogic_test.go
+│   │       │   │   ├── interactionHelper.go
+│   │       │   │   ├── interaction_test_helper_test.go
+│   │       │   │   ├── likeFeedLogic.go
+│   │       │   │   ├── likeFeedLogic_test.go
+│   │       │   │   ├── uncollectFeedLogic.go
+│   │       │   │   └── unlikeFeedLogic.go
+│   │       │   ├── server
+│   │       │   │   └── interactionServer.go
+│   │       │   ├── serverinterceptors
+│   │       │   │   └── error.go
+│   │       │   ├── svc
+│   │       │   │   └── serviceContext.go
+│   │       │   └── worker
+│   │       │       ├── worker.go
+│   │       │       └── worker_test.go
+│   │       ├── pb
+│   │       └── tests
+│   │           ├── concurrency_cache_test.go
+│   │           └── integration_test.go
+│   ├── relation
+│   │   ├── cmd
+│   │   │   └── rpc
+│   │   ├── model
+│   │   │   ├── relationsmodel_gen.go
+│   │   │   ├── relationsmodel.go
+│   │   │   └── vars.go
+│   │   └── rpc
+│   │       ├── etc
+│   │       │   ├── relation-test.yaml
+│   │       │   └── relation.yaml
+│   │       ├── internal
+│   │       │   ├── config
+│   │       │   │   └── config.go
+│   │       │   ├── logic
+│   │       │   │   ├── followLogic.go
+│   │       │   │   ├── followLogic_test.go
+│   │       │   │   ├── getFansLogic.go
+│   │       │   │   ├── getFollowsLogic.go
+│   │       │   │   ├── isFollowLogic.go
+│   │       │   │   ├── isVipLogic.go
+│   │       │   │   ├── keys.go
+│   │       │   │   └── unfollowLogic.go
+│   │       │   ├── server
+│   │       │   │   └── relationserver.go
+│   │       │   ├── serverinterceptors
+│   │       │   │   └── error.go
+│   │       │   └── svc
+│   │       │       └── servicecontext.go
+│   │       ├── pb
+│   │       ├── README.md
+│   │       ├── relation
+│   │       │   ├── relation_grpc.pb.go
+│   │       │   └── relation.pb.go
+│   │       ├── relationclient
+│   │       │   └── relation.go
+│   │       ├── relation.go
+│   │       └── tests
+│   │           ├── concurrency_cache_test.go
+│   │           └── integration_test.go
+│   └── user
+│       ├── cmd
+│       │   └── rpc
+│       ├── model
+│       │   ├── usersmodel_gen.go
+│       │   ├── usersmodel.go
+│       │   └── vars.go
+│       └── rpc
+│           ├── etc
+│           │   └── user.yaml
+│           ├── internal
+│           │   ├── config
+│           │   │   └── config.go
+│           │   ├── logic
+│           │   │   ├── batchGetUsersLogic.go
+│           │   │   ├── getUserLogic.go
+│           │   │   ├── loginLogic.go
+│           │   │   ├── registerLogic.go
+│           │   │   └── updateUserLogic.go
+│           │   ├── pkg
+│           │   │   └── bcryptx
+│           │   │       └── pool.go
+│           │   ├── server
+│           │   │   └── userServer.go
+│           │   ├── serverinterceptors
+│           │   │   └── error.go
+│           │   └── svc
+│           │       └── serviceContext.go
+│           ├── pb
+│           ├── README.md
+│           ├── user
+│           │   ├── user_grpc.pb.go
+│           │   └── user.pb.go
+│           ├── userClient
+│           │   └── user.go
+│           └── user.go
+├── arch.txt
+├── bin
+│   ├── comment-rpc
+│   ├── feed-rpc
+│   ├── gateway
+│   ├── interaction-rpc
+│   ├── relation-rpc
+│   └── user-rpc
+├── common
+│   ├── errorx
+│   │   ├── errorx.go
+│   │   └── grpc.go
+│   ├── event
+│   │   ├── comment
+│   │   │   └── event.go
+│   │   ├── feed
+│   │   │   └── event.go
+│   │   └── interaction
+│   │       └── event.go
+│   ├── idgen
+│   │   └── idgen.go
+│   ├── ipx
+│   │   └── ipx.go
+│   ├── jwtx
+│   │   └── jwtx.go
+│   ├── mq
+│   │   ├── consumer.go
+│   │   └── producer.go
+│   └── response
+│       └── response.go
+├── deploy
+│   ├── broker.conf
+│   ├── config
+│   ├── docker-compose.yaml
+│   ├── k8s
+│   └── sql
+│       ├── comment.sql
+│       ├── feed.sql
+│       ├── interaction.sql
+│       ├── relation.sql
+│       └── user.sql
+├── docs
+│   ├── agent
+│   │   ├── api-writing-guide.md
+│   │   ├── dev-guidelines.md
+│   │   ├── doc-writing-guide.md
+│   │   ├── gateway-standard.md
+│   │   ├── go-zero-api-writing-guide.md
+│   │   ├── proto-writing-guide.md
+│   │   └── README.md
+│   ├── design
+│   │   ├── agent
+│   │   │   ├── 00-overview.md
+│   │   │   ├── 01-architecture.md
+│   │   │   ├── 02-tools.md
+│   │   │   ├── 03-state-session.md
+│   │   │   ├── 04-approval.md
+│   │   │   ├── 05-scenarios.md
+│   │   │   ├── 06-backend-gaps.md
+│   │   │   ├── 07-observability.md
+│   │   │   ├── 08-api.md
+│   │   │   └── README.md
+│   │   ├── api-spec
+│   │   │   ├── comment.md
+│   │   │   ├── feed.md
+│   │   │   ├── interaction.md
+│   │   │   ├── README.md
+│   │   │   ├── relation.md
+│   │   │   └── user.md
+│   │   ├── architecture.md
+│   │   ├── comment
+│   │   │   ├── 00-overview.md
+│   │   │   ├── 01-data-model.md
+│   │   │   ├── 02-publish.md
+│   │   │   ├── 03-delete.md
+│   │   │   ├── 04-list.md
+│   │   │   ├── 05-stats.md
+│   │   │   ├── 06-cache.md
+│   │   │   ├── 07-mq-event.md
+│   │   │   ├── 08-test-strategy.md
+│   │   │   └── README.md
+│   │   ├── data-model.md
+│   │   ├── feed
+│   │   │   ├── 00-overview.md
+│   │   │   ├── 01-data-model.md
+│   │   │   ├── 02-post-publish.md
+│   │   │   ├── 03-timeline-follow.md
+│   │   │   ├── 04-timeline-recommend.md
+│   │   │   ├── 05-timeline-city.md
+│   │   │   ├── 06-cache-strategy.md
+│   │   │   ├── 07-mq-event.md
+│   │   │   ├── 08-test-strategy.md
+│   │   │   └── README.md
+│   │   ├── interaction
+│   │   │   ├── 00-overview.md
+│   │   │   ├── 01-data-model
+│   │   │   │   └── 01-data-model.md
+│   │   │   ├── 02-like
+│   │   │   │   └── 02-like.md
+│   │   │   ├── 03-collect
+│   │   │   │   └── 03-collect.md
+│   │   │   ├── 04-stats
+│   │   │   │   └── 04-stats.md
+│   │   │   ├── 05-user-list
+│   │   │   │   └── 05-user-list.md
+│   │   │   ├── 06-cache
+│   │   │   │   └── 06-cache.md
+│   │   │   ├── 07-mq-event
+│   │   │   │   └── 07-mq-event.md
+│   │   │   ├── 08-test-strategy
+│   │   │   │   └── 08-test-strategy.md
+│   │   │   └── README.md
+│   │   ├── README.md
+│   │   └── service-design.md
+│   ├── README.md
+│   ├── relation-service-test-plan.md
+│   ├── user-service-bcrypt-optimization.md
+│   └── user-service-test-plan.md
+├── go.mod
+├── go.sum
+├── Makefile
+├── README.md
+└── scripts
+    ├── 00-install-tools.sh
+    ├── 01-init-project.sh
+    ├── 02-gen-services.sh
+    ├── 03-install-docker-compose.sh
+    ├── benchmark-relation.sh
+    └── benchmark-user.sh
+
+147 directories, 333 files
+.
+├── AGENTS.md
+├── api
+│   └── proto
+│       ├── comment
+│       │   └── comment.proto
+│       ├── feed
+│       │   └── feed.proto
+│       ├── interaction
+│       │   └── interaction.proto
+│       ├── relation
+│       │   └── relation.proto
+│       └── user
+│           └── user.proto
+├── app
+│   ├── comment
+│   │   ├── cmd
+│   │   │   └── rpc
+│   │   ├── model
+│   │   │   ├── commentsModel_gen.go
+│   │   │   ├── commentsModel.go
+│   │   │   └── vars.go
+│   │   └── rpc
+│   │       ├── comment
+│   │       ├── commentClient
+│   │       ├── comment.go
+│   │       ├── etc
+│   │       ├── internal
+│   │       ├── pb
+│   │       └── tests
+│   ├── feed
+│   │   ├── cmd
+│   │   │   └── rpc
+│   │   ├── model
+│   │   │   ├── feedsModel_gen.go
+│   │   │   ├── feedsModel.go
+│   │   │   ├── feedsModel_test.go
+│   │   │   └── vars.go
+│   │   └── rpc
+│   │       ├── etc
+│   │       ├── feed
+│   │       ├── feedclient
+│   │       ├── feed.go
+│   │       ├── internal
+│   │       ├── pb
+│   │       └── README.md
+│   ├── gateway
+│   │   ├── api
+│   │   │   ├── comment.api
+│   │   │   ├── feed.api
+│   │   │   ├── gateway.api
+│   │   │   ├── interaction.api
+│   │   │   ├── relation.api
+│   │   │   └── user.api
+│   │   ├── cmd
+│   │   │   └── api
+│   │   ├── etc
+│   │   │   └── gateway.yaml
+│   │   ├── internal
+│   │   │   ├── config
+│   │   │   ├── handler
+│   │   │   ├── logic
+│   │   │   ├── middleware
+│   │   │   ├── mocks
+│   │   │   ├── svc
+│   │   │   └── types
+│   │   └── README.md
+│   ├── interaction
+│   │   ├── cmd
+│   │   │   └── rpc
+│   │   ├── model
+│   │   │   ├── collectionsModel_gen.go
+│   │   │   ├── collectionsModel.go
+│   │   │   ├── likesModel_gen.go
+│   │   │   ├── likesModel.go
+│   │   │   └── vars.go
+│   │   └── rpc
+│   │       ├── etc
+│   │       ├── interaction
+│   │       ├── interactionClient
+│   │       ├── interaction.go
+│   │       ├── internal
+│   │       ├── pb
+│   │       └── tests
+│   ├── relation
+│   │   ├── cmd
+│   │   │   └── rpc
+│   │   ├── model
+│   │   │   ├── relationsmodel_gen.go
+│   │   │   ├── relationsmodel.go
+│   │   │   └── vars.go
+│   │   └── rpc
+│   │       ├── etc
+│   │       ├── internal
+│   │       ├── pb
+│   │       ├── README.md
+│   │       ├── relation
+│   │       ├── relationclient
+│   │       ├── relation.go
+│   │       └── tests
+│   └── user
+│       ├── cmd
+│       │   └── rpc
+│       ├── model
+│       │   ├── usersmodel_gen.go
+│       │   ├── usersmodel.go
+│       │   └── vars.go
+│       └── rpc
+│           ├── etc
+│           ├── internal
+│           ├── pb
+│           ├── README.md
+│           ├── user
+│           ├── userClient
+│           └── user.go
+├── arcg.txt
+├── arch.txt
+├── bin
+│   ├── comment-rpc
+│   ├── feed-rpc
+│   ├── gateway
+│   ├── interaction-rpc
+│   ├── relation-rpc
+│   └── user-rpc
+├── common
+│   ├── errorx
+│   │   ├── errorx.go
+│   │   └── grpc.go
+│   ├── event
+│   │   ├── comment
+│   │   │   └── event.go
+│   │   ├── feed
+│   │   │   └── event.go
+│   │   └── interaction
+│   │       └── event.go
+│   ├── idgen
+│   │   └── idgen.go
+│   ├── ipx
+│   │   └── ipx.go
+│   ├── jwtx
+│   │   └── jwtx.go
+│   ├── mq
+│   │   ├── consumer.go
+│   │   └── producer.go
+│   └── response
+│       └── response.go
+├── deploy
+│   ├── broker.conf
+│   ├── config
+│   ├── docker-compose.yaml
+│   ├── k8s
+│   └── sql
+│       ├── comment.sql
+│       ├── feed.sql
+│       ├── interaction.sql
+│       ├── relation.sql
+│       └── user.sql
+├── docs
+│   ├── agent
+│   │   ├── api-writing-guide.md
+│   │   ├── dev-guidelines.md
+│   │   ├── doc-writing-guide.md
+│   │   ├── gateway-standard.md
+│   │   ├── go-zero-api-writing-guide.md
+│   │   ├── proto-writing-guide.md
+│   │   └── README.md
+│   ├── design
+│   │   ├── agent
+│   │   │   ├── 00-overview.md
+│   │   │   ├── 01-architecture.md
+│   │   │   ├── 02-tools.md
+│   │   │   ├── 03-state-session.md
+│   │   │   ├── 04-approval.md
+│   │   │   ├── 05-scenarios.md
+│   │   │   ├── 06-backend-gaps.md
+│   │   │   ├── 07-observability.md
+│   │   │   ├── 08-api.md
+│   │   │   └── README.md
+│   │   ├── api-spec
+│   │   │   ├── comment.md
+│   │   │   ├── feed.md
+│   │   │   ├── interaction.md
+│   │   │   ├── README.md
+│   │   │   ├── relation.md
+│   │   │   └── user.md
+│   │   ├── architecture.md
+│   │   ├── comment
+│   │   │   ├── 00-overview.md
+│   │   │   ├── 01-data-model.md
+│   │   │   ├── 02-publish.md
+│   │   │   ├── 03-delete.md
+│   │   │   ├── 04-list.md
+│   │   │   ├── 05-stats.md
+│   │   │   ├── 06-cache.md
+│   │   │   ├── 07-mq-event.md
+│   │   │   ├── 08-test-strategy.md
+│   │   │   └── README.md
+│   │   ├── data-model.md
+│   │   ├── feed
+│   │   │   ├── 00-overview.md
+│   │   │   ├── 01-data-model.md
+│   │   │   ├── 02-post-publish.md
+│   │   │   ├── 03-timeline-follow.md
+│   │   │   ├── 04-timeline-recommend.md
+│   │   │   ├── 05-timeline-city.md
+│   │   │   ├── 06-cache-strategy.md
+│   │   │   ├── 07-mq-event.md
+│   │   │   ├── 08-test-strategy.md
+│   │   │   └── README.md
+│   │   ├── interaction
+│   │   │   ├── 00-overview.md
+│   │   │   ├── 01-data-model
+│   │   │   ├── 02-like
+│   │   │   ├── 03-collect
+│   │   │   ├── 04-stats
+│   │   │   ├── 05-user-list
+│   │   │   ├── 06-cache
+│   │   │   ├── 07-mq-event
+│   │   │   ├── 08-test-strategy
+│   │   │   └── README.md
+│   │   ├── README.md
+│   │   └── service-design.md
+│   ├── README.md
+│   ├── relation-service-test-plan.md
+│   ├── user-service-bcrypt-optimization.md
+│   └── user-service-test-plan.md
+├── go.mod
+├── go.sum
+├── Makefile
+├── README.md
+└── scripts
+    ├── 00-install-tools.sh
+    ├── 01-init-project.sh
+    ├── 02-gen-services.sh
+    ├── 03-install-docker-compose.sh
+    ├── benchmark-relation.sh
+    └── benchmark-user.sh
+
+107 directories, 129 files

@@ -1,0 +1,26 @@
+# interaction-test.yaml
+#
+# Interaction RPC 服务集成测试专用配置。
+# 与 interaction.yaml 的区别：
+# 1. MySQL 指向 feed_interaction_test 测试库（TestMain 会自动建库建表）
+# 2. 不注册 etcd，测试客户端直连 ListenOn，避免依赖本地 etcd
+# 3. 监听独立端口 9105，避免与本地 9005 开发实例冲突
+# 4. RocketMQ 使用独立生产者组/消费组；MQ 不可达时 TestMain 会降级为
+#    进程内桥接（直接调用 worker.HandleEvent），仍覆盖落库逻辑
+
+Name: interaction.rpc.test
+ListenOn: 127.0.0.1:9105
+
+Mysql:
+  DataSource: root:F3d!MysQL#r00T_2024xV@tcp(127.0.0.1:3306)/feed_interaction_test?charset=utf8mb4&parseTime=true&loc=Local
+
+CacheRedis:
+- Host: 127.0.0.1:6379
+  Type: node
+  Pass: "mUd0ZLc312DPJ4Acaf4PnIoF"
+
+RocketMQ:
+  NameServer:
+  - 127.0.0.1:9876
+  GroupName: interaction_producer_group_test
+  ConsumeGroup: interaction-persistence-consumer-test

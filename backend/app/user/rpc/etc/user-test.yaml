@@ -1,0 +1,32 @@
+# user-test.yaml
+#
+# User RPC 集成测试专用配置。与 user.yaml 的区别：
+# 1. MySQL 指向 feed_user_test 测试库，与开发/生产数据物理隔离。
+# 2. Redis 与开发/生产共用同一实例（go-zero 的 redis.RedisConf 不含 DB 字段，
+#    无法 select 独立 DB）。测试隔离依赖：
+#      - TestMain 启动时清理 cache:users:* 与 user:brief:*；
+#      - 每个用例按随机用户名清理 users 表对应记录。
+# 3. ListenOn 仅为占位：TestMain 会动态申请空闲端口并覆盖，
+#    不注册 etcd（测试代码会清空 Etcd 配置），测试客户端直连实际监听地址。
+# 4. JwtAuth / BcryptWorkers 为 User RPC 自有配置，必须与 user.yaml 保持一致字段。
+
+Name: user.rpc.test
+ListenOn: 127.0.0.1:0
+
+Mysql:
+  DataSource: "root:F3d!MysQL#r00T_2024xV@tcp(127.0.0.1:3306)/feed_user_test?charset=utf8mb4&parseTime=true&loc=Local"
+
+CacheRedis:
+  - Host: 127.0.0.1:6379
+    Type: node
+    Pass: "mUd0ZLc312DPJ4Acaf4PnIoF"
+
+JwtAuth:
+  AccessSecret: "feed-user-service-jwt-secret-CHANGE-ME"
+  AccessExpireHour: 720
+
+BcryptWorkers: 0
+
+Timeout: 10000
+MaxConns: 1000
+CpuThreshold: 999

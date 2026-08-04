@@ -1,0 +1,53 @@
+# user.yaml
+#
+# User RPC 服务运行配置。字段结构对应 internal/config/config.go 中的 Config，
+# 改配置字段名之前必须先同步改 config.go，否则启动时会因为字段不匹配而报错或取到默认值。
+#
+# 本地/CVM 单机开发环境示例值，生产环境需替换为 K8s ConfigMap/Secret 注入的真实值。
+
+Name: user.rpc
+# 服务端口约定：9001（见 ../../../docs/design/service-design.md 端口分配表），
+# 而不是 goctl 默认生成的 8080（8080 是网关端口，避免和网关冲突）。
+ListenOn: 0.0.0.0:9001
+
+# RPC 服务端全局超时与连接控制。
+# Timeout 单位为毫秒，bcrypt 计算是 CPU 密集型，压测时需要给足处理时间。
+Timeout: 10000
+MaxConns: 1000
+# CpuThreshold 设置为 999（上限），压测时关闭 adaptive shedding，避免其误判 bcrypt CPU 占用。
+# 生产环境建议根据实际负载调回 900~950。
+CpuThreshold: 999
+
+Etcd:
+  Hosts:
+  # 注意：宿主机端口用的是 2479，不是 etcd 默认的 2379！
+  # 因为本机（k8s-master）自身是 K8s 集群节点，K8s 控制平面自带的 etcd
+  # 已经占用了宿主机的 2379，deploy/docker-compose.yaml 里把我们开发用的
+  # etcd 容器对外端口改成了 2479 以避免冲突，这里必须保持一致，
+  # 否则会误连到 K8s 集群自己的 etcd 上，导致服务发现异常。
+  - 127.0.0.1:2479
+  Key: user.rpc
+
+# MySQL 连接配置
+Mysql:
+  DataSource: "root:F3d!MysQL#r00T_2024xV@tcp(127.0.0.1:3306)/feed_user?charset=utf8mb4&parseTime=true&loc=Local"
+
+# Redis 缓存配置（go-zero cache.CacheConf 是数组，支持配置多节点分片，单机场景写一个节点）
+CacheRedis:
+- Host: 127.0.0.1:6379
+  Type: node
+  Pass: "mUd0ZLc312DPJ4Acaf4PnIoF"
+
+# JWT 签发配置
+#
+# 注意：这里的 key 是 JwtAuth，不是 Auth——go-zero 的 zrpc.RpcServerConf
+# 内嵌了框架自己的 Auth 字段（Redis 内置鉴权开关），如果写成 Auth 会与之
+# 撞名，启动时报错 "conflict key auth"。详见 internal/config/config.go 里的注释。
+JwtAuth:
+  AccessSecret: "feed-user-service-jwt-secret-CHANGE-ME"
+  AccessExpireHour: 720 # 30天
+
+# bcrypt 计算并发 worker 数。
+# <=0 时使用 runtime.NumCPU()。该值应根据实际 CPU 核心数和线上负载调整：
+# 过大导致 CPU 占满、RPC 超时；过小会导致请求排队、吞吐下降。
+BcryptWorkers: 0

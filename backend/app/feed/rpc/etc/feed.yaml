@@ -1,0 +1,32 @@
+Name: feed.rpc
+
+# 服务端口约定：9002（见 ../../../docs/design/service-design.md 端口分配表），避免与 8080 网关冲突。
+ListenOn: 0.0.0.0:9003
+Etcd:
+  Hosts:
+    # 注意：本机是 K8s 节点，2379 被 K8s 自带 etcd 占用，所以开发用 etcd 容器映射在 2479
+    - 127.0.0.1:2479
+  Key: feed.rpc
+
+# MySQL 连接配置
+Mysql:
+  DataSource: root:F3d!MysQL#r00T_2024xV@tcp(127.0.0.1:3306)/feed_feed?charset=utf8mb4&parseTime=true&loc=Local
+
+# Redis 缓存配置（go-zero cache.CacheConf 是数组，支持多节点分片，单机写一个节点）
+CacheRedis:
+  - Host: 127.0.0.1:6379
+    Type: node
+    Pass: "mUd0ZLc312DPJ4Acaf4PnIoF"
+
+RelationRpc:
+  Etcd:
+    Host:
+      127.0.0.1:2479
+    Key: relation.rpc
+  Timeout: 2000
+
+RocketMQ:
+  NameServer:
+    - 127.0.0.1:9876
+  GroupName: feed_producer_group
+  ConsumeGroup: feed_consumer_group

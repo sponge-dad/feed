@@ -1,0 +1,144 @@
+// gateway.api
+//
+// 职责：Gateway 对外 HTTP REST 接口入口文件，聚合各模块路由。
+// 说明：通过 import 引入各模块类型，在此统一注册 HTTP 路由。
+import (
+	"user.api"
+	"relation.api"
+	"feed.api"
+	"comment.api"
+	"interaction.api"
+)
+
+// 公开接口：注册、登录
+@server (
+	prefix: /api/v1
+)
+service gateway {
+	@handler register
+	post /users/register (RegisterReq) returns (RegisterResp)
+
+	@handler login
+	post /users/login (LoginReq) returns (LoginResp)
+}
+
+// 需登录接口：获取用户、获取当前用户、更新当前用户、上传凭证
+@server (
+	jwt:    Auth
+	prefix: /api/v1
+)
+service gateway {
+	@handler getUser
+	get /users/:userId (GetUserReq) returns (UserDetail)
+
+	@handler getMe
+	get /users/me returns (UserDetail)
+
+	@handler updateMe
+	patch /users/me (UpdateUserReq) returns (UpdateUserResp)
+
+	@handler uploadToken
+	post /upload/token (UploadTokenReq) returns (UploadTokenResp)
+
+	@handler signUrl
+	post /upload/sign-url (SignUrlReq) returns (SignUrlResp)
+}
+
+// Relation 模块（全部需登录）：关注/取关/关注列表/粉丝列表/是否关注
+@server (
+	jwt:    Auth
+	prefix: /api/v1
+	group:  relation
+)
+service gateway {
+	@handler follow
+	post /relations/follow (FollowReq) returns (FollowResp)
+
+	@handler unfollow
+	delete /relations/follow (UnfollowReq) returns (UnfollowResp)
+
+	@handler followingList
+	get /relations/following (FollowingListReq) returns (RelationUserList)
+
+	@handler followerList
+	get /relations/followers (FollowerListReq) returns (RelationUserList)
+
+	@handler isFollowing
+	get /relations/is-following (IsFollowingReq) returns (IsFollowingResp)
+}
+
+// Feed 模块（全部需登录）：发帖/删帖/详情/首页信息流/个人主页帖子列表
+@server (
+	jwt:    Auth
+	prefix: /api/v1
+	group:  feed
+)
+service gateway {
+	@handler createFeed
+	post /feeds (CreateFeedReq) returns (CreateFeedResp)
+
+	@handler deleteFeed
+	delete /feeds/:feedId (DeleteFeedReq) returns (DeleteFeedResp)
+
+	@handler getFeedDetail
+	get /feeds/:feedId (GetFeedDetailReq) returns (FeedDetail)
+
+	@handler timeline
+	get /feeds/timeline (TimelineReq) returns (FeedCardList)
+
+	@handler userFeeds
+	get /users/:userId/feeds (UserFeedsReq) returns (FeedCardList)
+}
+
+// Comment 模块（全部需登录）：发评论/评论列表/子回复/删除评论/评论点赞
+@server (
+	jwt:    Auth
+	prefix: /api/v1
+	group:  comment
+)
+service gateway {
+	@handler createComment
+	post /feeds/:feedId/comments (CreateCommentReq) returns (CreateCommentResp)
+
+	@handler listComments
+	get /feeds/:feedId/comments (ListCommentsReq) returns (ListCommentsResp)
+
+	@handler listReplies
+	get /comments/:rootId/replies (ListRepliesReq) returns (ListRepliesResp)
+
+	@handler deleteComment
+	delete /comments/:commentId (DeleteCommentReq) returns (DeleteCommentResp)
+
+	@handler likeComment
+	post /comments/:commentId/like (LikeCommentReq) returns (LikeCommentResp)
+
+	@handler unlikeComment
+	delete /comments/:commentId/like (UnlikeCommentReq) returns (UnlikeCommentResp)
+}
+
+// Interaction 模块（全部需登录）：帖子点赞/收藏、我的赞/我的收藏
+@server (
+	jwt:    Auth
+	prefix: /api/v1
+	group:  interaction
+)
+service gateway {
+	@handler likeFeed
+	post /feeds/:feedId/like (LikeFeedReq) returns (LikeFeedResp)
+
+	@handler unlikeFeed
+	delete /feeds/:feedId/like (UnlikeFeedReq) returns (UnlikeFeedResp)
+
+	@handler collectFeed
+	post /feeds/:feedId/collect (CollectFeedReq) returns (CollectFeedResp)
+
+	@handler uncollectFeed
+	delete /feeds/:feedId/collect (UncollectFeedReq) returns (UncollectFeedResp)
+
+	@handler myLikes
+	get /users/me/likes (MyLikesReq) returns (FeedCardList)
+
+	@handler myCollects
+	get /users/me/collects (MyCollectsReq) returns (FeedCardList)
+}
+

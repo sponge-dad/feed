@@ -1,0 +1,30 @@
+# 编译产物
+/bin/
+*.exe
+*.out
+
+# Go
+vendor/
+*.test
+*.prof
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# 日志与临时文件
+*.log
+tmp/
+.DS_Store
+
+# 本地配置（含密钥，不入库）
+*.local.yaml
+scripts/cos-env.sh
+deploy/config/*.prod.yaml
+.xac/
+# proto 生成的 pb 代码（由 goctl 在 CVM 本地生成，不入库）
+# 如需入库可注释掉下面两行
+#app/*/rpc/*/*.pb.go
+#app/*/rpc/*/*_grpc.pb.go
+

@@ -1,0 +1,197 @@
+// feed.proto
+//
+// 职责：Feed 服务内部 gRPC 接口定义。
+// 服务范围：帖子发布、帖子查询、推荐/关注/同城三种流、批量查询、个人主页列表。
+// 主要接口：CreateFeed, DeleteFeed, GetFeed, BatchGetFeeds,
+//          GetRecommendTimeline, GetFollowTimeline, GetCityTimeline, GetUserFeeds。
+syntax = "proto3";
+
+package feed;
+option go_package = "./feed";
+
+// ==================== 枚举定义 ====================
+
+// FeedType 帖子类型
+enum FeedType {
+    FEED_TYPE_UNKNOWN = 0;  // 未知，proto3 默认值
+    FEED_TYPE_IMAGE   = 1;  // 图文
+    FEED_TYPE_VIDEO   = 2;  // 视频
+}
+
+// FeedStatus 帖子状态
+enum FeedStatus {
+    FEED_STATUS_UNKNOWN  = 0;  // 未知
+    FEED_STATUS_NORMAL   = 1;  // 正常
+    FEED_STATUS_DELETED  = 2;  // 已删除（软删除）
+    FEED_STATUS_AUDITING = 3;  // 审核中
+}
+
+// ==================== 领域消息定义 ====================
+
+// FeedInfo 帖子完整信息
+message FeedInfo {
+    int64        feed_id       = 1;  // 帖子 ID，Snowflake 全局唯一
+    int64        author_id     = 2;  // 作者用户 ID
+    int32        feed_type     = 3;  // 帖子类型：1=图文，2=视频
+    string       title         = 4;  // 标题/话题
+    string       description   = 5;  // 正文/描述
+    repeated string media_urls = 6;  // 媒体资源 URL 列表
+    string       cover_url     = 7;  // 封面图 URL，视频必填
+    string       city_code     = 8;  // 发布城市代码，如 "440300"
+    string       city_name     = 9;  // 发布城市名称，如 "深圳"
+    string       ip_location   = 10; // IP 属地，如 "广东"
+    int32        status        = 11; // 帖子状态：1=正常，2=已删除，3=审核中
+    bool         is_vip_feed   = 12; // 是否大V发帖
+    int64        like_count    = 13; // 点赞数（Feed 表冗余，展示用）
+    int64        comment_count = 14; // 评论数（Feed 表冗余，展示用）
+    int64        collect_count = 15; // 收藏数（Feed 表冗余，展示用）
+    int64        created_at    = 16; // 发布时间，毫秒级 Unix 时间戳
+    int64        updated_at    = 17; // 更新时间，毫秒级 Unix 时间戳
+}
+
+// FeedBrief 帖子卡片（列表用），字段比 FeedInfo 精简
+message FeedBrief {
+    int64        feed_id      = 1;  // 帖子 ID
+    int64        author_id    = 2;  // 作者用户 ID
+    int32        feed_type    = 3;  // 帖子类型
+    string       title        = 4;  // 标题
+    string       cover_url    = 5;  // 封面图
+    string       city_code    = 6;  // 城市代码
+    int64        like_count   = 7;  // 点赞数
+    int64        comment_count = 8; // 评论数
+    int64        created_at   = 9;  // 发布时间，毫秒级 Unix 时间戳
+}
+
+// PageInfo 分页信息
+message PageInfo {
+    int64  page       = 1; // 当前页码，从 1 开始
+    int64  page_size  = 2; // 每页条数
+    int64  total      = 3; // 总条数（-1 表示未统计）
+    bool   has_more   = 4; // 是否还有更多
+    string cursor     = 5; // 下一页游标，空字符串表示无下一页
+}
+
+// ==================== 创建帖子 ====================
+
+message CreateFeedReq {
+    int64        author_id   = 1;  // 作者用户 ID，从 RPC metadata / JWT 中提取
+    int32        feed_type   = 2;  // 帖子类型：1=图文，2=视频
+    string       title       = 3;  // 标题/话题，可选
+    string       description = 4;  // 正文/描述
+    repeated string media_urls = 5; // 媒体资源 URL 列表，图文至少 1 张
+    string       cover_url   = 6;  // 封面图 URL，视频必填
+    string       city_code   = 7;  // 发布城市代码，网关根据 IP 定位后传入
+    string       city_name   = 8;  // 发布城市名称
+    string       ip_location = 9;  // IP 属地
+}
+message CreateFeedResp {
+    FeedInfo feed = 1; // 创建成功的帖子详情
+}
+
+// ==================== 删除帖子 ====================
+
+message DeleteFeedReq {
+    int64 feed_id = 1; // 要删除的帖子 ID
+    int64 user_id = 2; // 当前操作者 ID，用于权限校验
+}
+message DeleteFeedResp {
+    bool success = 1; // 是否删除成功
+}
+
+// ==================== 查询帖子 ====================
+
+message GetFeedReq {
+    int64 feed_id = 1; // 帖子 ID
+    int64 user_id = 2; // 当前查看者 ID，预留用于权限/状态判断
+}
+message GetFeedResp {
+    FeedInfo feed = 1; // 帖子详情
+}
+
+// ==================== 批量查询帖子 ====================
+
+message BatchGetFeedsReq {
+    repeated int64 feed_ids = 1; // 帖子 ID 列表，建议单次不超过 100 个
+    int64          user_id  = 2; // 当前查看者 ID
+}
+message BatchGetFeedsResp {
+    // key: feed_id, value: 帖子详情；找不到的 feed_id 不包含在 map 中
+    map<int64, FeedInfo> feeds = 1;
+}
+
+// ==================== 推荐流 ====================
+
+message GetRecommendTimelineReq {
+    int64  user_id   = 1; // 当前用户 ID，用于个性化过滤（V1 可只用于日志）
+    int64  page      = 2; // 页码，从 1 开始
+    int64  page_size = 3; // 每页条数，默认 10，最大 50
+}
+message GetRecommendTimelineResp {
+    repeated FeedBrief feeds = 1; // 推荐流帖子列表
+    PageInfo           page  = 2; // 分页信息
+}
+
+// ==================== 关注流 ====================
+
+message GetFollowTimelineReq {
+    int64  user_id   = 1; // 当前用户 ID
+    string cursor    = 2; // 游标，空字符串表示第一页
+    int64  page_size = 3; // 每页条数，默认 10，最大 50
+}
+message GetFollowTimelineResp {
+    repeated FeedBrief feeds = 1; // 关注流帖子列表
+    PageInfo           page  = 2; // 分页信息，包含下一页 cursor
+}
+
+// ==================== 同城流 ====================
+
+message GetCityTimelineReq {
+    int64  user_id   = 1; // 当前用户 ID
+    string city_code = 2; // 城市代码，为空时从 user_id 获取
+    int64  page      = 3; // 页码，从 1 开始
+    int64  page_size = 4; // 每页条数，默认 10，最大 50
+}
+message GetCityTimelineResp {
+    repeated FeedBrief feeds = 1; // 同城流帖子列表
+    PageInfo           page  = 2; // 分页信息
+}
+
+// ==================== 个人主页帖子列表 ====================
+
+message GetUserFeedsReq {
+    int64  user_id   = 1; // 要查询的用户 ID
+    int64  page      = 2; // 页码，从 1 开始
+    int64  page_size = 3; // 每页条数，默认 10，最大 50
+}
+message GetUserFeedsResp {
+    repeated FeedBrief feeds = 1; // 该用户发布的帖子列表
+    PageInfo           page  = 2; // 分页信息
+}
+
+// ==================== 服务定义 ====================
+
+service Feed {
+    // 创建帖子
+    rpc CreateFeed(CreateFeedReq) returns (CreateFeedResp);
+
+    // 删除帖子（软删除）
+    rpc DeleteFeed(DeleteFeedReq) returns (DeleteFeedResp);
+
+    // 获取帖子详情
+    rpc GetFeed(GetFeedReq) returns (GetFeedResp);
+
+    // 批量获取帖子详情
+    rpc BatchGetFeeds(BatchGetFeedsReq) returns (BatchGetFeedsResp);
+
+    // 推荐流
+    rpc GetRecommendTimeline(GetRecommendTimelineReq) returns (GetRecommendTimelineResp);
+
+    // 关注流
+    rpc GetFollowTimeline(GetFollowTimelineReq) returns (GetFollowTimelineResp);
+
+    // 同城流
+    rpc GetCityTimeline(GetCityTimelineReq) returns (GetCityTimelineResp);
+
+    // 个人主页帖子列表
+    rpc GetUserFeeds(GetUserFeedsReq) returns (GetUserFeedsResp);
+}
