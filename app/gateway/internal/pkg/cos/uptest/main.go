@@ -2,8 +2,9 @@
 // 再用临时凭证把一张 1x1 测试 PNG 直传到桶，校验后删除，保持桶干净。
 //
 // 用法：
-//   source scripts/cos-env.sh && go run ./app/gateway/internal/pkg/cos/uptest            # 上传+自清理验证
-//   source scripts/cos-env.sh && COS_UPTEST_CLEANUP=1 go run ./app/gateway/internal/pkg/cos/uptest  # 清理 dev/_uptest/ 下所有对象
+//
+//	source scripts/cos-env.sh && go run ./app/gateway/internal/pkg/cos/uptest            # 上传+自清理验证
+//	source scripts/cos-env.sh && COS_UPTEST_CLEANUP=1 go run ./app/gateway/internal/pkg/cos/uptest  # 清理 dev/_uptest/ 下所有对象
 //
 // 密钥仅来自环境变量 COS_SECRET_ID / COS_SECRET_KEY，禁止硬编码。
 package main
