@@ -1,130 +1,208 @@
-# Agent 服务架构设计
+# 架构与服务拆分
 
-> 描述 Agent 独立 HTTP 服务的组件划分、Eino Graph 编排结构、与 5 个下游 gRPC 服务的调用关系，以及工程目录与配置约定。
+> 定义 FeedMind Agent 涉及的新增服务、部署形态、关键链路、配置约定，以及对现有服务的改造点与决策记录。
 
 ---
 
 ## 1. 概述与定位
 
-Agent 服务是 `app/agent` 下的独立 Go 服务：
+本项目新增两个服务域，并对四个现有组件做增量改造：
 
-- **对外**：go-zero `rest` 提供 HTTP API（规划端口 8090），接口契约见 [08-api.md](./08-api.md)。
-- **对内**：Eino Graph 承载「意图识别 → 决策 → 工具调用 → 汇总 → 方案 → 审批 → 执行 → 验证」流程；经 go-zero `zrpc` 客户端调用 feed/user/relation/interaction/comment 五个 gRPC 服务。
-- **不做**：不直接访问业务数据库；不承载前端会话渲染；初期不做多 Agent 协作。
-
-### 1.1 为什么 HTTP 层用 go-zero rest 而不是 Hertz
-
-Eino 是纯 Go 库，与 HTTP 框架解耦。选 go-zero `rest` 的理由：与本仓库 Gateway 同栈（JWT 中间件、logx、配置加载可直接复用写法）、部署与运维心智一致。若未来接入 Eino 生态的 ADK/Hertz 示例，可只替换 HTTP 接入层，Graph 与工具层不受影响。
+- **Content 服务域**（新增）：视频内容理解与内容检索。
+- **Agent 服务域**（新增）：会话、意图识别、Tool 编排、结果生成。
+- **改造**：Gateway（request_id、埋点与Agent 路由）、Feed RPC（来源标记、Trace、详情批量接口）、Interaction 服务域（行为指标 + 兴趣画像）、`common/`（事件契约、拦截器）。
 
 ## 2. 架构与职责
 
-### 2.1 组件图
+```text
+                       ┌────────────────────────客户端 ────────────────────────┐
+                       │  刷流 / 埋点上报 / Agent 会话 / 为什么推荐             │
+                       └───────────────────────────┬───────────────────────────┘
+                                                   ▼
+                                        Gateway :8080 (/api/v1)
+                        JWT → user_id ；生成 request_id ；Metadata 透传
+   ┌──────────────┬──────────────┬──────────────┬──────────────┬──────────────┬──────────────┐
+   ▼              ▼              ▼              ▼              ▼              ▼
+User :9001   Relation :9002  Feed :9003   Comment :9004  Interaction :9005  ┌─ Content :9007
+                │                          │              └─ Agent   :9006
+                                 │                          │                     │
+                                 │                          │                     ▼
+                                 │                          │              8 个只读 Tool
+                                 │                          │              （只经 RPC 取数）
+   写路径（异步解耦）             ▼                          ▼
+feeds 落库 ─ RocketMQ feed-created ─┬─ Feed Worker（inbox/outbox/推荐池/同城池，进程内）
+                                    └─ Content Worker（独立进程：下载→FFmpeg→ASR/OCR→多模态→入库→建索引）
 
+埋点路径
+客户端批量上报 ─ Gateway ─ RocketMQ feed-behavior-event ─ Behavior Worker
+                                                            ├─ feed_behavior_events（明细）
+                                                            ├─ feed_metrics_hourly（小时指标）
+                                                            └─ user:interest:{uid}（兴趣画像）
 ```
-                         ┌──────────────────────────────────────────┐
-  HTTP(JWT)              │  app/agent                                │
- 用户/运营 ────────────▶ │  ┌────────────┐   ┌─────────────────────┐ │
-                         │  │ rest 层     │──▶│ Eino Graph          │ │
-                         │  │ /sessions   │   │ ① intent 意图识别    │ │
-                         │  │ /runs       │   │ ② plan/decide 决策   │ │
-                         │  │ /approve    │   │ ③ tools 工具执行     │ │
-                         │  └────────────┘   │ ④ aggregate 汇总     │ │
-                         │        │          │ ⑤ propose 方案生成   │ │
-                         │        ▼          │ ⑥ approval 审批中断★ │ │
-                         │  ┌────────────┐   │ ⑦ execute 执行       │ │
-                         │  │ svc 上下文  │   │ ⑧ verify 验证        │ │
-                         │  │ zrpc 客户端 │   └─────────────────────┘ │
-                         │  │ ChatModel   │            │              │
-                         │  └────────────┘            │ CheckPoint    │
-                         └───────┬───────────────────┬┴──────────────┘
-                    zrpc(etcd 2479)                  │
-        ┌──────┬─────────┬───────┴──┬──────────┐     ▼
-      user   relation   feed   interaction  comment   MySQL feed_agent
-     (9001)  (9002)    (9003)    (9005)     (9004)    + Redis(摘要/偏好缓存)
-                                                      + DeepSeek(OpenAI 兼容 API)
+
+## 3. 服务与进程清单
+
+| 组件 | 形态 | 端口 | 归属库 | 职责 |
+|------|------|------|--------|------|
+| `app/agent/rpc` | 新增 gRPC | 9006 | `feed_agent` | 会话/消息/Run 管理、Eino 编排、Tool 注册与执行 |
+| `app/content/rpc` | 新增 gRPC | 9007 | `feed_content` | 内容画像查询、内容检索、重试分析 |
+| `app/content/worker` | 新增独立进程 | 无（metrics 9109） | `feed_content` | 消费 `feed-created`/`feed-deleted`，执行分析流水线 |
+| `app/interaction/rpc` | 改造 | 9005 | `feed_interaction` | 新增指标查询与兴趣画像查询接口 |
+| `app/interaction/worker` | 改造（进程内 worker 扩展） | 无 | `feed_interaction` | 新增消费 `feed-behavior-event`，聚合指标与兴趣 |
+| `app/feed/rpc` | 改造 | 9003 | `feed_feed` | 新增来源标记、请求 Trace、详情/创作者列表接口 |
+| `app/gateway` | 改造 | 8080 | - | request_id 中间件、埋点接口、Agent 与内容画像路由 |
+
+服务发现沿用现有 etcd `127.0.0.1:2479`，Key 分别为 `agent.rpc`、`content.rpc`。
+
+**为什么 Content Worker 必须独立进程**：FFmpeg 是 CPU/IO 密集型子进程，且需要临时磁盘配额；跑在 Feed 或 Content RPC 进程内会污染在线请求的延迟与内存，也无法独立限流与扩缩容。
+
+## 4. 关键链路
+
+### 4.1 发布 → 内容画像
+
+```text
+POST /api/v1/feeds → Feed RPC.CreateFeed
+  1. 写 feeds（MySQL）
+  2. 发送 feed-created（event_id = uuid）
+  3. 立即返回（分析不阻塞发帖）
+Content Worker 消费 feed-created
+  4. feed_type != 2（非视频）→ 直接 ACK 丢弃
+  5. 幂等判定（feed_id + media_hash + model_version）
+  6. PENDING → DOWNLOADING → EXTRACTING → ASR_RUNNING → OCR_RUNNING
+     → VISION_RUNNING → INDEXING → COMPLETED
+  7. 写 feed_content_profiles + 写 ES/向量索引
 ```
 
-### 2.2 Graph 节点职责
+### 4.2 刷流 → 埋点 → 指标
 
-| 节点 | 类型 | 职责 |
-|---|---|---|
-| `intent` | ChatModel | 从自然语言提取任务类型（recommend / diagnose / operate）与结构化条件（题材、时长、时间窗等），输出 JSON |
-| `decide` | ChatModel + ToolsNode 循环 | ReAct 式决策：选择工具、生成参数；受最大迭代次数约束 |
-| `tools` | ToolsNode | 执行工具，写 `agent_tool_calls` 留痕；结构化返回，不产生自然语言 |
-| `aggregate` | Lambda | 合并去重工具结果，构造「事实上下文」（仅真实数据） |
-| `propose` | ChatModel | 基于事实上下文生成结构化方案（推荐列表 / 诊断 JSON / 修改计划） |
-| `approval` | 条件分支 + Interrupt | 方案含写操作 → 触发 `Interrupt`，持久化 checkpoint，等待人工审批（见 [04-approval.md](./04-approval.md)） |
-| `execute` | ToolsNode（写工具） | 审批通过后按计划逐项调用写 RPC，幂等可重试 |
-| `verify` | Lambda + 读工具 | 回读数据校验执行结果，生成执行报告 |
+```text
+GET /api/v1/feeds/timeline（响应含 request_id + 每条 feed 的 source）
+  → 客户端记录 (request_id, feed_id, position)
+  → 内容真正可视 → EXPOSE；起播 → PLAY；3s → EFFECTIVE_PLAY；结束 → FINISH/SKIP
+POST /api/v1/feeds/behaviors（批量 ≤ 50 条）
+  → Gateway 校验 + 服务端补全 author_id →发送 feed-behavior-event
+  → Behavior Worker：event_id 幂等 → 明细落库 → Redis 累加 → 定时 flush 小时表→ 更新兴趣ZSet
+```
 
-### 2.3 控制流关键规则
+### 4.3 Agent 问答
 
-- **只读任务短路**：`intent` 判定无写操作时，`propose` 直接 → 结束，不经过 `approval/execute`。
-- **迭代护栏**：`decide↔tools` 循环设 `max_iterations`（默认 6）与单 run 工具调用预算（默认 20 次），超限强制进入 `aggregate` 并在结果中声明数据不完整。
-- **失败降级**：单个工具失败不终止 run；记录错误后由 `decide` 决定重试（≤2 次）或放弃该数据维度。
+```text
+POST /api/v1/agent/sessions/{sessionId}/messages
+  → Agent RPC：创建 run_id（CREATED）
+  → 意图识别（UNDERSTANDING，LLM）
+  → 权限预检（Go 代码，非模型）
+  → Tool 选择与参数校验（TOOL_CALLING）
+  → 调用 Feed/Content/Interaction/Relation/User RPC 取数
+  → 结构化结论计算（ANALYZING，Go 代码算指标与对比）
+  → 语言组织（GENERATING，LLM 只允许引用已给事实）
+  → SUCCEEDED / FAILED，落agent_runs + agent_tool_calls
+```
 
-## 3. 数据模型
+## 5. 配置约定
 
-Agent 自身状态存 `feed_agent` 库（`agent_sessions` / `agent_runs` / `agent_tool_calls` / `recommendation_records`），Graph checkpoint 序列化后存入 `agent_runs`。详见 [03-state-session.md](./03-state-session.md)。
+`app/agent/rpc/etc/agent.yaml`（示例，密钥只允许来自环境变量）：
 
-## 4. 接口与契约
+```yaml
+Name: agent.rpc
+ListenOn: 0.0.0.0:9006
+Etcd:
+  Hosts:
+    - 127.0.0.1:2479
+  Key: agent.rpc
 
-- 对外 HTTP：见 [08-api.md](./08-api.md)。
-- 对内工具 → RPC 映射：见 [02-tools.md](./02-tools.md)。
-- LLM：`eino-ext/components/model/openai`，`base_url` 指向 DeepSeek 的 OpenAI 兼容端点；`api_key` **仅**从环境变量 `AGENT_LLM_API_KEY` 读取，配置文件与代码禁止出现明文密钥。
+FeedRpc:        { Etcd: { Hosts: [127.0.0.1:2479], Key: feed.rpc }, Timeout: 3000 }
+ContentRpc:     { Etcd: { Hosts: [127.0.0.1:2479], Key: content.rpc }, Timeout: 5000 }
+InteractionRpc: { Etcd: { Hosts: [127.0.0.1:2479], Key: interaction.rpc }, Timeout: 3000 }
+RelationRpc:    { Etcd: { Hosts: [127.0.0.1:2479], Key: relation.rpc }, Timeout: 3000 }
+UserRpc:        { Etcd: { Hosts: [127.0.0.1:2479], Key: user.rpc }, Timeout: 3000 }
 
-## 5. 错误码
+Mysql:
+  DataSource: ${AGENT_MYSQL_DSN}      # feed_agent 库
+Redis:
+  Host: 127.0.0.1:6379
+  Type: node
 
-沿用 `common/errorx` 体系，为 Agent 预留独立码段（建议 60000-60999）：
+Model:
+  Provider: ark                       # eino-ext/components/model/ark
+  APIKey: ${ARK_API_KEY}
+  ChatModel: ${ARK_CHAT_MODEL}
+  TimeoutMs: 20000
+  MaxOutputTokens: 1024
 
-| 码 | 含义 |
-|---|---|
-| 60001 | 会话不存在 |
-| 60002 | run 不存在或状态不允许该操作 |
-| 60003 | 审批状态冲突（重复审批/已过期） |
-| 60004 | LLM 调用失败（含超时） |
-| 60005 | 工具调用预算耗尽 |
-| 60006 | 下游服务不可用（降级返回部分结果） |
+AgentLimit:
+  MaxToolCalls: 8                     # 单次 Run 最多 Tool 调用
+  MaxModelCalls: 4                    # 单次 Run 最多模型调用
+  RunTimeoutMs: 60000
+  MaxInputRunes: 2000
+  HistoryWindow: 20                   # 送入模型的历史消息条数上限
+  UserQpm: 10                         # 单用户每分钟 Run 上限
 
-## 6. 缓存与一致性
+InternalUserIDs: []                   # 内部用户白名单（Trace/明细类Tool）
 
-- 近期会话摘要、长期偏好读多写少，走 Redis cache-aside（key 约定见 [03-state-session.md](./03-state-session.md)）。
-- checkpoint 写 MySQL 为准；恢复执行前重读校验 run 状态，防止重复执行（幂等详见 [04-approval.md](./04-approval.md)）。
+Prometheus: { Host: 0.0.0.0, Port: 9108, Path: /metrics }
+Telemetry:  { Name: agent.rpc, Endpoint: http://127.0.0.1:4318/v1/traces, Sampler: 1.0, Batcher: otlphttp }
+```
 
-## 7. 测试策略
+`app/content/worker/etc/content-worker.yaml` 关键项：
 
-- **单元**：`internal/logic` 下用 mock ChatModel（固定返回 tool_calls JSON）+ 内存工具 stub，验证 Graph 路由、迭代护栏、审批分支。
-- **集成**：`app/agent/tests/`，`agent-test.yaml` 指向 `feed_agent_test` 库 + Redis DB1；下游 RPC 用真实服务或 gRPC stub server。
-- **回放测试**：以 `agent_tool_calls` 留痕数据回放工具结果，验证 `propose` 的 grounding（输出中的数字必须能在工具结果中找到，见 [07-observability.md](./07-observability.md)）。
+```yaml
+Analysis:
+  MaxConcurrency: 2                   # 并发分析任务数（FFmpeg 进程数上限）
+  MaxRetry: 3
+  FFmpegPath: /usr/bin/ffmpeg
+  FFmpegTimeoutSec: 120
+  MaxVideoBytes: 209715200            # 200MB
+  MaxVideoDurationSec: 600
+  KeyFrameMax: 20                     # 关键帧上限
+  TempDir: /var/tmp/feedmind
+  AllowedMediaHosts: ["feed-1250000000-1317318750.cos.ap-guangzhou.myqcloud.com"]
+  TranscriptMaxRunes: 4000            # 送模型前截断
+```
+
+端口分配（Prometheus）：gateway 9101、user 9102、relation 9103、feed 9104、comment 9105、interaction 9106、content 9107→metrics 9110、agent 9108、content-worker 9109。
+
+## 6. 对现有服务的改造点
+
+| 位置 | 改造 | 详见 |
+|------|------|------|
+| `app/gateway/internal/middleware/` | 新增 `RequestIDMiddleware`，写入 ctx 与响应头 | [02](./02-request-trace.md) |
+| `common/response/response.go` | `requestID(ctx)` 兼容 typed key，避免恒空 | [02](./02-request-trace.md) |
+| `common/interceptors/`（新增） | zRPC client/server 拦截器透传 `x-request-id`等 Metadata | [02](./02-request-trace.md) |
+| `api/proto/feed/feed.proto` | `FeedBrief`/`FeedInfo` 增 `source`；新增 5 个查询方法 | [11](./11-api.md) |
+| `app/feed/rpc/internal/logic/*timeline*.go` | 召回时打来源标记并写 Trace | [02](./02-request-trace.md) |
+| `common/event/behavior/`（新增） | `feed-behavior-event` 事件契约 | [03](./03-behavior-event.md) |
+| `app/interaction/rpc/internal/worker/worker.go` | 增加行为事件订阅与聚合 | [03](./03-behavior-event.md) |
+| `api/proto/interaction/interaction.proto` | 新增指标与兴趣画像查询方法 | [11](./11-api.md) |
+| `common/errorx/errorx.go` | 新增 Content（15000~15999）与 Agent（16000~16999）码段 | [11](./11-api.md) |
+| 各服务 `etc/*.yaml` | 补`Prometheus` 与 `Telemetry` | [12](./12-observability.md) |
+
+## 7. 决策记录（含与需求文档的差异）
+
+| 编号 | 决策 | 理由 | 与需求文档关系 |
+|------|------|------|----------------|
+| D1 | 行为指标与兴趣画像放在 **Interaction 服务域**（`feed_interaction` 库+ 进程内 worker） | 复用已有的 Redis 计数与 MQ 消费框架，避免第8 个服务；兴趣画像与互动行为同源 | 与需求 §11「Interaction RPC 增加指标接口」「或新增画像模块」一致 |
+| D2 | Content Worker 独立进程，Content RPC 独占 9007 | FFmpeg 资源隔离；RPC 只做查询 | 需求 §9 一致，端口为本文补充 |
+| D3 | HTTP 路径统一带 `/api/v1` 前缀（如 `/api/v1/agent/sessions`） | 与现有 `docs/design/api-spec/README.md` §1 约定一致 | 需求 §12 写作 `/api/agent/...`，此处按仓库既有规范收敛 |
+| D4 | 行为上报接口路径为 `/api/v1/feeds/behaviors`（复数，批量） | 与 `/api/v1/feeds/...` 资源命名一致 | 需求 §12 为 `/api/feed/behaviors` |
+| D5 | 小时指标表写入**绝对值**而非增量 | 即使 flush 重复执行也不会重复累加，双重保证幂等 | 需求 §16「重复消费不重复累加」的实现选择 |
+| D6 | 第一版检索使用 Elasticsearch（BM25 + kNN），Redis Stack 作为备选 | 字幕/摘要需要全文检索 + 向量混排，MySQL LIKE 不足 | 需求 §13 允许二者择一 |
+| D7 | 内部身份用配置白名单，不引入新角色表 | 第一版仅内部排障使用，避免侵入 User 服务 | 需求 §5 的最小实现 |
 
 ## 8. 演进与 TODO
 
-- [ ] 评估 Eino ADK（ReAct Agent 封装）替代手写 `decide↔tools` 循环。
-- [ ] SSE 流式输出（首版同步 + 轮询，见 [08-api.md](./08-api.md)）。
-- [ ] 长期偏好升级为向量检索（当前为结构化偏好表）。
+- 画像模块独立为 `profile.rpc`，与Interaction 写路径彻底解耦。
+- Content Worker 支持任务队列优先级（新发布优先、重试降级）。
+- 检索层引入独立 `search.rpc`，屏蔽 ES/向量库差异。
+- Agent 支持流式输出（SSE），当前为「创建 Run + 轮询结果」。
 
-### 工程目录（规划）
-
-```
-app/agent/
-├── agent.go                 # 服务入口
-├── etc/agent.yaml           # 配置（LLM base_url、下游 etcd、MySQL/Redis）
-├── internal/
-│   ├── config/
-│   ├── handler/             # rest 路由处理
-│   ├── logic/               # 会话/run/审批业务逻辑
-│   ├── graph/               # Eino Graph 装配、节点实现、checkpoint 存取
-│   ├── tools/               # 工具定义与 RPC 封装（见 02-tools.md）
-│   ├── model/               # feed_agent 四表 model（goctl 生成 + 扩展）
-│   └── svc/                 # ServiceContext：zrpc 客户端、ChatModel、model
-└── tests/                   # 集成测试
-```
+---
 
 ## 关联文档
 
-- [Agent 服务总览](./00-overview.md)
-- [工具契约](./02-tools.md)
-- [状态与会话设计](./03-state-session.md)
-- [审批流程设计](./04-approval.md)
-- [对外 API](./08-api.md)
-- [系统架构设计](../architecture.md)
+- [总览与定位](./00-overview.md)
+- [请求标识与 Feed 链路追踪](./02-request-trace.md)
+- [内容分析服务](./04-content-analysis.md)
+- [Agent 服务设计](./09-agent-service.md)
+- [接口契约](./11-api.md)
+- [系统架构](../architecture.md)
+- [服务拆分](../service-design.md)

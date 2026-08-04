@@ -1,37 +1,74 @@
-# agent 设计目录
+# FeedMind Agent 设计文档目录
 
-> 本目录存放 **Agent 服务（智能运营与推荐 Agent）** 的分模块设计文档。Agent 是一个独立的 Go + Eino 服务，通过自然语言接收运营/推荐任务，编排调用现有 5 个 gRPC 微服务完成「理解任务 → 选择工具 → 获取数据 → 分析结果 → 制定计划 → 请求审批 → 执行操作 → 验证结果」的完整闭环。
+> 本目录存放「短视频内容理解与 Feed 智能助手」（FeedMind Agent）的设计方案：内容多模态理解、行为采集与指标聚合、用户兴趣画像、语义检索、推荐原因解释、创作者作品分析与 Agent 编排。
 
 ---
 
 ## 文档索引
 
-| 文件 | 内容 |
-|------|------|
-| [00-overview.md](./00-overview.md) | Agent 定位、与 5 个微服务的关系、三版场景可行性结论与后端缺口汇总 |
-| [01-architecture.md](./01-architecture.md) | 独立 HTTP 服务架构、Eino Graph 编排设计、目录结构、技术选型理由 |
-| [02-tools.md](./02-tools.md) | Agent 工具清单：每个工具的 Schema、到现有 RPC 的映射、grounding 约束 |
-| [03-state-session.md](./03-state-session.md) | 状态三层设计：Graph State、会话摘要、长期偏好；`feed_agent` 库四张表 DDL |
-| [04-approval.md](./04-approval.md) | 人工审批流程：Eino Interrupt/Resume、计划持久化、恢复执行与结果验证 |
-| [05-scenarios.md](./05-scenarios.md) | V1 个性化推荐 / V2 运营诊断 / V3 执行与审批 三版场景逐步设计 |
-| [06-backend-gaps.md](./06-backend-gaps.md) | 后端扩展清单：`feeds` 表扩列、`UpdateFeed` RPC、轻量 stats 服务（SQL/proto 草案） |
-| [07-observability.md](./07-observability.md) | 可观测性：工具调用留痕、run 追踪、token 成本统计、幻觉校验 |
-| [08-api.md](./08-api.md) | Agent 对外 HTTP REST 接口、DeepSeek（OpenAI 兼容）配置、鉴权设计 |
-| [09-product-requirements.md](./09-product-requirements.md) | 补充 FeedMind 的运营 Copilot 需求、后端产品化能力、分期路线与验收标准 |
+| 文件 | 主题 | 一句话说明 |
+|------|------|-----------|
+| [00-overview.md](./00-overview.md) | 总览与定位 | 项目定位、现状差距、第一版范围、角色权限、标识体系 |
+| [01-architecture.md](./01-architecture.md) | 架构与服务拆分 | 新增服务/进程、端口、关键链路、配置、改造点、决策记录 |
+| [02-request-trace.md](./02-request-trace.md) |请求标识与链路追踪 | `request_id` 贯通、Feed 来源标记、请求级 Trace |
+| [03-behavior-event.md](./03-behavior-event.md) | 行为采集与指标聚合 |埋点契约、上报接口、幂等消费、小时级指标 |
+| [04-content-analysis.md](./04-content-analysis.md) | 内容分析服务 | FFmpeg/ASR/OCR/多模态流水线、状态机、幂等与重试 |
+| [05-content-search.md](./05-content-search.md) | 自然语言内容检索 | 索引结构、三路召回与 RRF、业务过滤排序、评测 |
+| [06-user-interest.md](./06-user-interest.md) | 用户兴趣画像 | 行为权重、时间衰减、Redis/MySQL 存储、查询口径 |
+| [07-recommend-reason.md](./07-recommend-reason.md) | 推荐原因解释 | 来源枚举 → `reason_codes` → 文案，降级策略 |
+| [08-creator-metrics.md](./08-creator-metrics.md) | 创作者作品分析 | 指标口径与公式、同类匿名对比、漏斗诊断与建议边界 |
+| [09-agent-service.md](./09-agent-service.md) | Agent服务设计 | Eino 编排、Run 状态机、8 个只读 Tool、限额与注入防护 |
+| [10-data-model.md](./10-data-model.md) | 数据模型 | 新增 MySQL 表、Redis Key、ES 索引、容量与清理 |
+| [11-api.md](./11-api.md) | 接口契约 | Gateway HTTP、各服务新增 RPC、Metadata、错误码段 |
+| [12-observability.md](./12-observability.md) | 可观测性 | Prometheus 指标、日志字段、OTel 链路、告警 |
+| [13-security.md](./13-security.md) | 安全要求 | 权限模型、越权与注入防护、SSRF/RCE、脱敏与审计 |
+| [14-acceptance-test.md](./14-acceptance-test.md) | 验收与测试 | 测试分层、端到端用例、验收标准映射、故障注入 |
+| [15-roadmap.md](./15-roadmap.md) | 实施路线 | 五阶段交付顺序、依赖、风险、演示脚本 |
 
 ## 阅读顺序
 
-1. 先读 `00-overview.md`，了解 Agent 定位与「哪些场景现在能做、哪些要先补后端」。
-2. 产品立项和研发排期读 `09-product-requirements.md`，确认需求、范围、依赖与验收标准。
-3. 再读 `01-architecture.md` 与 `02-tools.md`，理解编排结构与工具面。
-4. 之后读 `03-state-session.md` 与 `04-approval.md`，掌握状态与人机协作机制。
-5. 按需查阅 `05-scenarios.md`（分版本实施）、`06-backend-gaps.md`（首批技术改造草案）。
-6. 实现 HTTP 层与运维时参考 `08-api.md` 与 `07-observability.md`。
+```
+00-overview → 01-architecture
+                    ↓
+        02-request-trace → 03-behavior-event            （阶段一：数据基础）
+                    ↓
+              04-content-analysis                （阶段二：内容理解）
+                    ↓
+        05-content-search → 06-user-interest（阶段三：检索与画像）
+                    ↓
+   07-recommend-reason → 08-creator-metrics → 09-agent-service   （阶段四：Agent）
+                    ↓
+        10-data-model / 11-api（随时查阅的契约）
+                    ↓
+   12-observability → 13-security → 14-acceptance-test → 15-roadmap
+```
+
+## 与需求文档的关系
+
+- 源需求：[短视频内容理解与 Feed 智能助手需求文档](../../agent需求文档.md)（V1.0，FeedMind Agent）。
+- 本目录在需求基础上补充可落地细节（口径、状态机、幂等、权限、限额、DDL、错误码）。
+- 与需求文档不一致之处（HTTP 前缀、行为上报路径、指标与画像的服务归属、端口分配等）集中记录在 [01-architecture.md](./01-architecture.md) §7 决策记录，不在其它文档分散解释。
+
+## 实现状态
+
+| 模块 | 状态 | 说明 |
+|------|------|------|
+| 请求标识链路 | 设计完成，未实现 | 当前 `common/response` 的 `request_id` 恒为空（无人写入） |
+| Feed 来源与请求 Trace | 设计完成，未实现 | `FeedBrief`尚无 `source`；无 inbox 回源重建 |
+| 行为埋点与指标 | 设计完成，未实现 | 需新增 `feed-behavior-event` 与三张表 |
+| Content 服务 | 设计完成，未实现 | 需新增 `app/content/{rpc,worker}` |
+| 内容检索 | 设计完成，未实现 | 需引入 ES（或 Redis Stack） |
+| 兴趣画像 | 设计完成，未实现 | Interaction 服务域内实现 |
+| Agent 服务 | 设计完成，未实现 | 需新增 `app/agent/rpc` 与 Eino 依赖 |
+| 可观测性 | 设计完成，未实现 | 各服务 `etc/*.yaml`尚无 `Prometheus`/`Telemetry` |
 
 ## 关联文档
 
 - [design 目录索引](../README.md)
-- [系统架构设计](../architecture.md)
-- [服务拆分方案](../service-design.md)
-- [数据模型](../data-model.md)
+- [系统架构](../architecture.md)
+- [服务拆分](../service-design.md)
+- [全局数据模型](../data-model.md)
+- [REST API 设计规范](../api-spec/README.md)
+- [Feed 服务设计](../feed/README.md)
+- [Interaction 服务设计](../interaction/README.md)
 - [文档编写规范](../../agent/doc-writing-guide.md)

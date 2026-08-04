@@ -13,7 +13,7 @@
 | [feed/](./feed/) | Feed 服务（9003）分模块设计方案：数据模型、帖子管理、三种 Timeline、缓存、MQ、测试 |
 | [interaction/](./interaction/) | Interaction 服务（9005）分模块设计方案：点赞/收藏、计数/状态、用户列表、缓存一致性、MQ、测试 |
 | [oss/](./oss/) | 对象存储（腾讯云 COS）设计：Bucket/Key 规范、STS 临时凭证签发、私有桶签名访问、安全策略 |
-| [agent/](./agent/) | Agent 服务（规划 8090）设计方案：Eino 编排、工具契约、状态与会话、人工审批、场景分版、后端缺口、可观测性、HTTP API |
+| [agent/](./agent/) | FeedMind Agent（短视频内容理解与 Feed 智能助手）设计方案：请求标识链路、行为埋点与指标、内容多模态分析（Content 9007）、语义检索、兴趣画像、推荐原因解释、创作者分析、Agent 服务（9006）与 Eino Tool 编排 |
 
 ## 与设计相关的代码目录
 
