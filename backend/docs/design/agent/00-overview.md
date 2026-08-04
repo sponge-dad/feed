@@ -16,6 +16,8 @@ Agent 服务是一个**独立部署的 Go 服务**（`app/agent`，规划 HTTP �
 
 Agent 不是聊天机器人：它必须**基于工具返回的真实数据**完成分析与决策，涉及写操作时先生成计划、暂停等待人工审批，批准后才执行并验证结果。
 
+产品立项建议以 **FeedOps Agent（智能内容运营 Copilot）** 为主目标：先做可信只读内容盘点，再补齐指标诊断与审批执行。普通用户的对话式推荐只作为 M0 工程验证，不将当前按发布时间排序的公共推荐池描述为个性化推荐。完整需求、优先级和验收标准见 [09-product-requirements.md](./09-product-requirements.md)。
+
 ### 1.2 技术选型（已锁定）
 
 | 项 | 决定 | 理由 |
@@ -65,7 +67,7 @@ Agent 不是聊天机器人：它必须**基于工具返回的真实数据**完�
 
 | 版本 | 场景 | 结论 | 依据 |
 |---|---|---|---|
-| V1-lite | 推荐「我没点赞/收藏过的近期视频」 | ✅ 零后端改动可做 | 用点赞+收藏列表近似「看过」 |
+| V1-lite | 推荐「我没点赞/收藏过的近期视频」 | ✅ 业务微服务零改动可验证 | 仍需新建 Agent 服务、状态库与运行时；点赞+收藏仅近似「看过」 |
 | V1-full | 按「悬疑 / 电影 / 未观看 / 时长短」过滤推荐 | ⚠️ 需后端补列 | `feeds` 表无 `category`/`tags`/`duration_sec`；无观看记录 |
 | V2 | 播放量/点击率/完播率诊断 | ❌ 当前不可行 | 全仓库无播放事件、点击事件、完播数据，需新建 stats 服务 |
 | V3 | 修改标题/标签/上下架/推荐位（含审批） | ⚠️ 审批可行，执行缺口 | Eino Interrupt/Resume 支持审批；但 Feed 服务无 `UpdateFeed` RPC、无推荐位概念 |
@@ -80,6 +82,10 @@ Agent 不是聊天机器人：它必须**基于工具返回的真实数据**完�
 | 无 `UpdateFeed` RPC（仅有 Create/Delete） | V3 执行 | 小 | [06-backend-gaps.md](./06-backend-gaps.md) §3 |
 | 无播放记录 / 统计服务（播放量、CTR、完播率） | V2 全部 | 大（独立子项目） | [06-backend-gaps.md](./06-backend-gaps.md) §4 |
 | `FeedStatus` 无「下架」态、无推荐位模型 | V3 执行 | 小 | [06-backend-gaps.md](./06-backend-gaps.md) §3 |
+| 无运营角色/RBAC、审批人与业务侧权限校验 | 所有运营场景 | 中 | [09-product-requirements.md](./09-product-requirements.md) §8.1 |
+| 无内容条件检索/批量运营查询接口 | V1-full / V2 | 中 | [09-product-requirements.md](./09-product-requirements.md) §4.2 |
+| 无持久化 run 调度、事件流与重启恢复实现 | 所有版本 | 中 | [09-product-requirements.md](./09-product-requirements.md) §6.1 |
+| Feed 事件缺可靠 outbox，缺更新/版本化事件 | V2 / V3 数据一致性 | 中 | [09-product-requirements.md](./09-product-requirements.md) §8.1 |
 
 ## 6. 实施顺序建议
 
@@ -100,5 +106,6 @@ Agent 不是聊天机器人：它必须**基于工具返回的真实数据**完�
 - [工具契约](./02-tools.md)
 - [场景分版设计](./05-scenarios.md)
 - [后端缺口清单](./06-backend-gaps.md)
+- [产品需求与建设路线](./09-product-requirements.md)
 - [系统架构设计](../architecture.md)
 - [服务拆分方案](../service-design.md)
