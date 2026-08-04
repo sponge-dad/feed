@@ -19,6 +19,7 @@ import (
 	"github.com/sponge-dad/feed/app/feed/rpc/feedclient"
 	"github.com/sponge-dad/feed/common/errorx"
 	commentEvent "github.com/sponge-dad/feed/common/event/comment"
+	"github.com/sponge-dad/feed/common/requestid"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -108,7 +109,7 @@ func (l *CreateCommentLogic) CreateComment(in *comment.CreateCommentReq) (*comme
 	// 发送 CREATE 事件（失败不阻塞）
 	sendCommentEvent(l.ctx, l.svcCtx, commentEvent.NewEventCommentCreated(
 		commentID, in.FeedId, in.UserId, replyUserID, in.ParentId, rootID,
-		int32(utf8.RuneCountInString(in.Content)), now.UnixMilli()))
+		int32(utf8.RuneCountInString(in.Content)), now.UnixMilli(), requestid.FromContext(l.ctx)))
 
 	return &comment.CreateCommentResp{Comment: toCommentInfo(data)}, nil
 }

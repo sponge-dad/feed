@@ -12,6 +12,7 @@ import (
 	"github.com/sponge-dad/feed/app/relation/rpc/relation"
 	"github.com/sponge-dad/feed/common/errorx"
 	feedEvent "github.com/sponge-dad/feed/common/event/feed"
+	"github.com/sponge-dad/feed/common/requestid"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -94,7 +95,7 @@ func (l *CreateFeedLogic) CreateFeed(in *feed.CreateFeedReq) (*feed.CreateFeedRe
 		return nil, err
 	}
 	// 发送event -> MQ
-	event := feedEvent.NewEventFeedCreated(feedID, in.AuthorId, vip.IsVip, in.CityCode, now.UnixMilli())
+	event := feedEvent.NewEventFeedCreated(feedID, in.AuthorId, vip.IsVip, in.CityCode, now.UnixMilli(), requestid.FromContext(l.ctx))
 	body, err := json.Marshal(event)
 	if err != nil {
 		l.Errorf("marshal feed.created event failed feedId=%d err=%v", feedID, err)

@@ -17,6 +17,7 @@ import (
 	"net/http"
 
 	"github.com/sponge-dad/feed/common/errorx"
+	"github.com/sponge-dad/feed/common/requestid"
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
@@ -29,13 +30,13 @@ type Body struct {
 	RequestID string      `json:"request_id"`
 }
 
-// requestIDKey 从 context 取 traceID / requestID 的 key。
-// go-zero 默认把 trace id 放在 context 里，可通过 logx.WithContext 取到。
+// requestID 从 context 取出 request_id 作为响应字段返回。
+// 优先用 typed key（common/requestid），并回退兼容旧代码/测试里用裸字符串 "request_id" 写入的场景；
+// 若均未设置（尚无中间件注入），返回空串。
 func requestID(ctx context.Context) string {
-	// go-zero 会在 ctx 中注入 trace，这里取 traceID 作为 request_id
-	traceID := logx.WithContext(ctx)
-	_ = traceID
-	// 简化处理：优先从 ctx 值获取自定义 request_id，没有则返回空
+	if id := requestid.FromContext(ctx); id != "" {
+		return id
+	}
 	if v := ctx.Value("request_id"); v != nil {
 		if s, ok := v.(string); ok {
 			return s

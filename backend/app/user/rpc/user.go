@@ -9,6 +9,7 @@ import (
 	"github.com/sponge-dad/feed/app/user/rpc/internal/serverinterceptors"
 	"github.com/sponge-dad/feed/app/user/rpc/internal/svc"
 	"github.com/sponge-dad/feed/app/user/rpc/user"
+	"github.com/sponge-dad/feed/common/interceptors"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/service"
@@ -33,7 +34,7 @@ func main() {
 			reflection.Register(grpcServer)
 		}
 	})
-
+	s.AddUnaryInterceptors(interceptors.UnaryServerRequestID)
 	// 注册服务端拦截器：将业务错误码转换为 gRPC status error，供调用方还原。
 	s.AddUnaryInterceptors(serverinterceptors.ErrorInterceptor)
 	defer s.Stop()

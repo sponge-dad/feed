@@ -19,6 +19,7 @@ import (
 	"github.com/sponge-dad/feed/app/comment/rpc/internal/svc"
 	"github.com/sponge-dad/feed/common/errorx"
 	commentEvent "github.com/sponge-dad/feed/common/event/comment"
+	"github.com/sponge-dad/feed/common/requestid"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -81,7 +82,7 @@ func (l *DeleteCommentLogic) DeleteComment(in *comment.DeleteCommentReq) (*comme
 	// 发送 DELETE 事件（失败不阻塞）
 	sendCommentEvent(l.ctx, l.svcCtx, commentEvent.NewEventCommentDeleted(
 		in.CommentId, int64(record.FeedId), in.UserId, int64(record.ParentId), int64(record.RootId),
-		time.Now().UnixMilli()))
+		time.Now().UnixMilli(), requestid.FromContext(l.ctx)))
 
 	return &comment.DeleteCommentResp{Success: true}, nil
 }

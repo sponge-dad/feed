@@ -57,6 +57,8 @@ Auth:
 
 Log:
   Encoding: plain
+  Mode: file
+  Path: logs
 
 # 关闭 HTTP breaker 中间件。
 # login/register 涉及 bcrypt CPU 计算，响应时间在几十到上百毫秒属于正常，

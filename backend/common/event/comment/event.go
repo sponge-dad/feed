@@ -44,10 +44,11 @@ type Event struct {
 	RootID      int64  `json:"root_id"`       // 根评论 ID（一级为 0）
 	ContentLen  int32  `json:"content_len"`   // 评论内容长度（不发原文）
 	Timestamp   int64  `json:"timestamp"`     // 毫秒级事件时间
+	RequestID   string `json:"request_id"`
 }
 
 // NewEventCommentCreated 构造发表评论事件。
-func NewEventCommentCreated(commentID, feedID, userID, replyUserID, parentID, rootID int64, contentLen int32, timestampMs int64) *Event {
+func NewEventCommentCreated(commentID, feedID, userID, replyUserID, parentID, rootID int64, contentLen int32, timestampMs int64, requestID string) *Event {
 	return &Event{
 		EventID:     uuid.NewString(),
 		ActionType:  ActionCreate,
@@ -59,11 +60,12 @@ func NewEventCommentCreated(commentID, feedID, userID, replyUserID, parentID, ro
 		RootID:      rootID,
 		ContentLen:  contentLen,
 		Timestamp:   timestampMs,
+		RequestID:   requestID,
 	}
 }
 
 // NewEventCommentDeleted 构造删除评论事件。
-func NewEventCommentDeleted(commentID, feedID, userID, parentID, rootID int64, timestampMs int64) *Event {
+func NewEventCommentDeleted(commentID, feedID, userID, parentID, rootID int64, timestampMs int64, requestID string) *Event {
 	return &Event{
 		EventID:    uuid.NewString(),
 		ActionType: ActionDelete,
@@ -73,5 +75,6 @@ func NewEventCommentDeleted(commentID, feedID, userID, parentID, rootID int64, t
 		ParentID:   parentID,
 		RootID:     rootID,
 		Timestamp:  timestampMs,
+		RequestID:  requestID,
 	}
 }

@@ -31,6 +31,7 @@ import (
 	"github.com/sponge-dad/feed/app/interaction/rpc/internal/svc"
 	"github.com/sponge-dad/feed/common/errorx"
 	event "github.com/sponge-dad/feed/common/event/interaction"
+	"github.com/sponge-dad/feed/common/requestid"
 
 	red "github.com/redis/go-redis/v9"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -449,7 +450,7 @@ func (h *interactHelper) publish(userID, feedID int64, action int32) {
 			userID, feedID, action)
 		return
 	}
-	ev := event.NewEvent(userID, feedID, action)
+	ev := event.NewEvent(userID, feedID, action, requestid.FromContext(h.ctx))
 	body, err := json.Marshal(ev)
 	if err != nil {
 		h.logger.Errorf("interaction: marshal event failed: %v", err)

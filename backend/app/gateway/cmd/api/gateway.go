@@ -28,6 +28,7 @@ func main() {
 	defer server.Stop()
 
 	// 全局中间件：提取客户端 IP 注入 context，供同城流 / 发帖 IP 属地使用。
+	server.Use(middleware.RequestIDMiddleware)
 	server.Use(middleware.ClientIPMiddleware)
 
 	ctx := svc.NewServiceContext(c)

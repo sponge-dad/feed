@@ -8,6 +8,7 @@ import (
 	"github.com/sponge-dad/feed/app/feed/rpc/internal/svc"
 	"github.com/sponge-dad/feed/common/errorx"
 	feedEvent "github.com/sponge-dad/feed/common/event/feed"
+	"github.com/sponge-dad/feed/common/requestid"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -58,7 +59,7 @@ func (l *DeleteFeedLogic) DeleteFeed(in *feed.DeleteFeedReq) (*feed.DeleteFeedRe
 		return &feed.DeleteFeedResp{Success: true}, nil
 	}
 	// 发送消息
-	event := feedEvent.NewEventFeedDeleted(in.FeedId, in.UserId, existing.IsVipFeed == 1, existing.CityCode)
+	event := feedEvent.NewEventFeedDeleted(in.FeedId, in.UserId, existing.IsVipFeed == 1, existing.CityCode, requestid.FromContext(l.ctx))
 	body, err := json.Marshal(event)
 	if err != nil {
 		l.Errorf("marshal feed.deleted event failed feedId=%d err=%v", in.FeedId, err)

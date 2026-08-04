@@ -9,6 +9,7 @@ import (
 	interactionClient "github.com/sponge-dad/feed/app/interaction/rpc/interactionClient"
 	relationClient "github.com/sponge-dad/feed/app/relation/rpc/relationclient"
 	userClient "github.com/sponge-dad/feed/app/user/rpc/userClient"
+	"github.com/sponge-dad/feed/common/interceptors"
 	"github.com/sponge-dad/feed/common/ipx"
 
 	"github.com/zeromicro/go-zero/zrpc"
@@ -42,7 +43,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 
 	return &ServiceContext{
 		Config:         c,
-		UserRpc:        userClient.NewUser(zrpc.MustNewClient(c.UserRpc)),
+		UserRpc:        userClient.NewUser(zrpc.MustNewClient(c.UserRpc, zrpc.WithUnaryClientInterceptor(interceptors.UnaryClientRequestID))),
 		RelationRpc:    relationClient.NewRelation(zrpc.MustNewClient(c.RelationRpc)),
 		FeedRpc:        feedClient.NewFeed(zrpc.MustNewClient(c.FeedRpc)),
 		CommentRpc:     commentClient.NewComment(zrpc.MustNewClient(c.CommentRpc)),

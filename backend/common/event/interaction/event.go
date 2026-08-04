@@ -32,15 +32,17 @@ type Event struct {
 	FeedID     int64  `json:"feed_id"`     // 目标帖子
 	ActionType int32  `json:"action_type"` // LIKE / UNLIKE / COLLECT / UNCOLLECT
 	Timestamp  int64  `json:"timestamp"`   // 行为发生时间，毫秒级 Unix
+	RequestID  string `json:"request_id"`
 }
 
 // NewEvent 构造一条互动事件，时间戳取当前毫秒。
-func NewEvent(userID, feedID int64, actionType int32) *Event {
+func NewEvent(userID, feedID int64, actionType int32, requestID string) *Event {
 	return &Event{
 		EventID:    uuid.NewString(),
 		UserID:     userID,
 		FeedID:     feedID,
 		ActionType: actionType,
 		Timestamp:  time.Now().UnixMilli(),
+		RequestID:  requestID,
 	}
 }
