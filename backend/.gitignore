@@ -28,3 +28,5 @@ deploy/config/*.prod.yaml
 #app/*/rpc/*/*.pb.go
 #app/*/rpc/*/*_grpc.pb.go
 
+uptest
+uptest
