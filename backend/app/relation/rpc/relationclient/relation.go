@@ -14,6 +14,8 @@ import (
 )
 
 type (
+	BatchIsVipReq  = relation.BatchIsVipReq
+	BatchIsVipResp = relation.BatchIsVipResp
 	FollowReq      = relation.FollowReq
 	FollowResp     = relation.FollowResp
 	GetFansReq     = relation.GetFansReq
@@ -34,6 +36,7 @@ type (
 		GetFans(ctx context.Context, in *GetFansReq, opts ...grpc.CallOption) (*GetFansResp, error)
 		IsFollow(ctx context.Context, in *IsFollowReq, opts ...grpc.CallOption) (*IsFollowResp, error)
 		IsVip(ctx context.Context, in *IsVipReq, opts ...grpc.CallOption) (*IsVipResp, error)
+		BatchIsVip(ctx context.Context, in *BatchIsVipReq, opts ...grpc.CallOption) (*BatchIsVipResp, error)
 	}
 
 	defaultRelation struct {
@@ -75,4 +78,9 @@ func (m *defaultRelation) IsFollow(ctx context.Context, in *IsFollowReq, opts ..
 func (m *defaultRelation) IsVip(ctx context.Context, in *IsVipReq, opts ...grpc.CallOption) (*IsVipResp, error) {
 	client := relation.NewRelationClient(m.cli.Conn())
 	return client.IsVip(ctx, in, opts...)
+}
+
+func (m *defaultRelation) BatchIsVip(ctx context.Context, in *BatchIsVipReq, opts ...grpc.CallOption) (*BatchIsVipResp, error) {
+	client := relation.NewRelationClient(m.cli.Conn())
+	return client.BatchIsVip(ctx, in, opts...)
 }

@@ -7,6 +7,7 @@
 | 文件 | 主题 | 类别 |
 |------|------|------|
 | [20260731-avatar-upload-not-persisted.md](./20260731-avatar-upload-not-persisted.md) | 头像上传后数据库未更新（COS 桶 CORS 未放行浏览器直传） | B 配置问题 |
+| [20260805-getfollowtimeline-isvip-nplus1.md](./20260805-getfollowtimeline-isvip-nplus1.md) | GetFollowTimeline 关注流 N+1 大V判定（逐条 IsVip RPC，批量 BatchIsVip 修复） | A 代码缺陷 |
 
 > 新增文档后在此表追加一行，并在文档内按 SOP §3 模板编写、补全 `## 关联文档`。
 

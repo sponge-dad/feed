@@ -136,6 +136,26 @@ func (mr *MockRelationMockRecorder) IsVip(arg0, arg1 interface{}, arg2 ...interf
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsVip", reflect.TypeOf((*MockRelation)(nil).IsVip), varargs...)
 }
 
+// BatchIsVip mocks base method.
+func (m *MockRelation) BatchIsVip(arg0 context.Context, arg1 *relation.BatchIsVipReq, arg2 ...grpc.CallOption) (*relation.BatchIsVipResp, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "BatchIsVip", varargs...)
+	ret0, _ := ret[0].(*relation.BatchIsVipResp)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// BatchIsVip indicates an expected call of BatchIsVip.
+func (mr *MockRelationMockRecorder) BatchIsVip(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchIsVip", reflect.TypeOf((*MockRelation)(nil).BatchIsVip), varargs...)
+}
+
 // Unfollow mocks base method.
 func (m *MockRelation) Unfollow(arg0 context.Context, arg1 *relation.UnfollowReq, arg2 ...grpc.CallOption) (*relation.UnfollowResp, error) {
 	m.ctrl.T.Helper()

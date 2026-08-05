@@ -62,6 +62,16 @@ message IsVipResp {
   bool is_vip = 1; // true 表示是大V
 }
 
+// 大V判定（批量）：一次判定多个用户，供 Feed 关注流等批量场景使用，
+// 避免调用方对关注列表逐个调 IsVip 造成 N+1 RPC。
+message BatchIsVipReq {
+  repeated int64 user_ids = 1; // 待判定的用户ID列表（去重后上限 5000）
+}
+message BatchIsVipResp {
+  // key: user_id, value: 是否大V（入参中的每个合法ID都会出现在结果里）
+  map<int64, bool> results = 1;
+}
+
 // ==================== 服务定义 ====================
 service Relation {
   rpc Follow(FollowReq) returns (FollowResp);
@@ -70,4 +80,5 @@ service Relation {
   rpc GetFans(GetFansReq) returns (GetFansResp);
   rpc IsFollow(IsFollowReq) returns (IsFollowResp);
   rpc IsVip(IsVipReq) returns (IsVipResp);
+  rpc BatchIsVip(BatchIsVipReq) returns (BatchIsVipResp);
 }

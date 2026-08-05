@@ -118,6 +118,14 @@ func (s *stubRelation) IsVip(_ context.Context, in *relation.IsVipReq, _ ...grpc
 	return &relation.IsVipResp{IsVip: s.vips[in.UserId]}, nil
 }
 
+func (s *stubRelation) BatchIsVip(_ context.Context, in *relation.BatchIsVipReq, _ ...grpc.CallOption) (*relation.BatchIsVipResp, error) {
+	results := make(map[int64]bool, len(in.UserIds))
+	for _, id := range in.UserIds {
+		results[id] = s.vips[id]
+	}
+	return &relation.BatchIsVipResp{Results: results}, nil
+}
+
 // newTestSvc 构造带 miniredis 与桩依赖的 ServiceContext。
 func newTestSvc(t *testing.T, m model.FeedsModel, r relationclient.Relation) *svc.ServiceContext {
 	t.Helper()

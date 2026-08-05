@@ -40,7 +40,7 @@ func NewGetFollowTimelineLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 // GetFollowTimeline 查询当前用户的关注流（推拉结合）。
 // 流程：
 //  1. 收件箱 inbox:{user} 取普通好友已推送的帖子（worker 已写入）。
-//  2. 通过 RelationRpc.GetFollows 取关注列表，逐个 IsVip 识别大V，
+//  2. 通过 RelationRpc.GetFollows 取关注列表，一次 BatchIsVip 批量识别大V，
 //     对大V拉取其 outbox 最近 N 条（拉模式，保证大V内容实时可见且避免写放大）。
 //  3. 合并去重并标记来源（inbox → FOLLOW_INBOX；大V outbox → VIP_OUTBOX；
 //     同 feed 多路命中以 FOLLOW_INBOX 优先），按 (score 秒级时间戳倒序, id 倒序) 排序。
@@ -109,18 +109,19 @@ func (l *GetFollowTimelineLogic) GetFollowTimeline(in *feed.GetFollowTimelineReq
 			l.Errorf("GetFollowTimeline GetFollows failed userId=%d err=%v", in.UserId, err)
 			return nil, err
 		}
+		// 一次 RPC 批量判定关注列表中的大V，消除逐个 IsVip 的 N+1 问题。
+		vipResp, berr := l.svcCtx.RelationRpc.BatchIsVip(l.ctx, &relation.BatchIsVipReq{UserIds: follows.FolloweeIds})
+		if berr != nil {
+			l.Errorf("GetFollowTimeline BatchIsVip failed userId=%d err=%v", in.UserId, berr)
+			return nil, berr
+		}
 		bigVCount := 0
 		for _, fid := range follows.FolloweeIds {
 			if bigVCount >= followMaxBigV {
 				// V1 限制拉取的大V数量，避免极端关注数下的读放大。
 				break
 			}
-			vip, verr := l.svcCtx.RelationRpc.IsVip(l.ctx, &relation.IsVipReq{UserId: fid})
-			if verr != nil {
-				l.Errorf("GetFollowTimeline IsVip failed userId=%d err=%v", fid, verr)
-				return nil, verr
-			}
-			if !vip.IsVip {
+			if !vipResp.Results[fid] {
 				continue
 			}
 			bigVCount++

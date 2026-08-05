@@ -52,3 +52,8 @@ func (s *RelationServer) IsVip(ctx context.Context, in *relation.IsVipReq) (*rel
 	l := logic.NewIsVipLogic(ctx, s.svcCtx)
 	return l.IsVip(in)
 }
+
+func (s *RelationServer) BatchIsVip(ctx context.Context, in *relation.BatchIsVipReq) (*relation.BatchIsVipResp, error) {
+	l := logic.NewBatchIsVipLogic(ctx, s.svcCtx)
+	return l.BatchIsVip(in)
+}

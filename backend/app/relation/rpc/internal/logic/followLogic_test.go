@@ -144,6 +144,20 @@ func (m *memoryRelationsModel) CountByFolloweeId(_ context.Context, followeeId u
 	return count, nil
 }
 
+func (m *memoryRelationsModel) CountByFolloweeIds(_ context.Context, followeeIds []uint64) (map[uint64]int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	counts := make(map[uint64]int64, len(followeeIds))
+	for _, id := range followeeIds {
+		for _, r := range m.records {
+			if r.FolloweeId == id {
+				counts[id]++
+			}
+		}
+	}
+	return counts, nil
+}
+
 type memoryResult struct {
 	lastID int64
 }

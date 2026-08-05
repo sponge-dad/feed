@@ -10,6 +10,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/zeromicro/go-zero/core/stores/cache"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
@@ -30,6 +31,10 @@ type (
 		// CountByFolloweeId 查询某用户的粉丝总数。
 		// 用于 IsVip 回源重建粉丝数，避免受分页 1000 条限制。
 		CountByFolloweeId(ctx context.Context, followeeId uint64) (int64, error)
+		// CountByFolloweeIds 批量查询多个用户的粉丝总数，一次 SQL 完成。
+		// 用于 BatchIsVip 在缓存缺失时回源，避免逐个 CountByFolloweeId 造成 N+1 查询。
+		// 返回的 map 只包含有粉丝记录的用户，调用方需把缺失的视为 0。
+		CountByFolloweeIds(ctx context.Context, followeeIds []uint64) (map[uint64]int64, error)
 	}
 
 	customRelationsModel struct {
@@ -67,6 +72,40 @@ func (m *customRelationsModel) CountByFolloweeId(ctx context.Context, followeeId
 	var count int64
 	err := m.QueryRowNoCacheCtx(ctx, &count, query, followeeId)
 	return count, err
+}
+
+// followeeFansCount 承载 CountByFolloweeIds 的分组统计结果。
+type followeeFansCount struct {
+	FolloweeId uint64 `db:"followee_id"`
+	FansCount  int64  `db:"fans_count"`
+}
+
+// CountByFolloweeIds 按 followee_id 列表批量统计粉丝数，一次 SQL 完成。
+// 占位符按 ID 数量动态生成，ID 全部作为参数绑定传入，不做字符串拼接，避免 SQL 注入。
+func (m *customRelationsModel) CountByFolloweeIds(ctx context.Context, followeeIds []uint64) (map[uint64]int64, error) {
+	if len(followeeIds) == 0 {
+		return map[uint64]int64{}, nil
+	}
+
+	placeholders := make([]string, len(followeeIds))
+	args := make([]any, 0, len(followeeIds))
+	for i, id := range followeeIds {
+		placeholders[i] = "?"
+		args = append(args, id)
+	}
+
+	query := fmt.Sprintf("select `followee_id`, count(*) as `fans_count` from %s where `followee_id` in (%s) group by `followee_id`",
+		m.table, strings.Join(placeholders, ","))
+	var rows []*followeeFansCount
+	if err := m.QueryRowsNoCacheCtx(ctx, &rows, query, args...); err != nil {
+		return nil, err
+	}
+
+	counts := make(map[uint64]int64, len(rows))
+	for _, row := range rows {
+		counts[row.FolloweeId] = row.FansCount
+	}
+	return counts, nil
 }
 
 // Insert 重写生成版本的 Insert，显式写入 created_at。
