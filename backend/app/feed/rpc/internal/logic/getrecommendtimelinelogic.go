@@ -65,6 +65,11 @@ func (l *GetRecommendTimelineLogic) GetRecommendTimeline(in *feed.GetRecommendTi
 		briefs = briefsInPairOrder(pairs, byID)
 	}
 
+	// 来源标记：推荐流命中推荐池（recommend）。
+	for _, b := range briefs {
+		b.Source = int32(feedSourceRecommendPool)
+	}
+
 	hasMore := int64(len(briefs)) >= pageSize
 	return &feed.GetRecommendTimelineResp{
 		Feeds: briefs,

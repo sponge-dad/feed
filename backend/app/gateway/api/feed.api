@@ -43,6 +43,9 @@ type FeedCard {
     Stats       FeedStatsInfo       `json:"stats"`
     Interaction FeedInteractionInfo `json:"interaction"`
     CreatedAt   int64               `json:"created_at"`
+    // 信息流来源标记（FeedSource）：0 未知 / 1 关注推模式(inbox) / 2 关注大V(outbox) /
+    // 3 inbox 兜底重建 / 4 同城池 / 5 推荐池。用于排障与体验优化（见 02-request-trace）。
+    Source int32 `json:"source"`
 }
 
 // FeedCard 列表（信息流 / 个人主页 / 我的赞·收藏 通用返回结构）

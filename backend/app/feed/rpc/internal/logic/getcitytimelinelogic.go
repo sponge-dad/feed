@@ -79,6 +79,11 @@ func (l *GetCityTimelineLogic) GetCityTimeline(in *feed.GetCityTimelineReq) (*fe
 		}
 	}
 
+	// 来源标记：同城流命中同城池（city:{city_code}）；冷启动兜底同样标记为同城来源。
+	for _, b := range briefs {
+		b.Source = int32(feedSourceCityPool)
+	}
+
 	hasMore := int64(len(briefs)) >= pageSize
 	return &feed.GetCityTimelineResp{
 		Feeds: briefs,

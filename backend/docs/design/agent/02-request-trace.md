@@ -94,7 +94,7 @@ enum FeedSource {
 | `getcitytimelinelogic.go` | `CITY_POOL` |
 | 回源重建路径 | `INBOX_REBUILD` |
 
-**注意（现状差异）**：`getfollowtimelinelogic.go` 目前**没有**收件箱回源重建逻辑（inbox 为空时直接返回大V 拉取结果）。阶段一需补齐：`inbox` 读取为空且用户有关注关系时，用 `GetFollows` + 各作者 `outbox` 兜底重建并回写 inbox，命中该路径的 feed 标记为 `INBOX_REBUILD`。
+**注意（现状差异，已落地 2026-08-05）**：`getfollowtimelinelogic.go` 已补齐收件箱回源重建逻辑——`inbox` 读取为空且用户有关注关系时，由 `rebuildInbox` 并行拉取各作者 `outbox` 兜底重建并回写 inbox，命中该路径的 feed 标记为 `INBOX_REBUILD`（重建失败不致命，仅记日志）。多路命中按优先级收敛：`FOLLOW_INBOX > INBOX_REBUILD > VIP_OUTBOX`。`FeedSource` 枚举与 `source` 字段（`FeedBrief.source(10)` / `FeedInfo.source(18)`）已生成并透传至 gateway `FeedCard.source`。
 
 ## 6. 请求级 Trace 记录
 

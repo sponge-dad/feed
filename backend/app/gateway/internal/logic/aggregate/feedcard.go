@@ -34,6 +34,7 @@ type FeedItem struct {
 	CommentCount int64
 	CollectCount int64
 	CreatedAt    int64
+	Source       int32 // 信息流来源标记（FeedSource），用于关注度来源与排障
 }
 
 // ItemFromBrief 将 Feed RPC 的 FeedBrief 转为 FeedItem。
@@ -47,6 +48,7 @@ func ItemFromBrief(b *feedClient.FeedBrief) FeedItem {
 		LikeCount:    b.LikeCount,
 		CommentCount: b.CommentCount,
 		CreatedAt:    b.CreatedAt,
+		Source:       b.Source,
 	}
 }
 
@@ -62,6 +64,7 @@ func ItemFromInfo(f *feedClient.FeedInfo) FeedItem {
 		CommentCount: f.CommentCount,
 		CollectCount: f.CollectCount,
 		CreatedAt:    f.CreatedAt,
+		Source:       f.Source,
 	}
 }
 
@@ -191,6 +194,7 @@ func BuildFeedCards(ctx context.Context, svcCtx *svc.ServiceContext, viewerID in
 				CollectCount: it.CollectCount,
 			},
 			CreatedAt: it.CreatedAt,
+			Source:    it.Source,
 		}
 		if s, ok := statsMap[it.FeedID]; ok {
 			card.Stats.LikeCount = s.LikeCount

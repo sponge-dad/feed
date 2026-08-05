@@ -32,34 +32,44 @@ func NewLoginLogic(ctx context.Context, svcCtx *svc.ServiceContext) *LoginLogic 
 
 // Login 校验用户名密码，成功后签发登录 token。
 func (l *LoginLogic) Login(in *user.LoginReq) (*user.LoginResp, error) {
+	l.Infof("login start username=%s", in.Username)
+
 	// 1. 按用户名查库。这里直接查 MySQL/UserModel 内置缓存，
 	//    登录是低频操作（相对于 GetUser），不需要额外的业务级缓存。
 	u, err := l.svcCtx.UserModel.FindOneByUsername(l.ctx, in.Username)
 	if errors.Is(err, usermodel.ErrNotFound) {
 		// 出于安全考虑，用户名不存在和密码错误返回同一个错误码，
 		// 避免攻击者通过错误信息差异枚举出哪些用户名已注册。
+		// 日志也不区分具体原因，统一用 user_or_password_wrong。
+		l.Infof("login failed username=%s reason=user_or_password_wrong", in.Username)
 		return nil, errorx.New(errorx.UserPasswordWrong)
 	}
 	if err != nil {
+		l.Errorf("login db error username=%s err=%v", in.Username, err)
 		return nil, err
 	}
 
 	// 2. 账号已被禁用，直接拒绝登录。
 	if u.Status != 1 {
+		l.Infof("login denied username=%s uid=%d reason=disabled", in.Username, u.Id)
 		return nil, errorx.New(errorx.UserDisabled)
 	}
 
 	// 3. bcrypt 校验密码：将输入密码和库中哈希比较，bcrypt 内部处理了加盐逻辑。
 	//    通过 BcryptPool 执行，避免无限制并发把 CPU 打满。
 	if err := l.svcCtx.BcryptPool.Compare([]byte(u.Password), []byte(in.Password)); err != nil {
+		l.Infof("login failed username=%s reason=password_wrong", in.Username)
 		return nil, errorx.New(errorx.UserPasswordWrong)
 	}
 
 	// 4. 校验通过，签发新 token（每次登录都换发新 token，不复用旧的）。
 	token, err := l.svcCtx.JwtManager.Generate(u.Id, u.Username)
 	if err != nil {
+		l.Errorf("login token gen error uid=%d err=%v", u.Id, err)
 		return nil, err
 	}
+
+	l.Infof("login success username=%s uid=%d", in.Username, u.Id)
 
 	return &user.LoginResp{
 		User: &user.UserInfo{

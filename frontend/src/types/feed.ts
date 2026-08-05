@@ -34,6 +34,9 @@ export interface FeedCard {
   stats: FeedStatsInfo;
   interaction: FeedInteractionInfo;
   created_at: number;
+  // 信息流来源标记（FeedSource）：0 未知 / 1 关注推模式(inbox) / 2 关注大V(outbox) /
+  // 3 inbox 兜底重建 / 4 同城池 / 5 推荐池。用于排障与体验优化。
+  source: number;
 }
 
 export interface FeedCardList {

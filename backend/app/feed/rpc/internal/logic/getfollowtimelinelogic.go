@@ -6,6 +6,9 @@ package logic
 import (
 	"context"
 	"math"
+	"sort"
+	"strconv"
+	"sync"
 
 	"github.com/sponge-dad/feed/app/feed/model"
 	"github.com/sponge-dad/feed/app/feed/rpc/feed"
@@ -14,6 +17,8 @@ import (
 	"github.com/sponge-dad/feed/app/relation/rpc/relation"
 	"github.com/sponge-dad/feed/common/errorx"
 	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/stores/redis"
+	"golang.org/x/sync/errgroup"
 )
 
 // GetFollowTimelineLogic 封装 GetFollowTimeline 请求所需的上下文与依赖。
@@ -37,9 +42,13 @@ func NewGetFollowTimelineLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 //  1. 收件箱 inbox:{user} 取普通好友已推送的帖子（worker 已写入）。
 //  2. 通过 RelationRpc.GetFollows 取关注列表，逐个 IsVip 识别大V，
 //     对大V拉取其 outbox 最近 N 条（拉模式，保证大V内容实时可见且避免写放大）。
-//  3. 合并去重，按 (score 秒级时间戳倒序, id 倒序) 排序。
+//  3. 合并去重并标记来源（inbox → FOLLOW_INBOX；大V outbox → VIP_OUTBOX；
+//     同 feed 多路命中以 FOLLOW_INBOX 优先），按 (score 秒级时间戳倒序, id 倒序) 排序。
 //  4. 游标过滤（score<游标 或 同分且 id<游标）后截取本页，生成下一页游标。
-//  5. 批量 FindByIds 回填详情。
+//  5. 批量 FindByIds 回填详情，并将来源标记（FeedSource）写入 FeedBrief.Source。
+//
+// 阶段一补齐（见 02-request-trace）：当 inbox 读取为空且用户有关注关系时，
+// 用 GetFollows + 各作者 outbox 兜底重建并回写 inbox，命中该重建路径的帖子标记为 INBOX_REBUILD。
 func (l *GetFollowTimelineLogic) GetFollowTimeline(in *feed.GetFollowTimelineReq) (*feed.GetFollowTimelineResp, error) {
 	if in.UserId <= 0 {
 		return nil, errorx.New(errorx.ParamError)
@@ -59,8 +68,8 @@ func (l *GetFollowTimelineLogic) GetFollowTimeline(in *feed.GetFollowTimelineReq
 
 	rdb := l.svcCtx.Redis
 
-	// 1. 候选合并：inbox（普通好友已推）+ 关注大V 的 outbox（实时拉）。
-	candidates := make(map[int64]int64) // feedID -> 秒级 score
+	// 1. 候选合并（带来源标记）：inbox（普通好友已推）+ 关注大V 的 outbox（实时拉）。
+	candidates := make(map[int64]*feedScore) // feedID -> 候选（含来源，多路命中按优先级收敛）
 
 	// 1a. 收件箱：worker 已将普通好友帖子推入，按 score 倒序全量取出（上限内）。
 	inboxPairs, err := rdb.ZrevrangebyscoreWithScoresAndLimitCtx(l.ctx, keys.Inbox(in.UserId), math.MinInt64, math.MaxInt64, 0, followInboxReadCap)
@@ -72,51 +81,67 @@ func (l *GetFollowTimelineLogic) GetFollowTimeline(in *feed.GetFollowTimelineReq
 		if e != nil {
 			continue
 		}
-		candidates[id] = p.Score
+		mergeFeedScore(candidates, id, p.Score, feedSourceFollowInbox)
 	}
 
-	// 1b. 关注列表 + 大V识别，拉取大V发件箱最近 N 条。
-	follows, err := l.svcCtx.RelationRpc.GetFollows(l.ctx, &relation.GetFollowsReq{
-		UserId:   in.UserId,
-		Page:     1,
-		PageSize: 5000,
-	})
-	if err != nil {
-		l.Errorf("GetFollowTimeline GetFollows failed userId=%d err=%v", in.UserId, err)
-		return nil, err
-	}
-	bigVCount := 0
-	for _, fid := range follows.FolloweeIds {
-		if bigVCount >= followMaxBigV {
-			// V1 限制拉取的大V数量，避免极端关注数下的读放大。
-			break
+	if len(inboxPairs) == 0 {
+		// inbox 为空：尝试兜底重建（GetFollows + 各作者 outbox），命中标记 INBOX_REBUILD。
+		// 重建失败不致命，仅缺失该部分数据。
+		rebuildPairs, rerr := l.rebuildInbox(in.UserId)
+		if rerr != nil {
+			l.Errorf("GetFollowTimeline rebuildInbox failed userId=%d err=%v", in.UserId, rerr)
 		}
-		vip, verr := l.svcCtx.RelationRpc.IsVip(l.ctx, &relation.IsVipReq{UserId: fid})
-		if verr != nil {
-			l.Errorf("GetFollowTimeline IsVip failed userId=%d err=%v", fid, verr)
-			return nil, verr
-		}
-		if !vip.IsVip {
-			continue
-		}
-		bigVCount++
-		obPairs, oerr := rdb.ZrevrangebyscoreWithScoresAndLimitCtx(l.ctx, keys.Outbox(fid), math.MinInt64, math.MaxInt64, 0, followOutboxPullSize)
-		if oerr != nil {
-			return nil, oerr
-		}
-		for _, p := range obPairs {
+		for _, p := range rebuildPairs {
 			id, e := strconvParseFeedID(p.Key)
 			if e != nil {
 				continue
 			}
-			candidates[id] = p.Score
+			mergeFeedScore(candidates, id, p.Score, feedSourceInboxRebuild)
+		}
+	} else {
+		// 1b. 关注列表 + 大V识别，拉取大V发件箱最近 N 条（拉模式，保证大V内容实时可见）。
+		follows, err := l.svcCtx.RelationRpc.GetFollows(l.ctx, &relation.GetFollowsReq{
+			UserId:   in.UserId,
+			Page:     1,
+			PageSize: 5000,
+		})
+		if err != nil {
+			l.Errorf("GetFollowTimeline GetFollows failed userId=%d err=%v", in.UserId, err)
+			return nil, err
+		}
+		bigVCount := 0
+		for _, fid := range follows.FolloweeIds {
+			if bigVCount >= followMaxBigV {
+				// V1 限制拉取的大V数量，避免极端关注数下的读放大。
+				break
+			}
+			vip, verr := l.svcCtx.RelationRpc.IsVip(l.ctx, &relation.IsVipReq{UserId: fid})
+			if verr != nil {
+				l.Errorf("GetFollowTimeline IsVip failed userId=%d err=%v", fid, verr)
+				return nil, verr
+			}
+			if !vip.IsVip {
+				continue
+			}
+			bigVCount++
+			obPairs, oerr := rdb.ZrevrangebyscoreWithScoresAndLimitCtx(l.ctx, keys.Outbox(fid), math.MinInt64, math.MaxInt64, 0, followOutboxPullSize)
+			if oerr != nil {
+				return nil, oerr
+			}
+			for _, p := range obPairs {
+				id, e := strconvParseFeedID(p.Key)
+				if e != nil {
+					continue
+				}
+				mergeFeedScore(candidates, id, p.Score, feedSourceVipOutbox)
+			}
 		}
 	}
 
 	// 2. 排序候选。
 	items := make([]feedScore, 0, len(candidates))
-	for id, sc := range candidates {
-		items = append(items, feedScore{feedID: id, score: sc})
+	for _, c := range candidates {
+		items = append(items, *c)
 	}
 	sortFeedScores(items)
 
@@ -138,7 +163,7 @@ func (l *GetFollowTimelineLogic) GetFollowTimeline(in *feed.GetFollowTimelineReq
 		nextCursor = encodeFollowCursor(last.score, last.feedID)
 	}
 
-	// 4. 批量回填详情，按 result 顺序保证时间线有序。
+	// 4. 批量回填详情，按 result 顺序保证时间线有序，并写入来源标记。
 	var briefs []*feed.FeedBrief
 	if len(result) > 0 {
 		ids := make([]uint64, 0, len(result))
@@ -156,7 +181,9 @@ func (l *GetFollowTimelineLogic) GetFollowTimeline(in *feed.GetFollowTimelineReq
 		briefs = make([]*feed.FeedBrief, 0, len(result))
 		for _, it := range result {
 			if f, ok := byID[uint64(it.feedID)]; ok {
-				briefs = append(briefs, toFeedBrief(f))
+				b := toFeedBrief(f)
+				b.Source = int32(it.source)
+				briefs = append(briefs, b)
 			}
 		}
 	}
@@ -165,4 +192,84 @@ func (l *GetFollowTimelineLogic) GetFollowTimeline(in *feed.GetFollowTimelineReq
 		Feeds: briefs,
 		Page:  &feed.PageInfo{Cursor: nextCursor, HasMore: int64(len(result)) >= pageSize},
 	}, nil
+}
+
+// rebuildInbox 兜底重建收件箱：当 inbox 为空（首次进入/缓存过期）且用户有关注关系时，
+// 并行拉取各关注作者的 outbox，按 score 去重后回写 inbox（便于后续请求命中推模式），
+// 并返回重建得到的候选（供 GetFollowTimeline 标记为 INBOX_REBUILD）。
+func (l *GetFollowTimelineLogic) rebuildInbox(userID int64) ([]redis.Pair, error) {
+	follows, err := l.svcCtx.RelationRpc.GetFollows(l.ctx, &relation.GetFollowsReq{
+		UserId:   userID,
+		Page:     1,
+		PageSize: 5000,
+	})
+	if err != nil {
+		return nil, err
+	}
+	followees := follows.FolloweeIds
+	if len(followees) == 0 {
+		return nil, nil
+	}
+
+	rdb := l.svcCtx.Redis
+	merged := make(map[int64]int64, len(followees)) // feedID -> 最大 score
+	var mu sync.Mutex
+
+	g, gctx := errgroup.WithContext(l.ctx)
+	for _, fid := range followees {
+		fid := fid
+		g.Go(func() error {
+			pairs, e := rdb.ZrevrangebyscoreWithScoresAndLimitCtx(gctx, keys.Outbox(fid), math.MinInt64, math.MaxInt64, 0, followOutboxPullSize)
+			if e != nil {
+				return e
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			for _, p := range pairs {
+				id, pe := strconvParseFeedID(p.Key)
+				if pe != nil {
+					continue
+				}
+				if cur, ok := merged[id]; !ok || p.Score > cur {
+					merged[id] = p.Score
+				}
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	if len(merged) == 0 {
+		return nil, nil
+	}
+
+	// 收敛到上限内（按 score 倒序取前 followInboxReadCap 条），与正常读取上限对齐。
+	type kv struct {
+		id    int64
+		score int64
+	}
+	ranked := make([]kv, 0, len(merged))
+	for id, sc := range merged {
+		ranked = append(ranked, kv{id: id, score: sc})
+	}
+	sort.Slice(ranked, func(i, j int) bool {
+		if ranked[i].score != ranked[j].score {
+			return ranked[i].score > ranked[j].score
+		}
+		return ranked[i].id > ranked[j].id
+	})
+	if len(ranked) > followInboxReadCap {
+		ranked = ranked[:followInboxReadCap]
+	}
+
+	// 回写 inbox（ZADD 幂等），便于后续请求命中推模式（FOLLOW_INBOX）。
+	writePairs := make([]redis.Pair, 0, len(ranked))
+	for _, r := range ranked {
+		writePairs = append(writePairs, redis.Pair{Key: strconv.FormatInt(r.id, 10), Score: r.score})
+	}
+	if _, e := rdb.ZaddsCtx(l.ctx, keys.Inbox(userID), writePairs...); e != nil {
+		l.Errorf("rebuildInbox write back inbox failed userId=%d err=%v", userID, e)
+	}
+	return writePairs, nil
 }

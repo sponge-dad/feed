@@ -26,6 +26,18 @@ enum FeedStatus {
     FEED_STATUS_AUDITING = 3;  // 审核中
 }
 
+// FeedSource 帖子在信息流中的来源标记（对应需求 02-request-trace「Feed 来源标记」）。
+// 用于在「关注流」中区分推模式（inbox）与拉模式（大V outbox），以及同城/推荐池来源，
+// 便于排障与体验优化。UNKNOWN 为 proto3 默认值（未标记）。
+enum FeedSource {
+    FEED_SOURCE_UNKNOWN        = 0; // 未知 / 未标记（proto3 默认值）
+    FEED_SOURCE_FOLLOW_INBOX   = 1; // 关注流：普通好友（推模式 inbox）已推送的帖子
+    FEED_SOURCE_VIP_OUTBOX     = 2; // 关注流：实时拉取所关注大V的 outbox
+    FEED_SOURCE_INBOX_REBUILD  = 3; // 关注流：inbox 为空时由 GetFollows+各作者 outbox 兜底重建并回写
+    FEED_SOURCE_CITY_POOL      = 4; // 同城流：命中同城池（city:{city_code}）
+    FEED_SOURCE_RECOMMEND_POOL = 5; // 推荐流：命中推荐池（recommend）
+}
+
 // ==================== 领域消息定义 ====================
 
 // FeedInfo 帖子完整信息
@@ -47,6 +59,7 @@ message FeedInfo {
     int64        collect_count = 15; // 收藏数（Feed 表冗余，展示用）
     int64        created_at    = 16; // 发布时间，毫秒级 Unix 时间戳
     int64        updated_at    = 17; // 更新时间，毫秒级 Unix 时间戳
+    int32        source        = 18; // 信息流来源标记（FeedSource），用于关注度来源与排障
 }
 
 // FeedBrief 帖子卡片（列表用），字段比 FeedInfo 精简
@@ -60,6 +73,7 @@ message FeedBrief {
     int64        like_count   = 7;  // 点赞数
     int64        comment_count = 8; // 评论数
     int64        created_at   = 9;  // 发布时间，毫秒级 Unix 时间戳
+    int32        source       = 10; // 信息流来源标记（FeedSource），用于关注度来源与排障
 }
 
 // PageInfo 分页信息

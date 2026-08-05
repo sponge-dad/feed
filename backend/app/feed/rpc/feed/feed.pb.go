@@ -131,6 +131,67 @@ func (FeedStatus) EnumDescriptor() ([]byte, []int) {
 	return file_api_proto_feed_feed_proto_rawDescGZIP(), []int{1}
 }
 
+// FeedSource 帖子在信息流中的来源标记（对应需求 02-request-trace「Feed 来源标记」）。
+// 用于在「关注流」中区分推模式（inbox）与拉模式（大V outbox），以及同城/推荐池来源，
+// 便于排障与体验优化。UNKNOWN 为 proto3 默认值（未标记）。
+type FeedSource int32
+
+const (
+	FeedSource_FEED_SOURCE_UNKNOWN        FeedSource = 0 // 未知 / 未标记（proto3 默认值）
+	FeedSource_FEED_SOURCE_FOLLOW_INBOX   FeedSource = 1 // 关注流：普通好友（推模式 inbox）已推送的帖子
+	FeedSource_FEED_SOURCE_VIP_OUTBOX     FeedSource = 2 // 关注流：实时拉取所关注大V的 outbox
+	FeedSource_FEED_SOURCE_INBOX_REBUILD  FeedSource = 3 // 关注流：inbox 为空时由 GetFollows+各作者 outbox 兜底重建并回写
+	FeedSource_FEED_SOURCE_CITY_POOL      FeedSource = 4 // 同城流：命中同城池（city:{city_code}）
+	FeedSource_FEED_SOURCE_RECOMMEND_POOL FeedSource = 5 // 推荐流：命中推荐池（recommend）
+)
+
+// Enum value maps for FeedSource.
+var (
+	FeedSource_name = map[int32]string{
+		0: "FEED_SOURCE_UNKNOWN",
+		1: "FEED_SOURCE_FOLLOW_INBOX",
+		2: "FEED_SOURCE_VIP_OUTBOX",
+		3: "FEED_SOURCE_INBOX_REBUILD",
+		4: "FEED_SOURCE_CITY_POOL",
+		5: "FEED_SOURCE_RECOMMEND_POOL",
+	}
+	FeedSource_value = map[string]int32{
+		"FEED_SOURCE_UNKNOWN":        0,
+		"FEED_SOURCE_FOLLOW_INBOX":   1,
+		"FEED_SOURCE_VIP_OUTBOX":     2,
+		"FEED_SOURCE_INBOX_REBUILD":  3,
+		"FEED_SOURCE_CITY_POOL":      4,
+		"FEED_SOURCE_RECOMMEND_POOL": 5,
+	}
+)
+
+func (x FeedSource) Enum() *FeedSource {
+	p := new(FeedSource)
+	*p = x
+	return p
+}
+
+func (x FeedSource) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (FeedSource) Descriptor() protoreflect.EnumDescriptor {
+	return file_api_proto_feed_feed_proto_enumTypes[2].Descriptor()
+}
+
+func (FeedSource) Type() protoreflect.EnumType {
+	return &file_api_proto_feed_feed_proto_enumTypes[2]
+}
+
+func (x FeedSource) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use FeedSource.Descriptor instead.
+func (FeedSource) EnumDescriptor() ([]byte, []int) {
+	return file_api_proto_feed_feed_proto_rawDescGZIP(), []int{2}
+}
+
 // FeedInfo 帖子完整信息
 type FeedInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -151,6 +212,7 @@ type FeedInfo struct {
 	CollectCount  int64                  `protobuf:"varint,15,opt,name=collect_count,json=collectCount,proto3" json:"collect_count,omitempty"` // 收藏数（Feed 表冗余，展示用）
 	CreatedAt     int64                  `protobuf:"varint,16,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`          // 发布时间，毫秒级 Unix 时间戳
 	UpdatedAt     int64                  `protobuf:"varint,17,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`          // 更新时间，毫秒级 Unix 时间戳
+	Source        int32                  `protobuf:"varint,18,opt,name=source,proto3" json:"source,omitempty"`                                 // 信息流来源标记（FeedSource），用于关注度来源与排障
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -304,6 +366,13 @@ func (x *FeedInfo) GetUpdatedAt() int64 {
 	return 0
 }
 
+func (x *FeedInfo) GetSource() int32 {
+	if x != nil {
+		return x.Source
+	}
+	return 0
+}
+
 // FeedBrief 帖子卡片（列表用），字段比 FeedInfo 精简
 type FeedBrief struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -316,6 +385,7 @@ type FeedBrief struct {
 	LikeCount     int64                  `protobuf:"varint,7,opt,name=like_count,json=likeCount,proto3" json:"like_count,omitempty"`          // 点赞数
 	CommentCount  int64                  `protobuf:"varint,8,opt,name=comment_count,json=commentCount,proto3" json:"comment_count,omitempty"` // 评论数
 	CreatedAt     int64                  `protobuf:"varint,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`          // 发布时间，毫秒级 Unix 时间戳
+	Source        int32                  `protobuf:"varint,10,opt,name=source,proto3" json:"source,omitempty"`                                // 信息流来源标记（FeedSource），用于关注度来源与排障
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -409,6 +479,13 @@ func (x *FeedBrief) GetCommentCount() int64 {
 func (x *FeedBrief) GetCreatedAt() int64 {
 	if x != nil {
 		return x.CreatedAt
+	}
+	return 0
+}
+
+func (x *FeedBrief) GetSource() int32 {
+	if x != nil {
+		return x.Source
 	}
 	return 0
 }
@@ -1391,7 +1468,7 @@ var File_api_proto_feed_feed_proto protoreflect.FileDescriptor
 
 const file_api_proto_feed_feed_proto_rawDesc = "" +
 	"\n" +
-	"\x19api/proto/feed/feed.proto\x12\x04feed\"\x8b\x04\n" +
+	"\x19api/proto/feed/feed.proto\x12\x04feed\"\xa3\x04\n" +
 	"\bFeedInfo\x12\x17\n" +
 	"\afeed_id\x18\x01 \x01(\x03R\x06feedId\x12\x1b\n" +
 	"\tauthor_id\x18\x02 \x01(\x03R\bauthorId\x12\x1b\n" +
@@ -1415,7 +1492,8 @@ const file_api_proto_feed_feed_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x10 \x01(\x03R\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\x11 \x01(\x03R\tupdatedAt\"\x91\x02\n" +
+	"updated_at\x18\x11 \x01(\x03R\tupdatedAt\x12\x16\n" +
+	"\x06source\x18\x12 \x01(\x05R\x06source\"\xa9\x02\n" +
 	"\tFeedBrief\x12\x17\n" +
 	"\afeed_id\x18\x01 \x01(\x03R\x06feedId\x12\x1b\n" +
 	"\tauthor_id\x18\x02 \x01(\x03R\bauthorId\x12\x1b\n" +
@@ -1427,7 +1505,9 @@ const file_api_proto_feed_feed_proto_rawDesc = "" +
 	"like_count\x18\a \x01(\x03R\tlikeCount\x12#\n" +
 	"\rcomment_count\x18\b \x01(\x03R\fcommentCount\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\t \x01(\x03R\tcreatedAt\"\x84\x01\n" +
+	"created_at\x18\t \x01(\x03R\tcreatedAt\x12\x16\n" +
+	"\x06source\x18\n" +
+	" \x01(\x05R\x06source\"\x84\x01\n" +
 	"\bPageInfo\x12\x12\n" +
 	"\x04page\x18\x01 \x01(\x03R\x04page\x12\x1b\n" +
 	"\tpage_size\x18\x02 \x01(\x03R\bpageSize\x12\x14\n" +
@@ -1506,7 +1586,15 @@ const file_api_proto_feed_feed_proto_rawDesc = "" +
 	"\x13FEED_STATUS_UNKNOWN\x10\x00\x12\x16\n" +
 	"\x12FEED_STATUS_NORMAL\x10\x01\x12\x17\n" +
 	"\x13FEED_STATUS_DELETED\x10\x02\x12\x18\n" +
-	"\x14FEED_STATUS_AUDITING\x10\x032\x96\x04\n" +
+	"\x14FEED_STATUS_AUDITING\x10\x03*\xb9\x01\n" +
+	"\n" +
+	"FeedSource\x12\x17\n" +
+	"\x13FEED_SOURCE_UNKNOWN\x10\x00\x12\x1c\n" +
+	"\x18FEED_SOURCE_FOLLOW_INBOX\x10\x01\x12\x1a\n" +
+	"\x16FEED_SOURCE_VIP_OUTBOX\x10\x02\x12\x1d\n" +
+	"\x19FEED_SOURCE_INBOX_REBUILD\x10\x03\x12\x19\n" +
+	"\x15FEED_SOURCE_CITY_POOL\x10\x04\x12\x1e\n" +
+	"\x1aFEED_SOURCE_RECOMMEND_POOL\x10\x052\x96\x04\n" +
 	"\x04Feed\x127\n" +
 	"\n" +
 	"CreateFeed\x12\x13.feed.CreateFeedReq\x1a\x14.feed.CreateFeedResp\x127\n" +
@@ -1531,61 +1619,62 @@ func file_api_proto_feed_feed_proto_rawDescGZIP() []byte {
 	return file_api_proto_feed_feed_proto_rawDescData
 }
 
-var file_api_proto_feed_feed_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_api_proto_feed_feed_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
 var file_api_proto_feed_feed_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_api_proto_feed_feed_proto_goTypes = []any{
 	(FeedType)(0),                    // 0: feed.FeedType
 	(FeedStatus)(0),                  // 1: feed.FeedStatus
-	(*FeedInfo)(nil),                 // 2: feed.FeedInfo
-	(*FeedBrief)(nil),                // 3: feed.FeedBrief
-	(*PageInfo)(nil),                 // 4: feed.PageInfo
-	(*CreateFeedReq)(nil),            // 5: feed.CreateFeedReq
-	(*CreateFeedResp)(nil),           // 6: feed.CreateFeedResp
-	(*DeleteFeedReq)(nil),            // 7: feed.DeleteFeedReq
-	(*DeleteFeedResp)(nil),           // 8: feed.DeleteFeedResp
-	(*GetFeedReq)(nil),               // 9: feed.GetFeedReq
-	(*GetFeedResp)(nil),              // 10: feed.GetFeedResp
-	(*BatchGetFeedsReq)(nil),         // 11: feed.BatchGetFeedsReq
-	(*BatchGetFeedsResp)(nil),        // 12: feed.BatchGetFeedsResp
-	(*GetRecommendTimelineReq)(nil),  // 13: feed.GetRecommendTimelineReq
-	(*GetRecommendTimelineResp)(nil), // 14: feed.GetRecommendTimelineResp
-	(*GetFollowTimelineReq)(nil),     // 15: feed.GetFollowTimelineReq
-	(*GetFollowTimelineResp)(nil),    // 16: feed.GetFollowTimelineResp
-	(*GetCityTimelineReq)(nil),       // 17: feed.GetCityTimelineReq
-	(*GetCityTimelineResp)(nil),      // 18: feed.GetCityTimelineResp
-	(*GetUserFeedsReq)(nil),          // 19: feed.GetUserFeedsReq
-	(*GetUserFeedsResp)(nil),         // 20: feed.GetUserFeedsResp
-	nil,                              // 21: feed.BatchGetFeedsResp.FeedsEntry
+	(FeedSource)(0),                  // 2: feed.FeedSource
+	(*FeedInfo)(nil),                 // 3: feed.FeedInfo
+	(*FeedBrief)(nil),                // 4: feed.FeedBrief
+	(*PageInfo)(nil),                 // 5: feed.PageInfo
+	(*CreateFeedReq)(nil),            // 6: feed.CreateFeedReq
+	(*CreateFeedResp)(nil),           // 7: feed.CreateFeedResp
+	(*DeleteFeedReq)(nil),            // 8: feed.DeleteFeedReq
+	(*DeleteFeedResp)(nil),           // 9: feed.DeleteFeedResp
+	(*GetFeedReq)(nil),               // 10: feed.GetFeedReq
+	(*GetFeedResp)(nil),              // 11: feed.GetFeedResp
+	(*BatchGetFeedsReq)(nil),         // 12: feed.BatchGetFeedsReq
+	(*BatchGetFeedsResp)(nil),        // 13: feed.BatchGetFeedsResp
+	(*GetRecommendTimelineReq)(nil),  // 14: feed.GetRecommendTimelineReq
+	(*GetRecommendTimelineResp)(nil), // 15: feed.GetRecommendTimelineResp
+	(*GetFollowTimelineReq)(nil),     // 16: feed.GetFollowTimelineReq
+	(*GetFollowTimelineResp)(nil),    // 17: feed.GetFollowTimelineResp
+	(*GetCityTimelineReq)(nil),       // 18: feed.GetCityTimelineReq
+	(*GetCityTimelineResp)(nil),      // 19: feed.GetCityTimelineResp
+	(*GetUserFeedsReq)(nil),          // 20: feed.GetUserFeedsReq
+	(*GetUserFeedsResp)(nil),         // 21: feed.GetUserFeedsResp
+	nil,                              // 22: feed.BatchGetFeedsResp.FeedsEntry
 }
 var file_api_proto_feed_feed_proto_depIdxs = []int32{
-	2,  // 0: feed.CreateFeedResp.feed:type_name -> feed.FeedInfo
-	2,  // 1: feed.GetFeedResp.feed:type_name -> feed.FeedInfo
-	21, // 2: feed.BatchGetFeedsResp.feeds:type_name -> feed.BatchGetFeedsResp.FeedsEntry
-	3,  // 3: feed.GetRecommendTimelineResp.feeds:type_name -> feed.FeedBrief
-	4,  // 4: feed.GetRecommendTimelineResp.page:type_name -> feed.PageInfo
-	3,  // 5: feed.GetFollowTimelineResp.feeds:type_name -> feed.FeedBrief
-	4,  // 6: feed.GetFollowTimelineResp.page:type_name -> feed.PageInfo
-	3,  // 7: feed.GetCityTimelineResp.feeds:type_name -> feed.FeedBrief
-	4,  // 8: feed.GetCityTimelineResp.page:type_name -> feed.PageInfo
-	3,  // 9: feed.GetUserFeedsResp.feeds:type_name -> feed.FeedBrief
-	4,  // 10: feed.GetUserFeedsResp.page:type_name -> feed.PageInfo
-	2,  // 11: feed.BatchGetFeedsResp.FeedsEntry.value:type_name -> feed.FeedInfo
-	5,  // 12: feed.Feed.CreateFeed:input_type -> feed.CreateFeedReq
-	7,  // 13: feed.Feed.DeleteFeed:input_type -> feed.DeleteFeedReq
-	9,  // 14: feed.Feed.GetFeed:input_type -> feed.GetFeedReq
-	11, // 15: feed.Feed.BatchGetFeeds:input_type -> feed.BatchGetFeedsReq
-	13, // 16: feed.Feed.GetRecommendTimeline:input_type -> feed.GetRecommendTimelineReq
-	15, // 17: feed.Feed.GetFollowTimeline:input_type -> feed.GetFollowTimelineReq
-	17, // 18: feed.Feed.GetCityTimeline:input_type -> feed.GetCityTimelineReq
-	19, // 19: feed.Feed.GetUserFeeds:input_type -> feed.GetUserFeedsReq
-	6,  // 20: feed.Feed.CreateFeed:output_type -> feed.CreateFeedResp
-	8,  // 21: feed.Feed.DeleteFeed:output_type -> feed.DeleteFeedResp
-	10, // 22: feed.Feed.GetFeed:output_type -> feed.GetFeedResp
-	12, // 23: feed.Feed.BatchGetFeeds:output_type -> feed.BatchGetFeedsResp
-	14, // 24: feed.Feed.GetRecommendTimeline:output_type -> feed.GetRecommendTimelineResp
-	16, // 25: feed.Feed.GetFollowTimeline:output_type -> feed.GetFollowTimelineResp
-	18, // 26: feed.Feed.GetCityTimeline:output_type -> feed.GetCityTimelineResp
-	20, // 27: feed.Feed.GetUserFeeds:output_type -> feed.GetUserFeedsResp
+	3,  // 0: feed.CreateFeedResp.feed:type_name -> feed.FeedInfo
+	3,  // 1: feed.GetFeedResp.feed:type_name -> feed.FeedInfo
+	22, // 2: feed.BatchGetFeedsResp.feeds:type_name -> feed.BatchGetFeedsResp.FeedsEntry
+	4,  // 3: feed.GetRecommendTimelineResp.feeds:type_name -> feed.FeedBrief
+	5,  // 4: feed.GetRecommendTimelineResp.page:type_name -> feed.PageInfo
+	4,  // 5: feed.GetFollowTimelineResp.feeds:type_name -> feed.FeedBrief
+	5,  // 6: feed.GetFollowTimelineResp.page:type_name -> feed.PageInfo
+	4,  // 7: feed.GetCityTimelineResp.feeds:type_name -> feed.FeedBrief
+	5,  // 8: feed.GetCityTimelineResp.page:type_name -> feed.PageInfo
+	4,  // 9: feed.GetUserFeedsResp.feeds:type_name -> feed.FeedBrief
+	5,  // 10: feed.GetUserFeedsResp.page:type_name -> feed.PageInfo
+	3,  // 11: feed.BatchGetFeedsResp.FeedsEntry.value:type_name -> feed.FeedInfo
+	6,  // 12: feed.Feed.CreateFeed:input_type -> feed.CreateFeedReq
+	8,  // 13: feed.Feed.DeleteFeed:input_type -> feed.DeleteFeedReq
+	10, // 14: feed.Feed.GetFeed:input_type -> feed.GetFeedReq
+	12, // 15: feed.Feed.BatchGetFeeds:input_type -> feed.BatchGetFeedsReq
+	14, // 16: feed.Feed.GetRecommendTimeline:input_type -> feed.GetRecommendTimelineReq
+	16, // 17: feed.Feed.GetFollowTimeline:input_type -> feed.GetFollowTimelineReq
+	18, // 18: feed.Feed.GetCityTimeline:input_type -> feed.GetCityTimelineReq
+	20, // 19: feed.Feed.GetUserFeeds:input_type -> feed.GetUserFeedsReq
+	7,  // 20: feed.Feed.CreateFeed:output_type -> feed.CreateFeedResp
+	9,  // 21: feed.Feed.DeleteFeed:output_type -> feed.DeleteFeedResp
+	11, // 22: feed.Feed.GetFeed:output_type -> feed.GetFeedResp
+	13, // 23: feed.Feed.BatchGetFeeds:output_type -> feed.BatchGetFeedsResp
+	15, // 24: feed.Feed.GetRecommendTimeline:output_type -> feed.GetRecommendTimelineResp
+	17, // 25: feed.Feed.GetFollowTimeline:output_type -> feed.GetFollowTimelineResp
+	19, // 26: feed.Feed.GetCityTimeline:output_type -> feed.GetCityTimelineResp
+	21, // 27: feed.Feed.GetUserFeeds:output_type -> feed.GetUserFeedsResp
 	20, // [20:28] is the sub-list for method output_type
 	12, // [12:20] is the sub-list for method input_type
 	12, // [12:12] is the sub-list for extension type_name
@@ -1603,7 +1692,7 @@ func file_api_proto_feed_feed_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_proto_feed_feed_proto_rawDesc), len(file_api_proto_feed_feed_proto_rawDesc)),
-			NumEnums:      2,
+			NumEnums:      3,
 			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,

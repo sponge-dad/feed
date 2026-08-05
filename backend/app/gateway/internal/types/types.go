@@ -118,6 +118,7 @@ type FeedCard struct {
 	Stats       FeedStatsInfo       `json:"stats"`
 	Interaction FeedInteractionInfo `json:"interaction"`
 	CreatedAt   int64               `json:"created_at"`
+	Source      int32               `json:"source"`
 }
 
 type FeedCardList struct {
