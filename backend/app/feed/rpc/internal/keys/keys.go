@@ -48,3 +48,8 @@ func Timeline(tab string, userID, page int64) string {
 func CommentEventDedup(eventID string) string {
 	return "comment_event:" + eventID
 }
+
+// FeedTraceKey 请求级 Trace Redis key：feed:trace:{request_id}
+func FeedTraceKey(requestID string) string {
+	return "feed:trace:" + requestID
+}
