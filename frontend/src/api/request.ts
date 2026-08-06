@@ -40,6 +40,11 @@ instance.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // 注入可读的 request_id：网关中间件会原样采用并在响应体中回写该 id，
+  // 便于在前端操作后在浏览器 Console 拿到它，再去后端查询本次请求的 Trace。
+  if (!config.headers['X-Request-ID']) {
+    config.headers['X-Request-ID'] = `fe-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  }
   return config;
 });
 
@@ -57,6 +62,8 @@ instance.interceptors.response.use(
   (response) => {
     const body = response.data as ApiResponse;
     if (body && typeof body.code === 'number') {
+      // 把后端回写的 request_id 打到 Console，前端操作后即可据此查询 Trace
+      if (body.request_id) console.log('[request_id]', body.request_id);
       if (body.code === 0) {
         return body.data as never; // 成功：直接返回 data
       }
