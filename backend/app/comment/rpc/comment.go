@@ -13,6 +13,7 @@ import (
 	"github.com/sponge-dad/feed/app/comment/rpc/internal/server"
 	"github.com/sponge-dad/feed/app/comment/rpc/internal/serverinterceptors"
 	"github.com/sponge-dad/feed/app/comment/rpc/internal/svc"
+	"github.com/sponge-dad/feed/common/interceptors"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/service"
@@ -44,7 +45,10 @@ func main() {
 	defer s.Stop()
 
 	// 统一将 logic 层业务错误转换为可跨服务透传的 gRPC status error
-	s.AddUnaryInterceptors(serverinterceptors.ErrorInterceptor)
+	s.AddUnaryInterceptors(
+		interceptors.UnaryServerRequestID,
+		serverinterceptors.ErrorInterceptor,
+	)
 
 	fmt.Printf("Starting rpc server at %s...\n", c.ListenOn)
 	s.Start()

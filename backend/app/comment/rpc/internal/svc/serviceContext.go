@@ -8,6 +8,7 @@ import (
 	"github.com/sponge-dad/feed/app/feed/rpc/feedclient"
 	"github.com/sponge-dad/feed/app/user/rpc/userClient"
 	"github.com/sponge-dad/feed/common/idgen"
+	"github.com/sponge-dad/feed/common/interceptors"
 	"github.com/sponge-dad/feed/common/mq"
 
 	"github.com/zeromicro/go-zero/core/stores/redis"
@@ -41,8 +42,8 @@ func NewServiceContext(c config.Config) (*ServiceContext, error) {
 		CommentModel: model.NewCommentsModel(conn),
 		Redis:        rds,
 		IdGen:        idgen.Next,
-		UserRpc:      userClient.NewUser(zrpc.MustNewClient(c.UserRpc)),
-		FeedRpc:      feedclient.NewFeed(zrpc.MustNewClient(c.FeedRpc)),
+		UserRpc:      userClient.NewUser(zrpc.MustNewClient(c.UserRpc, zrpc.WithUnaryClientInterceptor(interceptors.UnaryClientRequestID))),
+		FeedRpc:      feedclient.NewFeed(zrpc.MustNewClient(c.FeedRpc, zrpc.WithUnaryClientInterceptor(interceptors.UnaryClientRequestID))),
 		Producer:     producer,
 	}, nil
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/sponge-dad/feed/app/relation/rpc/relationclient"
 	commentEvent "github.com/sponge-dad/feed/common/event/comment"
 	feedEvent "github.com/sponge-dad/feed/common/event/feed"
+	"github.com/sponge-dad/feed/common/requestid"
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/stores/redis"
 )
@@ -69,6 +70,16 @@ func NewWorker(ctx *svc.ServiceContext) *Worker {
 	return &Worker{svcCtx: ctx}
 }
 
+// bindRequestID 将 MQ 事件携带的 request_id 注入日志上下文（§4）。
+// 异步消费链路与原始 HTTP 请求上下文无关，故从事件体提取；缺失时保持原 ctx。
+func bindRequestID(ctx context.Context, rid string) context.Context {
+	if rid != "" {
+		ctx = requestid.WithRequestID(ctx, rid)
+		ctx = logx.WithFields(ctx, logx.Field("request_id", rid))
+	}
+	return ctx
+}
+
 // Start 订阅事件 topic 并启动消费者；订阅必须在 Start 之前完成。
 func (wk *Worker) Start() error {
 	if err := wk.svcCtx.Consumer.Subscribe(feedEvent.TopicFeedCreated, wk.handleFeedCreate); err != nil {
@@ -89,9 +100,10 @@ func (wk *Worker) handleFeedCreate(ctx context.Context, msg *red.MessageExt) err
 	var ev feedEvent.EventFeedCreate
 	if err := json.Unmarshal(msg.Body, &ev); err != nil {
 		// 不可恢复：消息体损坏，记录后返回 nil 避免死信堆积。
-		logx.Errorf("unmarshal feed.created failed body=%s err=%v", string(msg.Body), err)
+		logx.WithContext(ctx).Errorf("unmarshal feed.created failed body=%s err=%v", string(msg.Body), err)
 		return nil
 	}
+	ctx = bindRequestID(ctx, ev.RequestID)
 	scoreSec := float64(ev.CreatedAt / 1000)
 	rdb := wk.svcCtx.Redis
 
@@ -119,9 +131,10 @@ func (wk *Worker) handleFeedCreate(ctx context.Context, msg *red.MessageExt) err
 func (wk *Worker) handleFeedDelete(ctx context.Context, msg *red.MessageExt) error {
 	var ev feedEvent.EventFeedDeleted
 	if err := json.Unmarshal(msg.Body, &ev); err != nil {
-		logx.Errorf("unmarshal feed.deleted failed body=%s err=%v", string(msg.Body), err)
+		logx.WithContext(ctx).Errorf("unmarshal feed.deleted failed body=%s err=%v", string(msg.Body), err)
 		return nil
 	}
+	ctx = bindRequestID(ctx, ev.RequestID)
 	rdb := wk.svcCtx.Redis
 	member := strconv.FormatInt(ev.FeedID, 10)
 	// 缓存清理失败不阻塞主流程，仅记录日志由后续读触发重建。
@@ -216,21 +229,22 @@ func (wk *Worker) handleCommentEvent(ctx context.Context, msg *red.MessageExt) e
 	var ev commentEvent.Event
 	if err := json.Unmarshal(msg.Body, &ev); err != nil {
 		// 不可恢复：消息体损坏，记录后返回 nil 避免死信堆积。
-		logx.Errorf("unmarshal comment-event failed body=%s err=%v", string(msg.Body), err)
+		logx.WithContext(ctx).Errorf("unmarshal comment-event failed body=%s err=%v", string(msg.Body), err)
 		return nil
 	}
+	ctx = bindRequestID(ctx, ev.RequestID)
 
 	// 幂等去重：已处理过则直接返回。
 	dedupKey := keys.CommentEventDedup(ev.EventID)
 	ok, derr := wk.svcCtx.Redis.Setnx(dedupKey, "1")
 	if derr != nil {
 		// 去重标记写失败不阻塞主流程，继续执行增量更新（UPDATE 本身幂等，重复执行结果一致）。
-		logx.Errorf("comment-event dedup setnx failed event_id=%s err=%v", ev.EventID, derr)
+		logx.WithContext(ctx).Errorf("comment-event dedup setnx failed event_id=%s err=%v", ev.EventID, derr)
 	} else if !ok {
 		return nil
 	}
 	if eerr := wk.svcCtx.Redis.Expire(dedupKey, 24*3600); eerr != nil {
-		logx.Errorf("comment-event dedup expire failed event_id=%s err=%v", ev.EventID, eerr)
+		logx.WithContext(ctx).Errorf("comment-event dedup expire failed event_id=%s err=%v", ev.EventID, eerr)
 	}
 
 	// 按动作类型计算增量：CREATE +1，DELETE -1。
@@ -241,13 +255,13 @@ func (wk *Worker) handleCommentEvent(ctx context.Context, msg *red.MessageExt) e
 	case commentEvent.ActionDelete:
 		delta = -1
 	default:
-		logx.Errorf("comment-event unknown action_type=%s event_id=%s", ev.ActionType, ev.EventID)
+		logx.WithContext(ctx).Errorf("comment-event unknown action_type=%s event_id=%s", ev.ActionType, ev.EventID)
 		return nil
 	}
 
 	// 增量更新 feeds.comment_count，SQL 层保证下限为 0（GREATEST(comment_count + delta, 0)）。
 	if uerr := wk.svcCtx.FeedModel.IncrCommentCount(ctx, uint64(ev.FeedID), delta); uerr != nil {
-		logx.Errorf("comment-event IncrCommentCount failed event_id=%s feed_id=%d delta=%d err=%v", ev.EventID, ev.FeedID, delta, uerr)
+		logx.WithContext(ctx).Errorf("comment-event IncrCommentCount failed event_id=%s feed_id=%d delta=%d err=%v", ev.EventID, ev.FeedID, delta, uerr)
 		wk.svcCtx.Redis.Del(dedupKey)
 		return uerr
 	}
