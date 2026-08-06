@@ -5,6 +5,7 @@ import (
 	"github.com/sponge-dad/feed/app/feed/rpc/internal/config"
 	"github.com/sponge-dad/feed/app/relation/rpc/relationclient"
 	"github.com/sponge-dad/feed/common/idgen"
+	"github.com/sponge-dad/feed/common/interceptors"
 	"github.com/sponge-dad/feed/common/mq"
 
 	"github.com/zeromicro/go-zero/core/stores/redis"
@@ -48,7 +49,7 @@ func NewServiceContext(c config.Config) (*ServiceContext, error) {
 		FeedModel:   model.NewFeedsModel(conn, rds),
 		Redis:       rds,
 		IdGen:       idgen.Next,
-		RelationRpc: relationclient.NewRelation(zrpc.MustNewClient(c.RelationRpc)),
+		RelationRpc: relationclient.NewRelation(zrpc.MustNewClient(c.RelationRpc, zrpc.WithUnaryClientInterceptor(interceptors.UnaryClientRequestID))),
 		Producer:    producer,
 		Consumer:    consumer,
 	}, nil

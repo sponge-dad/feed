@@ -10,6 +10,7 @@ import (
 	"github.com/sponge-dad/feed/app/feed/rpc/internal/serverinterceptors"
 	"github.com/sponge-dad/feed/app/feed/rpc/internal/svc"
 	"github.com/sponge-dad/feed/app/feed/rpc/internal/worker"
+	"github.com/sponge-dad/feed/common/interceptors"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/service"
@@ -44,7 +45,7 @@ func main() {
 			reflection.Register(grpcServer)
 		}
 	})
-	s.AddUnaryInterceptors(serverinterceptors.ErrorInterceptor)
+	s.AddUnaryInterceptors(serverinterceptors.ErrorInterceptor, interceptors.UnaryServerRequestID)
 	defer s.Stop()
 
 	fmt.Printf("Starting rpc server at %s...\n", c.ListenOn)

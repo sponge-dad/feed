@@ -70,3 +70,15 @@ func (s *FeedServer) GetUserFeeds(ctx context.Context, in *feed.GetUserFeedsReq)
 	l := logic.NewGetUserFeedsLogic(ctx, s.svcCtx)
 	return l.GetUserFeeds(in)
 }
+
+// 查询某次请求中某条 feed 的来源（见 02-request-trace §6.3）
+func (s *FeedServer) GetFeedSource(ctx context.Context, in *feed.GetFeedSourceReq) (*feed.GetFeedSourceResp, error) {
+	l := logic.NewGetFeedSourceLogic(ctx, s.svcCtx)
+	return l.GetFeedSource(in)
+}
+
+// 查询一次请求的完整 Trace（仅内部用户可调用，见 02-request-trace §6.3）
+func (s *FeedServer) GetFeedRequestTrace(ctx context.Context, in *feed.GetFeedRequestTraceReq) (*feed.GetFeedRequestTraceResp, error) {
+	l := logic.NewGetFeedRequestTraceLogic(ctx, s.svcCtx)
+	return l.GetFeedRequestTrace(in)
+}

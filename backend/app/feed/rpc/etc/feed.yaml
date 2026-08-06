@@ -30,3 +30,13 @@ RocketMQ:
     - 127.0.0.1:9876
   GroupName: feed_producer_group
   ConsumeGroup: feed_consumer_group
+
+# 请求级 Trace 配置（见 docs/design/agent/02-request-trace.md §6）
+# SampleRate: 采样率，<=0 全部跳过；<1 按比例采样；1 全量。开发 1.0，生产建议 0.1
+# TTL: Trace Redis key 过期秒数。开发 86400，生产建议 1800
+# InternalUserIDs: 可越权查询任意 request_id Trace 的内部排障用户 ID 列表（留空则仅允许本人查询）
+Trace:
+  SampleRate: 1.0
+  TTL: 86400
+  # InternalUserIDs:
+  #   - 10086
