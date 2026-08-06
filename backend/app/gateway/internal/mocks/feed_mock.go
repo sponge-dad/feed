@@ -195,3 +195,43 @@ func (mr *MockFeedMockRecorder) GetUserFeeds(arg0, arg1 interface{}, arg2 ...int
 	varargs := append([]interface{}{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserFeeds", reflect.TypeOf((*MockFeed)(nil).GetUserFeeds), varargs...)
 }
+
+// GetFeedSource mocks base method.
+func (m *MockFeed) GetFeedSource(arg0 context.Context, arg1 *feed.GetFeedSourceReq, arg2 ...grpc.CallOption) (*feed.GetFeedSourceResp, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetFeedSource", varargs...)
+	ret0, _ := ret[0].(*feed.GetFeedSourceResp)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetFeedSource indicates an expected call of GetFeedSource.
+func (mr *MockFeedMockRecorder) GetFeedSource(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFeedSource", reflect.TypeOf((*MockFeed)(nil).GetFeedSource), varargs...)
+}
+
+// GetFeedRequestTrace mocks base method.
+func (m *MockFeed) GetFeedRequestTrace(arg0 context.Context, arg1 *feed.GetFeedRequestTraceReq, arg2 ...grpc.CallOption) (*feed.GetFeedRequestTraceResp, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetFeedRequestTrace", varargs...)
+	ret0, _ := ret[0].(*feed.GetFeedRequestTraceResp)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetFeedRequestTrace indicates an expected call of GetFeedRequestTrace.
+func (mr *MockFeedMockRecorder) GetFeedRequestTrace(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFeedRequestTrace", reflect.TypeOf((*MockFeed)(nil).GetFeedRequestTrace), varargs...)
+}

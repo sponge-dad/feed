@@ -44,10 +44,10 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	return &ServiceContext{
 		Config:         c,
 		UserRpc:        userClient.NewUser(zrpc.MustNewClient(c.UserRpc, zrpc.WithUnaryClientInterceptor(interceptors.UnaryClientRequestID))),
-		RelationRpc:    relationClient.NewRelation(zrpc.MustNewClient(c.RelationRpc)),
-		FeedRpc:        feedClient.NewFeed(zrpc.MustNewClient(c.FeedRpc)),
-		CommentRpc:     commentClient.NewComment(zrpc.MustNewClient(c.CommentRpc)),
-		InteractionRpc: interactionClient.NewInteraction(zrpc.MustNewClient(c.InteractionRpc)),
+		RelationRpc:    relationClient.NewRelation(zrpc.MustNewClient(c.RelationRpc, zrpc.WithUnaryClientInterceptor(interceptors.UnaryClientRequestID))),
+		FeedRpc:        feedClient.NewFeed(zrpc.MustNewClient(c.FeedRpc, zrpc.WithUnaryClientInterceptor(interceptors.UnaryClientRequestID))),
+		CommentRpc:     commentClient.NewComment(zrpc.MustNewClient(c.CommentRpc, zrpc.WithUnaryClientInterceptor(interceptors.UnaryClientRequestID))),
+		InteractionRpc: interactionClient.NewInteraction(zrpc.MustNewClient(c.InteractionRpc, zrpc.WithUnaryClientInterceptor(interceptors.UnaryClientRequestID))),
 		IPResolver:     ipx.NewStaticResolver(defaultCity),
 		Cos:            cos.MustNew(c.Cos),
 	}
