@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/sponge-dad/feed/app/feed/model"
 	"github.com/sponge-dad/feed/app/feed/rpc/feed"
@@ -16,9 +17,12 @@ import (
 	"github.com/sponge-dad/feed/app/feed/rpc/internal/svc"
 	"github.com/sponge-dad/feed/app/relation/rpc/relation"
 	"github.com/sponge-dad/feed/common/errorx"
+	"github.com/sponge-dad/feed/common/requestid"
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/stores/redis"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/sponge-dad/feed/app/feed/rpc/internal/logic/trace"
 )
 
 // GetFollowTimelineLogic 封装 GetFollowTimeline 请求所需的上下文与依赖。
@@ -68,14 +72,18 @@ func (l *GetFollowTimelineLogic) GetFollowTimeline(in *feed.GetFollowTimelineReq
 
 	rdb := l.svcCtx.Redis
 
+	tb := trace.NewBuilder(requestid.FromContext(l.ctx), in.UserId, "follow", in.Cursor, int32(pageSize))
+
 	// 1. 候选合并（带来源标记）：inbox（普通好友已推）+ 关注大V 的 outbox（实时拉）。
 	candidates := make(map[int64]*feedScore) // feedID -> 候选（含来源，多路命中按优先级收敛）
 
 	// 1a. 收件箱：worker 已将普通好友帖子推入，按 score 倒序全量取出（上限内）。
+	inboxStart := time.Now()
 	inboxPairs, err := rdb.ZrevrangebyscoreWithScoresAndLimitCtx(l.ctx, keys.Inbox(in.UserId), math.MinInt64, math.MaxInt64, 0, followInboxReadCap)
 	if err != nil {
 		return nil, err
 	}
+	tb.RecordSource(feedSourceFollowInbox.String(), int32(len(inboxPairs)), time.Since(inboxStart).Milliseconds())
 	for _, p := range inboxPairs {
 		id, e := strconvParseFeedID(p.Key)
 		if e != nil {
@@ -87,10 +95,12 @@ func (l *GetFollowTimelineLogic) GetFollowTimeline(in *feed.GetFollowTimelineReq
 	if len(inboxPairs) == 0 {
 		// inbox 为空：尝试兜底重建（GetFollows + 各作者 outbox），命中标记 INBOX_REBUILD。
 		// 重建失败不致命，仅缺失该部分数据。
+		rebuildStart := time.Now()
 		rebuildPairs, rerr := l.rebuildInbox(in.UserId)
 		if rerr != nil {
 			l.Errorf("GetFollowTimeline rebuildInbox failed userId=%d err=%v", in.UserId, rerr)
 		}
+		tb.RecordSource(feedSourceInboxRebuild.String(), int32(len(rebuildPairs)), time.Since(rebuildStart).Milliseconds())
 		for _, p := range rebuildPairs {
 			id, e := strconvParseFeedID(p.Key)
 			if e != nil {
@@ -116,6 +126,8 @@ func (l *GetFollowTimelineLogic) GetFollowTimeline(in *feed.GetFollowTimelineReq
 			return nil, berr
 		}
 		bigVCount := 0
+		vipStart := time.Now()
+		var vipOutboxTotal int32
 		for _, fid := range follows.FolloweeIds {
 			if bigVCount >= followMaxBigV {
 				// V1 限制拉取的大V数量，避免极端关注数下的读放大。
@@ -129,6 +141,7 @@ func (l *GetFollowTimelineLogic) GetFollowTimeline(in *feed.GetFollowTimelineReq
 			if oerr != nil {
 				return nil, oerr
 			}
+			vipOutboxTotal += int32(len(obPairs))
 			for _, p := range obPairs {
 				id, e := strconvParseFeedID(p.Key)
 				if e != nil {
@@ -137,6 +150,7 @@ func (l *GetFollowTimelineLogic) GetFollowTimeline(in *feed.GetFollowTimelineReq
 				mergeFeedScore(candidates, id, p.Score, feedSourceVipOutbox)
 			}
 		}
+		tb.RecordSource(feedSourceVipOutbox.String(), vipOutboxTotal, time.Since(vipStart).Milliseconds())
 	}
 
 	// 2. 排序候选。
@@ -145,6 +159,7 @@ func (l *GetFollowTimelineLogic) GetFollowTimeline(in *feed.GetFollowTimelineReq
 		items = append(items, *c)
 	}
 	sortFeedScores(items)
+	tb.SetMergedCount(int32(len(items)))
 
 	// 3. 游标过滤并截取本页。
 	result := make([]feedScore, 0, pageSize)
@@ -185,9 +200,15 @@ func (l *GetFollowTimelineLogic) GetFollowTimeline(in *feed.GetFollowTimelineReq
 				b := toFeedBrief(f)
 				b.Source = int32(it.source)
 				briefs = append(briefs, b)
+				tb.AddItem(it.feedID, it.source.String(), int32(len(briefs)-1), it.score)
 			}
 		}
+		tb.SetReturnedCount(int32(len(briefs)))
+		tb.SetFilteredCount(int32(len(result) - len(briefs)))
 	}
+
+	// 5. 异步写入请求级 Trace（失败不阻塞主流程，见 02-request-trace §6）。
+	go trace.Write(context.Background(), rdb, tb.Build(), l.svcCtx.Config.Trace.TTL, l.svcCtx.Config.Trace.SampleRate)
 
 	return &feed.GetFollowTimelineResp{
 		Feeds: briefs,
