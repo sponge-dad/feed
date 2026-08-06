@@ -22,10 +22,15 @@ type (
 	DeleteFeedResp           = feed.DeleteFeedResp
 	FeedBrief                = feed.FeedBrief
 	FeedInfo                 = feed.FeedInfo
+	FeedRequestTrace         = feed.FeedRequestTrace
 	GetCityTimelineReq       = feed.GetCityTimelineReq
 	GetCityTimelineResp      = feed.GetCityTimelineResp
 	GetFeedReq               = feed.GetFeedReq
+	GetFeedRequestTraceReq   = feed.GetFeedRequestTraceReq
+	GetFeedRequestTraceResp  = feed.GetFeedRequestTraceResp
 	GetFeedResp              = feed.GetFeedResp
+	GetFeedSourceReq         = feed.GetFeedSourceReq
+	GetFeedSourceResp        = feed.GetFeedSourceResp
 	GetFollowTimelineReq     = feed.GetFollowTimelineReq
 	GetFollowTimelineResp    = feed.GetFollowTimelineResp
 	GetRecommendTimelineReq  = feed.GetRecommendTimelineReq
@@ -33,6 +38,8 @@ type (
 	GetUserFeedsReq          = feed.GetUserFeedsReq
 	GetUserFeedsResp         = feed.GetUserFeedsResp
 	PageInfo                 = feed.PageInfo
+	SourceStat               = feed.SourceStat
+	TraceItem                = feed.TraceItem
 
 	Feed interface {
 		// 创建帖子
@@ -51,6 +58,10 @@ type (
 		GetCityTimeline(ctx context.Context, in *GetCityTimelineReq, opts ...grpc.CallOption) (*GetCityTimelineResp, error)
 		// 个人主页帖子列表
 		GetUserFeeds(ctx context.Context, in *GetUserFeedsReq, opts ...grpc.CallOption) (*GetUserFeedsResp, error)
+		// 查询某次请求中某条 feed 的来源（见 02-request-trace §6.3）
+		GetFeedSource(ctx context.Context, in *GetFeedSourceReq, opts ...grpc.CallOption) (*GetFeedSourceResp, error)
+		// 查询一次请求的完整 Trace（仅内部用户可调用，见 02-request-trace §6.3）
+		GetFeedRequestTrace(ctx context.Context, in *GetFeedRequestTraceReq, opts ...grpc.CallOption) (*GetFeedRequestTraceResp, error)
 	}
 
 	defaultFeed struct {
@@ -110,4 +121,16 @@ func (m *defaultFeed) GetCityTimeline(ctx context.Context, in *GetCityTimelineRe
 func (m *defaultFeed) GetUserFeeds(ctx context.Context, in *GetUserFeedsReq, opts ...grpc.CallOption) (*GetUserFeedsResp, error) {
 	client := feed.NewFeedClient(m.cli.Conn())
 	return client.GetUserFeeds(ctx, in, opts...)
+}
+
+// 查询某次请求中某条 feed 的来源（见 02-request-trace §6.3）
+func (m *defaultFeed) GetFeedSource(ctx context.Context, in *GetFeedSourceReq, opts ...grpc.CallOption) (*GetFeedSourceResp, error) {
+	client := feed.NewFeedClient(m.cli.Conn())
+	return client.GetFeedSource(ctx, in, opts...)
+}
+
+// 查询一次请求的完整 Trace（仅内部用户可调用，见 02-request-trace §6.3）
+func (m *defaultFeed) GetFeedRequestTrace(ctx context.Context, in *GetFeedRequestTraceReq, opts ...grpc.CallOption) (*GetFeedRequestTraceResp, error) {
+	client := feed.NewFeedClient(m.cli.Conn())
+	return client.GetFeedRequestTrace(ctx, in, opts...)
 }

@@ -34,6 +34,8 @@ const (
 	Feed_GetFollowTimeline_FullMethodName    = "/feed.Feed/GetFollowTimeline"
 	Feed_GetCityTimeline_FullMethodName      = "/feed.Feed/GetCityTimeline"
 	Feed_GetUserFeeds_FullMethodName         = "/feed.Feed/GetUserFeeds"
+	Feed_GetFeedSource_FullMethodName        = "/feed.Feed/GetFeedSource"
+	Feed_GetFeedRequestTrace_FullMethodName  = "/feed.Feed/GetFeedRequestTrace"
 )
 
 // FeedClient is the client API for Feed service.
@@ -56,6 +58,10 @@ type FeedClient interface {
 	GetCityTimeline(ctx context.Context, in *GetCityTimelineReq, opts ...grpc.CallOption) (*GetCityTimelineResp, error)
 	// 个人主页帖子列表
 	GetUserFeeds(ctx context.Context, in *GetUserFeedsReq, opts ...grpc.CallOption) (*GetUserFeedsResp, error)
+	// 查询某次请求中某条 feed 的来源（见 02-request-trace §6.3）
+	GetFeedSource(ctx context.Context, in *GetFeedSourceReq, opts ...grpc.CallOption) (*GetFeedSourceResp, error)
+	// 查询一次请求的完整 Trace（仅内部用户可调用，见 02-request-trace §6.3）
+	GetFeedRequestTrace(ctx context.Context, in *GetFeedRequestTraceReq, opts ...grpc.CallOption) (*GetFeedRequestTraceResp, error)
 }
 
 type feedClient struct {
@@ -146,6 +152,26 @@ func (c *feedClient) GetUserFeeds(ctx context.Context, in *GetUserFeedsReq, opts
 	return out, nil
 }
 
+func (c *feedClient) GetFeedSource(ctx context.Context, in *GetFeedSourceReq, opts ...grpc.CallOption) (*GetFeedSourceResp, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetFeedSourceResp)
+	err := c.cc.Invoke(ctx, Feed_GetFeedSource_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *feedClient) GetFeedRequestTrace(ctx context.Context, in *GetFeedRequestTraceReq, opts ...grpc.CallOption) (*GetFeedRequestTraceResp, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetFeedRequestTraceResp)
+	err := c.cc.Invoke(ctx, Feed_GetFeedRequestTrace_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // FeedServer is the server API for Feed service.
 // All implementations must embed UnimplementedFeedServer
 // for forward compatibility.
@@ -166,6 +192,10 @@ type FeedServer interface {
 	GetCityTimeline(context.Context, *GetCityTimelineReq) (*GetCityTimelineResp, error)
 	// 个人主页帖子列表
 	GetUserFeeds(context.Context, *GetUserFeedsReq) (*GetUserFeedsResp, error)
+	// 查询某次请求中某条 feed 的来源（见 02-request-trace §6.3）
+	GetFeedSource(context.Context, *GetFeedSourceReq) (*GetFeedSourceResp, error)
+	// 查询一次请求的完整 Trace（仅内部用户可调用，见 02-request-trace §6.3）
+	GetFeedRequestTrace(context.Context, *GetFeedRequestTraceReq) (*GetFeedRequestTraceResp, error)
 	mustEmbedUnimplementedFeedServer()
 }
 
@@ -199,6 +229,12 @@ func (UnimplementedFeedServer) GetCityTimeline(context.Context, *GetCityTimeline
 }
 func (UnimplementedFeedServer) GetUserFeeds(context.Context, *GetUserFeedsReq) (*GetUserFeedsResp, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetUserFeeds not implemented")
+}
+func (UnimplementedFeedServer) GetFeedSource(context.Context, *GetFeedSourceReq) (*GetFeedSourceResp, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetFeedSource not implemented")
+}
+func (UnimplementedFeedServer) GetFeedRequestTrace(context.Context, *GetFeedRequestTraceReq) (*GetFeedRequestTraceResp, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetFeedRequestTrace not implemented")
 }
 func (UnimplementedFeedServer) mustEmbedUnimplementedFeedServer() {}
 func (UnimplementedFeedServer) testEmbeddedByValue()              {}
@@ -365,6 +401,42 @@ func _Feed_GetUserFeeds_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Feed_GetFeedSource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFeedSourceReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FeedServer).GetFeedSource(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Feed_GetFeedSource_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FeedServer).GetFeedSource(ctx, req.(*GetFeedSourceReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Feed_GetFeedRequestTrace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFeedRequestTraceReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FeedServer).GetFeedRequestTrace(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Feed_GetFeedRequestTrace_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FeedServer).GetFeedRequestTrace(ctx, req.(*GetFeedRequestTraceReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Feed_ServiceDesc is the grpc.ServiceDesc for Feed service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -403,6 +475,14 @@ var Feed_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUserFeeds",
 			Handler:    _Feed_GetUserFeeds_Handler,
+		},
+		{
+			MethodName: "GetFeedSource",
+			Handler:    _Feed_GetFeedSource_Handler,
+		},
+		{
+			MethodName: "GetFeedRequestTrace",
+			Handler:    _Feed_GetFeedRequestTrace_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

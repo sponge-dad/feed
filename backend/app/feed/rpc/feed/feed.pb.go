@@ -1464,6 +1464,465 @@ func (x *GetUserFeedsResp) GetPage() *PageInfo {
 	return nil
 }
 
+// TraceItem 一条候选在结果中的位置与来源
+type TraceItem struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	FeedId        int64                  `protobuf:"varint,1,opt,name=feed_id,json=feedId,proto3" json:"feed_id,omitempty"` // 帖子 ID
+	Source        string                 `protobuf:"bytes,2,opt,name=source,proto3" json:"source,omitempty"`                // 来源标记（FOLLOW_INBOX / VIP_OUTBOX / ...）
+	Position      int32                  `protobuf:"varint,3,opt,name=position,proto3" json:"position,omitempty"`           // 在返回列表中的位置（从 0 开始）
+	Score         int64                  `protobuf:"varint,4,opt,name=score,proto3" json:"score,omitempty"`                 // ZSet score（秒级时间戳）
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TraceItem) Reset() {
+	*x = TraceItem{}
+	mi := &file_api_proto_feed_feed_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TraceItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TraceItem) ProtoMessage() {}
+
+func (x *TraceItem) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_feed_feed_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TraceItem.ProtoReflect.Descriptor instead.
+func (*TraceItem) Descriptor() ([]byte, []int) {
+	return file_api_proto_feed_feed_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *TraceItem) GetFeedId() int64 {
+	if x != nil {
+		return x.FeedId
+	}
+	return 0
+}
+
+func (x *TraceItem) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *TraceItem) GetPosition() int32 {
+	if x != nil {
+		return x.Position
+	}
+	return 0
+}
+
+func (x *TraceItem) GetScore() int64 {
+	if x != nil {
+		return x.Score
+	}
+	return 0
+}
+
+// SourceStat 某一数据源本次读取的量与耗时
+type SourceStat struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Source        string                 `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`                // FOLLOW_INBOX / VIP_OUTBOX / INBOX_REBUILD / CITY_POOL / RECOMMEND_POOL
+	Count         int32                  `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`                 // 读取条数
+	CostMs        int64                  `protobuf:"varint,3,opt,name=cost_ms,json=costMs,proto3" json:"cost_ms,omitempty"` // 读取耗时（毫秒）
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SourceStat) Reset() {
+	*x = SourceStat{}
+	mi := &file_api_proto_feed_feed_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SourceStat) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SourceStat) ProtoMessage() {}
+
+func (x *SourceStat) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_feed_feed_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SourceStat.ProtoReflect.Descriptor instead.
+func (*SourceStat) Descriptor() ([]byte, []int) {
+	return file_api_proto_feed_feed_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *SourceStat) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *SourceStat) GetCount() int32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+func (x *SourceStat) GetCostMs() int64 {
+	if x != nil {
+		return x.CostMs
+	}
+	return 0
+}
+
+// FeedRequestTrace 一次 Timeline 请求的读取路径记录（内部诊断用）
+type FeedRequestTrace struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`              // 请求标识（来自 Gateway 中间件）
+	UserId        int64                  `protobuf:"varint,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`                      // 请求用户
+	Tab           string                 `protobuf:"bytes,3,opt,name=tab,proto3" json:"tab,omitempty"`                                           // follow / recommend / city
+	Cursor        string                 `protobuf:"bytes,4,opt,name=cursor,proto3" json:"cursor,omitempty"`                                     // 游标
+	PageSize      int32                  `protobuf:"varint,5,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`                // 每页条数
+	Sources       []*SourceStat          `protobuf:"bytes,6,rep,name=sources,proto3" json:"sources,omitempty"`                                   // 各数据源读取量
+	MergedCount   int32                  `protobuf:"varint,7,opt,name=merged_count,json=mergedCount,proto3" json:"merged_count,omitempty"`       // 去重合并后候选数
+	ReturnedCount int32                  `protobuf:"varint,8,opt,name=returned_count,json=returnedCount,proto3" json:"returned_count,omitempty"` // 实际返回条数
+	FilteredCount int32                  `protobuf:"varint,9,opt,name=filtered_count,json=filteredCount,proto3" json:"filtered_count,omitempty"` // 因详情缺失/状态异常被丢弃
+	CostMs        int64                  `protobuf:"varint,10,opt,name=cost_ms,json=costMs,proto3" json:"cost_ms,omitempty"`                     // 总耗时（毫秒）
+	Items         []*TraceItem           `protobuf:"bytes,11,rep,name=items,proto3" json:"items,omitempty"`                                      // feed_id → source / position 明细
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FeedRequestTrace) Reset() {
+	*x = FeedRequestTrace{}
+	mi := &file_api_proto_feed_feed_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FeedRequestTrace) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FeedRequestTrace) ProtoMessage() {}
+
+func (x *FeedRequestTrace) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_feed_feed_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FeedRequestTrace.ProtoReflect.Descriptor instead.
+func (*FeedRequestTrace) Descriptor() ([]byte, []int) {
+	return file_api_proto_feed_feed_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *FeedRequestTrace) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *FeedRequestTrace) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *FeedRequestTrace) GetTab() string {
+	if x != nil {
+		return x.Tab
+	}
+	return ""
+}
+
+func (x *FeedRequestTrace) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
+func (x *FeedRequestTrace) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *FeedRequestTrace) GetSources() []*SourceStat {
+	if x != nil {
+		return x.Sources
+	}
+	return nil
+}
+
+func (x *FeedRequestTrace) GetMergedCount() int32 {
+	if x != nil {
+		return x.MergedCount
+	}
+	return 0
+}
+
+func (x *FeedRequestTrace) GetReturnedCount() int32 {
+	if x != nil {
+		return x.ReturnedCount
+	}
+	return 0
+}
+
+func (x *FeedRequestTrace) GetFilteredCount() int32 {
+	if x != nil {
+		return x.FilteredCount
+	}
+	return 0
+}
+
+func (x *FeedRequestTrace) GetCostMs() int64 {
+	if x != nil {
+		return x.CostMs
+	}
+	return 0
+}
+
+func (x *FeedRequestTrace) GetItems() []*TraceItem {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+// GetFeedSourceReq 查询某次请求中某条 feed 的来源
+type GetFeedSourceReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"` // 请求标识
+	FeedId        int64                  `protobuf:"varint,2,opt,name=feed_id,json=feedId,proto3" json:"feed_id,omitempty"`         // 帖子 ID
+	UserId        int64                  `protobuf:"varint,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`         // 调用者，用于归属校验
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetFeedSourceReq) Reset() {
+	*x = GetFeedSourceReq{}
+	mi := &file_api_proto_feed_feed_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetFeedSourceReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetFeedSourceReq) ProtoMessage() {}
+
+func (x *GetFeedSourceReq) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_feed_feed_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetFeedSourceReq.ProtoReflect.Descriptor instead.
+func (*GetFeedSourceReq) Descriptor() ([]byte, []int) {
+	return file_api_proto_feed_feed_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *GetFeedSourceReq) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *GetFeedSourceReq) GetFeedId() int64 {
+	if x != nil {
+		return x.FeedId
+	}
+	return 0
+}
+
+func (x *GetFeedSourceReq) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+// GetFeedSourceResp 返回该 feed 的来源标记；未命中返回 FEED_SOURCE_UNKNOWN
+type GetFeedSourceResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Source        FeedSource             `protobuf:"varint,1,opt,name=source,proto3,enum=feed.FeedSource" json:"source,omitempty"` // 信息流来源标记（FeedSource）
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetFeedSourceResp) Reset() {
+	*x = GetFeedSourceResp{}
+	mi := &file_api_proto_feed_feed_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetFeedSourceResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetFeedSourceResp) ProtoMessage() {}
+
+func (x *GetFeedSourceResp) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_feed_feed_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetFeedSourceResp.ProtoReflect.Descriptor instead.
+func (*GetFeedSourceResp) Descriptor() ([]byte, []int) {
+	return file_api_proto_feed_feed_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *GetFeedSourceResp) GetSource() FeedSource {
+	if x != nil {
+		return x.Source
+	}
+	return FeedSource_FEED_SOURCE_UNKNOWN
+}
+
+// GetFeedRequestTraceReq 查询一次请求的完整 Trace（仅内部用户可调用）
+type GetFeedRequestTraceReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"` // 请求标识
+	UserId        int64                  `protobuf:"varint,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`         // 调用者，用于归属校验与内部用户放行
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetFeedRequestTraceReq) Reset() {
+	*x = GetFeedRequestTraceReq{}
+	mi := &file_api_proto_feed_feed_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetFeedRequestTraceReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetFeedRequestTraceReq) ProtoMessage() {}
+
+func (x *GetFeedRequestTraceReq) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_feed_feed_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetFeedRequestTraceReq.ProtoReflect.Descriptor instead.
+func (*GetFeedRequestTraceReq) Descriptor() ([]byte, []int) {
+	return file_api_proto_feed_feed_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *GetFeedRequestTraceReq) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *GetFeedRequestTraceReq) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+// GetFeedRequestTraceResp 返回完整 Trace；无权限返回 Forbidden
+type GetFeedRequestTraceResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Trace         *FeedRequestTrace      `protobuf:"bytes,1,opt,name=trace,proto3" json:"trace,omitempty"` // 请求级 Trace
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetFeedRequestTraceResp) Reset() {
+	*x = GetFeedRequestTraceResp{}
+	mi := &file_api_proto_feed_feed_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetFeedRequestTraceResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetFeedRequestTraceResp) ProtoMessage() {}
+
+func (x *GetFeedRequestTraceResp) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_feed_feed_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetFeedRequestTraceResp.ProtoReflect.Descriptor instead.
+func (*GetFeedRequestTraceResp) Descriptor() ([]byte, []int) {
+	return file_api_proto_feed_feed_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *GetFeedRequestTraceResp) GetTrace() *FeedRequestTrace {
+	if x != nil {
+		return x.Trace
+	}
+	return nil
+}
+
 var File_api_proto_feed_feed_proto protoreflect.FileDescriptor
 
 const file_api_proto_feed_feed_proto_rawDesc = "" +
@@ -1576,7 +2035,44 @@ const file_api_proto_feed_feed_proto_rawDesc = "" +
 	"\tpage_size\x18\x03 \x01(\x03R\bpageSize\"]\n" +
 	"\x10GetUserFeedsResp\x12%\n" +
 	"\x05feeds\x18\x01 \x03(\v2\x0f.feed.FeedBriefR\x05feeds\x12\"\n" +
-	"\x04page\x18\x02 \x01(\v2\x0e.feed.PageInfoR\x04page*K\n" +
+	"\x04page\x18\x02 \x01(\v2\x0e.feed.PageInfoR\x04page\"n\n" +
+	"\tTraceItem\x12\x17\n" +
+	"\afeed_id\x18\x01 \x01(\x03R\x06feedId\x12\x16\n" +
+	"\x06source\x18\x02 \x01(\tR\x06source\x12\x1a\n" +
+	"\bposition\x18\x03 \x01(\x05R\bposition\x12\x14\n" +
+	"\x05score\x18\x04 \x01(\x03R\x05score\"S\n" +
+	"\n" +
+	"SourceStat\x12\x16\n" +
+	"\x06source\x18\x01 \x01(\tR\x06source\x12\x14\n" +
+	"\x05count\x18\x02 \x01(\x05R\x05count\x12\x17\n" +
+	"\acost_ms\x18\x03 \x01(\x03R\x06costMs\"\xee\x02\n" +
+	"\x10FeedRequestTrace\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\x03R\x06userId\x12\x10\n" +
+	"\x03tab\x18\x03 \x01(\tR\x03tab\x12\x16\n" +
+	"\x06cursor\x18\x04 \x01(\tR\x06cursor\x12\x1b\n" +
+	"\tpage_size\x18\x05 \x01(\x05R\bpageSize\x12*\n" +
+	"\asources\x18\x06 \x03(\v2\x10.feed.SourceStatR\asources\x12!\n" +
+	"\fmerged_count\x18\a \x01(\x05R\vmergedCount\x12%\n" +
+	"\x0ereturned_count\x18\b \x01(\x05R\rreturnedCount\x12%\n" +
+	"\x0efiltered_count\x18\t \x01(\x05R\rfilteredCount\x12\x17\n" +
+	"\acost_ms\x18\n" +
+	" \x01(\x03R\x06costMs\x12%\n" +
+	"\x05items\x18\v \x03(\v2\x0f.feed.TraceItemR\x05items\"c\n" +
+	"\x10GetFeedSourceReq\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12\x17\n" +
+	"\afeed_id\x18\x02 \x01(\x03R\x06feedId\x12\x17\n" +
+	"\auser_id\x18\x03 \x01(\x03R\x06userId\"=\n" +
+	"\x11GetFeedSourceResp\x12(\n" +
+	"\x06source\x18\x01 \x01(\x0e2\x10.feed.FeedSourceR\x06source\"P\n" +
+	"\x16GetFeedRequestTraceReq\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\x03R\x06userId\"G\n" +
+	"\x17GetFeedRequestTraceResp\x12,\n" +
+	"\x05trace\x18\x01 \x01(\v2\x16.feed.FeedRequestTraceR\x05trace*K\n" +
 	"\bFeedType\x12\x15\n" +
 	"\x11FEED_TYPE_UNKNOWN\x10\x00\x12\x13\n" +
 	"\x0fFEED_TYPE_IMAGE\x10\x01\x12\x13\n" +
@@ -1594,7 +2090,7 @@ const file_api_proto_feed_feed_proto_rawDesc = "" +
 	"\x16FEED_SOURCE_VIP_OUTBOX\x10\x02\x12\x1d\n" +
 	"\x19FEED_SOURCE_INBOX_REBUILD\x10\x03\x12\x19\n" +
 	"\x15FEED_SOURCE_CITY_POOL\x10\x04\x12\x1e\n" +
-	"\x1aFEED_SOURCE_RECOMMEND_POOL\x10\x052\x96\x04\n" +
+	"\x1aFEED_SOURCE_RECOMMEND_POOL\x10\x052\xac\x05\n" +
 	"\x04Feed\x127\n" +
 	"\n" +
 	"CreateFeed\x12\x13.feed.CreateFeedReq\x1a\x14.feed.CreateFeedResp\x127\n" +
@@ -1605,7 +2101,9 @@ const file_api_proto_feed_feed_proto_rawDesc = "" +
 	"\x14GetRecommendTimeline\x12\x1d.feed.GetRecommendTimelineReq\x1a\x1e.feed.GetRecommendTimelineResp\x12L\n" +
 	"\x11GetFollowTimeline\x12\x1a.feed.GetFollowTimelineReq\x1a\x1b.feed.GetFollowTimelineResp\x12F\n" +
 	"\x0fGetCityTimeline\x12\x18.feed.GetCityTimelineReq\x1a\x19.feed.GetCityTimelineResp\x12=\n" +
-	"\fGetUserFeeds\x12\x15.feed.GetUserFeedsReq\x1a\x16.feed.GetUserFeedsRespB\bZ\x06./feedb\x06proto3"
+	"\fGetUserFeeds\x12\x15.feed.GetUserFeedsReq\x1a\x16.feed.GetUserFeedsResp\x12@\n" +
+	"\rGetFeedSource\x12\x16.feed.GetFeedSourceReq\x1a\x17.feed.GetFeedSourceResp\x12R\n" +
+	"\x13GetFeedRequestTrace\x12\x1c.feed.GetFeedRequestTraceReq\x1a\x1d.feed.GetFeedRequestTraceRespB\bZ\x06./feedb\x06proto3"
 
 var (
 	file_api_proto_feed_feed_proto_rawDescOnce sync.Once
@@ -1620,7 +2118,7 @@ func file_api_proto_feed_feed_proto_rawDescGZIP() []byte {
 }
 
 var file_api_proto_feed_feed_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_api_proto_feed_feed_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_api_proto_feed_feed_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_api_proto_feed_feed_proto_goTypes = []any{
 	(FeedType)(0),                    // 0: feed.FeedType
 	(FeedStatus)(0),                  // 1: feed.FeedStatus
@@ -1644,12 +2142,19 @@ var file_api_proto_feed_feed_proto_goTypes = []any{
 	(*GetCityTimelineResp)(nil),      // 19: feed.GetCityTimelineResp
 	(*GetUserFeedsReq)(nil),          // 20: feed.GetUserFeedsReq
 	(*GetUserFeedsResp)(nil),         // 21: feed.GetUserFeedsResp
-	nil,                              // 22: feed.BatchGetFeedsResp.FeedsEntry
+	(*TraceItem)(nil),                // 22: feed.TraceItem
+	(*SourceStat)(nil),               // 23: feed.SourceStat
+	(*FeedRequestTrace)(nil),         // 24: feed.FeedRequestTrace
+	(*GetFeedSourceReq)(nil),         // 25: feed.GetFeedSourceReq
+	(*GetFeedSourceResp)(nil),        // 26: feed.GetFeedSourceResp
+	(*GetFeedRequestTraceReq)(nil),   // 27: feed.GetFeedRequestTraceReq
+	(*GetFeedRequestTraceResp)(nil),  // 28: feed.GetFeedRequestTraceResp
+	nil,                              // 29: feed.BatchGetFeedsResp.FeedsEntry
 }
 var file_api_proto_feed_feed_proto_depIdxs = []int32{
 	3,  // 0: feed.CreateFeedResp.feed:type_name -> feed.FeedInfo
 	3,  // 1: feed.GetFeedResp.feed:type_name -> feed.FeedInfo
-	22, // 2: feed.BatchGetFeedsResp.feeds:type_name -> feed.BatchGetFeedsResp.FeedsEntry
+	29, // 2: feed.BatchGetFeedsResp.feeds:type_name -> feed.BatchGetFeedsResp.FeedsEntry
 	4,  // 3: feed.GetRecommendTimelineResp.feeds:type_name -> feed.FeedBrief
 	5,  // 4: feed.GetRecommendTimelineResp.page:type_name -> feed.PageInfo
 	4,  // 5: feed.GetFollowTimelineResp.feeds:type_name -> feed.FeedBrief
@@ -1658,28 +2163,36 @@ var file_api_proto_feed_feed_proto_depIdxs = []int32{
 	5,  // 8: feed.GetCityTimelineResp.page:type_name -> feed.PageInfo
 	4,  // 9: feed.GetUserFeedsResp.feeds:type_name -> feed.FeedBrief
 	5,  // 10: feed.GetUserFeedsResp.page:type_name -> feed.PageInfo
-	3,  // 11: feed.BatchGetFeedsResp.FeedsEntry.value:type_name -> feed.FeedInfo
-	6,  // 12: feed.Feed.CreateFeed:input_type -> feed.CreateFeedReq
-	8,  // 13: feed.Feed.DeleteFeed:input_type -> feed.DeleteFeedReq
-	10, // 14: feed.Feed.GetFeed:input_type -> feed.GetFeedReq
-	12, // 15: feed.Feed.BatchGetFeeds:input_type -> feed.BatchGetFeedsReq
-	14, // 16: feed.Feed.GetRecommendTimeline:input_type -> feed.GetRecommendTimelineReq
-	16, // 17: feed.Feed.GetFollowTimeline:input_type -> feed.GetFollowTimelineReq
-	18, // 18: feed.Feed.GetCityTimeline:input_type -> feed.GetCityTimelineReq
-	20, // 19: feed.Feed.GetUserFeeds:input_type -> feed.GetUserFeedsReq
-	7,  // 20: feed.Feed.CreateFeed:output_type -> feed.CreateFeedResp
-	9,  // 21: feed.Feed.DeleteFeed:output_type -> feed.DeleteFeedResp
-	11, // 22: feed.Feed.GetFeed:output_type -> feed.GetFeedResp
-	13, // 23: feed.Feed.BatchGetFeeds:output_type -> feed.BatchGetFeedsResp
-	15, // 24: feed.Feed.GetRecommendTimeline:output_type -> feed.GetRecommendTimelineResp
-	17, // 25: feed.Feed.GetFollowTimeline:output_type -> feed.GetFollowTimelineResp
-	19, // 26: feed.Feed.GetCityTimeline:output_type -> feed.GetCityTimelineResp
-	21, // 27: feed.Feed.GetUserFeeds:output_type -> feed.GetUserFeedsResp
-	20, // [20:28] is the sub-list for method output_type
-	12, // [12:20] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	23, // 11: feed.FeedRequestTrace.sources:type_name -> feed.SourceStat
+	22, // 12: feed.FeedRequestTrace.items:type_name -> feed.TraceItem
+	2,  // 13: feed.GetFeedSourceResp.source:type_name -> feed.FeedSource
+	24, // 14: feed.GetFeedRequestTraceResp.trace:type_name -> feed.FeedRequestTrace
+	3,  // 15: feed.BatchGetFeedsResp.FeedsEntry.value:type_name -> feed.FeedInfo
+	6,  // 16: feed.Feed.CreateFeed:input_type -> feed.CreateFeedReq
+	8,  // 17: feed.Feed.DeleteFeed:input_type -> feed.DeleteFeedReq
+	10, // 18: feed.Feed.GetFeed:input_type -> feed.GetFeedReq
+	12, // 19: feed.Feed.BatchGetFeeds:input_type -> feed.BatchGetFeedsReq
+	14, // 20: feed.Feed.GetRecommendTimeline:input_type -> feed.GetRecommendTimelineReq
+	16, // 21: feed.Feed.GetFollowTimeline:input_type -> feed.GetFollowTimelineReq
+	18, // 22: feed.Feed.GetCityTimeline:input_type -> feed.GetCityTimelineReq
+	20, // 23: feed.Feed.GetUserFeeds:input_type -> feed.GetUserFeedsReq
+	25, // 24: feed.Feed.GetFeedSource:input_type -> feed.GetFeedSourceReq
+	27, // 25: feed.Feed.GetFeedRequestTrace:input_type -> feed.GetFeedRequestTraceReq
+	7,  // 26: feed.Feed.CreateFeed:output_type -> feed.CreateFeedResp
+	9,  // 27: feed.Feed.DeleteFeed:output_type -> feed.DeleteFeedResp
+	11, // 28: feed.Feed.GetFeed:output_type -> feed.GetFeedResp
+	13, // 29: feed.Feed.BatchGetFeeds:output_type -> feed.BatchGetFeedsResp
+	15, // 30: feed.Feed.GetRecommendTimeline:output_type -> feed.GetRecommendTimelineResp
+	17, // 31: feed.Feed.GetFollowTimeline:output_type -> feed.GetFollowTimelineResp
+	19, // 32: feed.Feed.GetCityTimeline:output_type -> feed.GetCityTimelineResp
+	21, // 33: feed.Feed.GetUserFeeds:output_type -> feed.GetUserFeedsResp
+	26, // 34: feed.Feed.GetFeedSource:output_type -> feed.GetFeedSourceResp
+	28, // 35: feed.Feed.GetFeedRequestTrace:output_type -> feed.GetFeedRequestTraceResp
+	26, // [26:36] is the sub-list for method output_type
+	16, // [16:26] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_api_proto_feed_feed_proto_init() }
@@ -1693,7 +2206,7 @@ func file_api_proto_feed_feed_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_proto_feed_feed_proto_rawDesc), len(file_api_proto_feed_feed_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   20,
+			NumMessages:   27,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

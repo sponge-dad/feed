@@ -182,6 +182,61 @@ message GetUserFeedsResp {
     PageInfo           page  = 2; // 分页信息
 }
 
+// ==================== 请求级 Trace（内部诊断，见 02-request-trace §6） ====================
+
+// TraceItem 一条候选在结果中的位置与来源
+message TraceItem {
+    int64  feed_id  = 1; // 帖子 ID
+    string source   = 2; // 来源标记（FOLLOW_INBOX / VIP_OUTBOX / ...）
+    int32  position = 3; // 在返回列表中的位置（从 0 开始）
+    int64  score    = 4; // ZSet score（秒级时间戳）
+}
+
+// SourceStat 某一数据源本次读取的量与耗时
+message SourceStat {
+    string source = 1; // FOLLOW_INBOX / VIP_OUTBOX / INBOX_REBUILD / CITY_POOL / RECOMMEND_POOL
+    int32  count  = 2; // 读取条数
+    int64  cost_ms = 3; // 读取耗时（毫秒）
+}
+
+// FeedRequestTrace 一次 Timeline 请求的读取路径记录（内部诊断用）
+message FeedRequestTrace {
+    string          request_id     = 1;  // 请求标识（来自 Gateway 中间件）
+    int64           user_id        = 2;  // 请求用户
+    string          tab            = 3;  // follow / recommend / city
+    string          cursor         = 4;  // 游标
+    int32           page_size      = 5;  // 每页条数
+    repeated SourceStat sources    = 6;  // 各数据源读取量
+    int32           merged_count   = 7;  // 去重合并后候选数
+    int32           returned_count = 8;  // 实际返回条数
+    int32           filtered_count = 9;  // 因详情缺失/状态异常被丢弃
+    int64           cost_ms        = 10; // 总耗时（毫秒）
+    repeated TraceItem items       = 11; // feed_id → source / position 明细
+}
+
+// GetFeedSourceReq 查询某次请求中某条 feed 的来源
+message GetFeedSourceReq {
+    string request_id = 1; // 请求标识
+    int64  feed_id    = 2; // 帖子 ID
+    int64  user_id    = 3; // 调用者，用于归属校验
+}
+
+// GetFeedSourceResp 返回该 feed 的来源标记；未命中返回 FEED_SOURCE_UNKNOWN
+message GetFeedSourceResp {
+    FeedSource source = 1; // 信息流来源标记（FeedSource）
+}
+
+// GetFeedRequestTraceReq 查询一次请求的完整 Trace（仅内部用户可调用）
+message GetFeedRequestTraceReq {
+    string request_id = 1; // 请求标识
+    int64  user_id    = 2; // 调用者，用于归属校验与内部用户放行
+}
+
+// GetFeedRequestTraceResp 返回完整 Trace；无权限返回 Forbidden
+message GetFeedRequestTraceResp {
+    FeedRequestTrace trace = 1; // 请求级 Trace
+}
+
 // ==================== 服务定义 ====================
 
 service Feed {
@@ -208,4 +263,10 @@ service Feed {
 
     // 个人主页帖子列表
     rpc GetUserFeeds(GetUserFeedsReq) returns (GetUserFeedsResp);
+
+    // 查询某次请求中某条 feed 的来源（见 02-request-trace §6.3）
+    rpc GetFeedSource(GetFeedSourceReq) returns (GetFeedSourceResp);
+
+    // 查询一次请求的完整 Trace（仅内部用户可调用，见 02-request-trace §6.3）
+    rpc GetFeedRequestTrace(GetFeedRequestTraceReq) returns (GetFeedRequestTraceResp);
 }
