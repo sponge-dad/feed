@@ -89,6 +89,9 @@ const (
 const (
 	InteractionFeedNotFound = 14001 // 帖子不存在
 	InteractionTooFrequent  = 14002 // 操作过于频繁
+
+	BehaviorInvalid      = 14003 // 埋点非法（feed 不存在 / status 异常 / 字段非法）
+	BehaviorFeedNotFound = 14004 // 帖子不存在（埋点上报时）
 )
 
 // messages 错误码 → 默认提示 映射
@@ -128,6 +131,9 @@ var messages = map[int]string{
 
 	InteractionFeedNotFound: "帖子不存在",
 	InteractionTooFrequent:  "操作过于频繁",
+
+	BehaviorInvalid:      "埋点非法",
+	BehaviorFeedNotFound: "帖子不存在",
 }
 
 // message 返回错误码的默认提示

@@ -128,6 +128,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Path:    "/users/:userId/feeds",
 				Handler: feed.UserFeedsHandler(serverCtx),
 			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/feeds/behaviors",
+				Handler: feed.ReportBehaviorsHandler(serverCtx),
+			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
 		rest.WithPrefix("/api/v1"),

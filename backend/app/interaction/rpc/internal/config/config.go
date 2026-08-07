@@ -22,4 +22,14 @@ type Config struct {
 		GroupName    string // 生产者组：interaction_producer_group
 		ConsumeGroup string // 持久化消费组：interaction-persistence-consumer
 	}
+	// FeedRpc 行为消费侧重判 feed 状态（status==NORMAL）用。
+	FeedRpc zrpc.RpcClientConf
+	// Behavior 行为埋点消费配置（见 docs/design/agent/03-behavior-event.md）。
+	Behavior struct {
+		ConsumeGroup                string  // 行为事件消费组：behavior-persistence-consumer
+		MetricsFlushIntervalSec     int     // 小时指标落库刷新间隔（秒）
+		ExposeSampleRate            float64 // EXPOSE 明细抽样率（0~1）
+		RateLimitPerUserPerSec      int     // 50/s/uid 全量（worker 兜底）
+		RateLimitPerActionFeedPerSec int    // 5/s/uid+action+feed
+	}
 }

@@ -11,6 +11,7 @@ import (
 	userClient "github.com/sponge-dad/feed/app/user/rpc/userClient"
 	"github.com/sponge-dad/feed/common/interceptors"
 	"github.com/sponge-dad/feed/common/ipx"
+	"github.com/sponge-dad/feed/common/mq"
 
 	"github.com/zeromicro/go-zero/zrpc"
 )
@@ -29,6 +30,9 @@ type ServiceContext struct {
 
 	// Cos 腾讯云 COS 客户端（STS 临时凭证签发 / 下载签名 URL）。
 	Cos *cos.Client
+
+	// Producer 行为埋点事件生产者（SendSync 到 feed-behavior-event）。
+	Producer *mq.Producer
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -50,5 +54,15 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		InteractionRpc: interactionClient.NewInteraction(zrpc.MustNewClient(c.InteractionRpc, zrpc.WithUnaryClientInterceptor(interceptors.UnaryClientRequestID))),
 		IPResolver:     ipx.NewStaticResolver(defaultCity),
 		Cos:            cos.MustNew(c.Cos),
+		Producer:       mustNewProducer(c.RocketMQ.NameServer, c.RocketMQ.GroupName),
 	}
+}
+
+// mustNewProducer 创建并启动 RocketMQ 生产者；失败直接 panic（启动期致命错误）。
+func mustNewProducer(nameServer []string, groupName string) *mq.Producer {
+	producer, err := mq.NewProducer(nameServer, groupName)
+	if err != nil {
+		panic(err)
+	}
+	return producer
 }

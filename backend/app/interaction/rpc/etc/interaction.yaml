@@ -23,3 +23,14 @@ RocketMQ:
     - 127.0.0.1:9876
   GroupName: interaction_producer_group
   ConsumeGroup: interaction-persistence-consumer
+FeedRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2379
+    Key: feed.rpc
+Behavior:
+  ConsumeGroup: behavior-persistence-consumer
+  MetricsFlushIntervalSec: 5
+  ExposeSampleRate: 0.1
+  RateLimitPerUserPerSec: 50
+  RateLimitPerActionFeedPerSec: 5

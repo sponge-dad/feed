@@ -41,6 +41,14 @@ type Config struct {
 
 	// Cos 腾讯云对象存储（COS）配置，详见 docs/design/oss/00-overview.md。
 	Cos CosConf
+
+	// RocketMQ 行为埋点生产者配置。
+	// Gateway 把行为事件 SendSync 到 feed-behavior-event，由 Interaction RPC 消费。
+	// 见 docs/design/agent/03-behavior-event.md
+	RocketMQ struct {
+		NameServer []string
+		GroupName  string
+	}
 }
 
 // CosConf 定义腾讯云 COS 相关配置。

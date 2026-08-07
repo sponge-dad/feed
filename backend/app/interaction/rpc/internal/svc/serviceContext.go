@@ -5,6 +5,7 @@
 package svc
 
 import (
+	feedClient "github.com/sponge-dad/feed/app/feed/rpc/feedclient"
 	"github.com/sponge-dad/feed/app/interaction/model"
 	"github.com/sponge-dad/feed/app/interaction/rpc/internal/config"
 	"github.com/sponge-dad/feed/common/idgen"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/zeromicro/go-zero/core/stores/redis"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
+	"github.com/zeromicro/go-zero/zrpc"
 )
 
 // Publisher MQ 生产者的最小接口抽象，*mq.Producer 天然满足；
@@ -22,13 +24,17 @@ type Publisher interface {
 
 // ServiceContext Interaction 服务上下文。
 type ServiceContext struct {
-	Config           config.Config
-	Redis            *redis.Redis
-	LikesModel       model.LikesModel
-	CollectionsModel model.CollectionsModel
-	Producer         Publisher
-	Consumer         *mq.Consumer
-	IdGen            func() int64
+	Config                  config.Config
+	Redis                   *redis.Redis
+	LikesModel              model.LikesModel
+	CollectionsModel        model.CollectionsModel
+	Producer                Publisher
+	Consumer                *mq.Consumer
+	FeedRpc                 feedClient.Feed
+	FeedBehaviorEventsModel model.FeedBehaviorEventsModel
+	FeedMetricsHourlyModel  model.FeedMetricsHourlyModel
+	BehaviorConsumer        *mq.Consumer
+	IdGen                   func() int64
 }
 
 // NewServiceContext 装配生产环境依赖。
@@ -44,13 +50,21 @@ func NewServiceContext(c config.Config) (*ServiceContext, error) {
 	if err != nil {
 		return nil, err
 	}
+	behaviorConsumer, err := mq.NewConsumer(c.RocketMQ.NameServer, c.Behavior.ConsumeGroup)
+	if err != nil {
+		return nil, err
+	}
 	return &ServiceContext{
-		Config:           c,
-		Redis:            rds,
-		LikesModel:       model.NewLikesModel(conn, c.CacheRedis),
-		CollectionsModel: model.NewCollectionsModel(conn, c.CacheRedis),
-		Producer:         producer,
-		Consumer:         consumer,
-		IdGen:            idgen.Next,
+		Config:                  c,
+		Redis:                   rds,
+		LikesModel:              model.NewLikesModel(conn, c.CacheRedis),
+		CollectionsModel:        model.NewCollectionsModel(conn, c.CacheRedis),
+		Producer:                producer,
+		Consumer:                consumer,
+		FeedRpc:                 feedClient.NewFeed(zrpc.MustNewClient(c.FeedRpc)),
+		FeedBehaviorEventsModel: model.NewFeedBehaviorEventsModel(conn, c.CacheRedis),
+		FeedMetricsHourlyModel:  model.NewFeedMetricsHourlyModel(conn, c.CacheRedis),
+		BehaviorConsumer:        behaviorConsumer,
+		IdGen:                   idgen.Next,
 	}, nil
 }

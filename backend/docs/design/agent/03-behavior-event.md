@@ -131,6 +131,8 @@ type FeedBehaviorEvent struct {
 
 **为什么失败要删幂等 key**：SETNX 成功但后续落库失败时，若不删除，重试会被误判为「已处理」而永久丢数据。此处沿用 Feed Worker `handleCommentEvent` 的既有做法。
 
+**SHARE 语义**：分享不做 owner 限制——任何登录用户均可分享任意视频（含他人视频）。SHARE 事件的价值在于衡量「内容被传播的次数」，若限制为仅作者本人分享，分享指标将恒近 0，失去统计意义。因此网关与 Worker 均不再做 SHARE owner 校验，`not_owner` 拒绝分支已移除。
+
 **重试与死信**：`common/mq.Consumer` 在回调返回 error 时返回 `ConsumeRetryLater`，由 RocketMQ 重试直至进入死信队列。日志必须包含 `topic / event_id / feed_id / user_id / action_type / reconsume_times`（见 [12](./12-observability.md)）。
 
 ## 5. 明细与采样

@@ -49,6 +49,13 @@ func main() {
 	}
 	defer ctx.Consumer.Shutdown()
 
+	// 启动行为埋点消费者（订阅 feed-behavior-event，指标累加 + 抽样落库），进程退出时关闭。
+	bw := worker.NewBehaviorWorker(ctx)
+	if err := bw.Start(); err != nil {
+		panic(err)
+	}
+	defer bw.Shutdown()
+
 	s := zrpc.MustNewServer(c.RpcServerConf, func(grpcServer *grpc.Server) {
 		interaction.RegisterInteractionServer(grpcServer, server.NewInteractionServer(ctx))
 
