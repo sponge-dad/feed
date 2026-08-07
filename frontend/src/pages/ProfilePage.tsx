@@ -87,6 +87,7 @@ export default function ProfilePage() {
         loading={feeds.loading}
         hasMore={feeds.hasMore}
         sentinelRef={feeds.sentinelRef}
+        variant="grid"
       />
     </>
   );

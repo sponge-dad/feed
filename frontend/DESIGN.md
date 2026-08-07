@@ -10,8 +10,8 @@
 
 - **项目类型**：Feed（图文/视频信息流）Web 前端，C 端内容社区。
 - **目标用户**：普通内容消费者与创作者；以移动端与窄屏桌面为主场景。
-- **整体视觉方向**：简洁、轻量、内容优先的扁平（flat）风格；白底卡片 + 浅灰页面底 + 单一品牌红强调；弱分割线、无阴影、留白克制。
-- **设计关键词**：`扁平` · `内容优先` · `克制` · `单一品牌色` · `移动友好`。
+- **整体视觉方向**：小红书风格（Xiaohongshu-like）——图片优先的瀑布流信息流、白底卡片 + 浅灰页面底 + 品牌红 `#ff2442` 强调；卡片轻阴影、大圆角、留白克制、移动友好。
+- **设计关键词**：`图片优先` · `瀑布流` · `内容优先` · `单一品牌色 #ff2442` · `轻阴影` · `移动友好`。
 - **明确禁止的设计风格**：拟物/重阴影/渐变背景、多品牌色并置、暗色主题（当前未支持）、拟物按钮、装饰性动画、与现有扁平风格冲突的视觉语言。
 
 > 现有风格已稳定，本规范以**归纳现有规律**为主，不擅自更换设计方向。
@@ -33,51 +33,52 @@
 ### 3.1 颜色
 | Token | 值 | 用途 |
 |------|----|------|
-| `--color-bg-page` | `#f5f6f7` | 页面底色 |
+| `--color-bg-page` | `#f5f5f5` | 页面底色 |
 | `--color-bg-surface` | `#ffffff` | 卡片 / 导航 / 表单底 |
 | `--color-bg-subtle` | `#fafafa` | 次级悬浮 / 子回复底 |
-| `--color-bg-placeholder` | `#eeeeee` | 封面 / 图片占位 |
-| `--color-brand-subtle` | `#fdf0f0` | 品牌色浅底（导航选中/hover） |
-| `--color-text-primary` | `#222222` | 主文字 |
+| `--color-bg-placeholder` | `#e8e8e8` | 封面 / 图片占位 |
+| `--color-bg-hover` | `#f2f2f2` | 列表行 / 导航项 hover |
+| `--color-brand-subtle` | `#fef0f0` | 品牌色浅底（导航选中/hover） |
+| `--color-text-primary` | `#1a1a1a` | 主文字 |
 | `--color-text-secondary` | `#555555` | 次级文字 |
 | `--color-text-tertiary` | `#666666` | 表单标签 |
-| `--color-text-muted` | `#888888` | 辅助 / 元信息 |
-| `--color-text-faint` | `#999999` | 弱文字 / 用户名下方 |
-| `--color-text-disabled` | `#aaaaaa` | 禁用 / 无数据提示 |
-| `--color-brand` | `#e5484d` | 主品牌色（链接 / 选中 / 强调） |
-| `--color-brand-hover` | `#d63d42` | 品牌色 hover |
-| `--color-brand-active` | `#c5363b` | 品牌色 active |
-| `--color-error` | `#e5484d` | 错误（当前复用品牌红） |
+| `--color-text-muted` | `#999999` | 辅助 / 元信息 |
+| `--color-text-faint` | `#b0b0b0` | 弱文字 / 用户名下方 |
+| `--color-text-disabled` | `#cccccc` | 禁用 / 无数据提示 |
+| `--color-brand` | `#ff2442` | 主品牌色（链接 / 选中 / 强调） |
+| `--color-brand-hover` | `#e61e3a` | 品牌色 hover |
+| `--color-brand-active` | `#cc1530` | 品牌色 active |
+| `--color-error` | `#ff2442` | 错误（复用品牌红） |
 | `--color-success` | `#30a46c` | 成功（toast） |
 | `--color-warning` | `#e8a33d` | 警告（预留） |
 | `--color-info` | `#2f80ed` | 信息（预留） |
-| `--color-border` | `#dddddd` | 输入框 / ghost 按钮 / tab 默认边框 |
+| `--color-border` | `#e0e0e0` | 输入框 / ghost 按钮默认边框 |
 | `--color-border-subtle` | `#eeeeee` | 导航底 / 占位边框 |
 | `--color-border-strong` | `#e5e5e5` | tab 边框 |
 | `--color-border-light` | `#f2f2f2` | 评论 / 用户行分割线 |
-| `--color-avatar-fallback` | `#bbbbbb` | 头像加载失败兜底 |
-| `--color-overlay` | `rgba(0,0,0,.45)` | 弹窗遮罩（预留） |
+| `--color-avatar-fallback` | `#cccccc` | 头像加载失败兜底 |
+| `--color-overlay` | `rgba(0,0,0,.45)` | 遮罩（预留） |
 
 ### 3.2 字体（字号 / 字重 / 行高）
 | Token | 值 | 用途 |
 |------|----|------|
 | `--font-sans` | 系统字体栈 | 全局字体族 |
-| `--text-xs` 12px / `--text-sm` 13px / `--text-base` 14px / `--text-md` 16px / `--text-lg` 18px / `--text-xl` 22px | 见第 6 节 |
-| `--weight-regular` 400 / `--weight-medium` 600 / `--weight-bold` 700 | 字重 |
+| `--text-xs` 11px / `--text-sm` 13px / `--text-base` 14px / `--text-md` 16px / `--text-lg` 18px / `--text-xl` 22px / `--text-2xl` 28px | 见第 6 节；`--text-2xl` 用于表单/详情页大标题 |
+| `--weight-regular` 400 / `--weight-medium` 500 / `--weight-semibold` 600 / `--weight-bold` 700 | 字重 |
 
 ### 3.3 间距（4px 基准）
 `--space-1`4 / `--space-2`8 / `--space-3`12 / `--space-4`16 / `--space-5`20 / `--space-6`24 / `--space-8`32（px）。
 页面内边距、卡片内边距用 `--space-4`；模块间距用 `--space-3`/`--space-4`；表单字段间距 14px（历史值，新代码优先用 `--space-3`/`--space-4`）。
 
 ### 3.4 圆角 / 边框 / 阴影
-- 圆角：`--radius-sm`6 / `--radius-md`8 / `--radius-lg`10 / `--radius-xl`12 / `--radius-full`999。
-- 边框：`--border-width`1px；组合 `--border-default`(1px #ddd)、`--border-subtle`(1px #eee)、`--border-light`(1px #f2f2f2)。
-- 阴影：项目默认**扁平、不使用阴影**（`--shadow-none`）。仅未来 Modal/Drawer 可用 `--shadow-modal`。**禁止**为卡片、按钮、输入添加阴影。
+- 圆角：`--radius-sm`4 / `--radius-md`8 / `--radius-lg`12 / `--radius-xl`16 / `--radius-full`999（药丸形搜索框/按钮/FAB 用 full）。
+- 边框：`--border-width`1px；组合 `--border-default`(1px #e0e0e0)、`--border-subtle`(1px #eee)、`--border-light`(1px #f2f2f2)。
+- 阴影：卡片使用轻阴影 `--shadow-card`(0 1px 3px rgba(0,0,0,.04))，hover 态可叠加更深阴影；Modal/Drawer 用 `--shadow-modal`(0 8px 32px rgba(0,0,0,.12))；FAB 用品牌色柔光阴影。**禁止**为按钮、输入添加阴影；禁止重阴影/拟物。
 
 ### 3.5 层级 / 容器 / 断点 / 动效
-- z-index：`--z-nav`100 / `--z-overlay`1000 / `--z-modal`1001 / `--z-toast`9999（禁止无语义数值）。
-- 容器：`--container-max`760px，`--container-padding`16px。
-- 断点：`--bp-sm`560（移动端）/ `--bp-md`768 / `--bp-lg`1024。**注意**：CSS 媒体查询无法使用 `var()`，断点处直接写对应数值（560px）。
+- z-index：`--z-nav`100 / `--z-fab`200 / `--z-overlay`1000 / `--z-modal`1001 / `--z-toast`9999（禁止无语义数值）。
+- 容器：`--content-max`1040px，`--container-padding`16px，`--sidebar-width`220px。
+- 断点：`--bp-sm`560（移动端）/ `--bp-md`768（侧栏折叠为顶部横向导航）/ `--bp-lg`1024（大屏预留）。瀑布流列数断点：1200px(5列)/900px(4列)/640px(3列)/≤640px(2列)。**注意**：CSS 媒体查询无法使用 `var()`，断点处直接写对应数值。
 - 动效：`--motion-fast`120ms / `--motion-base`200ms / `--ease-standard` `cubic-bezier(.4,0,.2,1)`。必须支持 `prefers-reduced-motion`。
 
 ---
@@ -128,31 +129,30 @@
 
 ## 8. 页面布局
 
-- 应用骨架 `.app-shell`：flex 左右布局，左侧 `.sidebar` 固定宽 `--sidebar-width`(240px)，右侧 `.main-area` 自适应。
-- 左侧导航 `.sidebar`：sticky 全高，含品牌 `.brand` + 导航 `.sidebar-nav`（`.sidebar-link`，hover/active 用 `--color-brand-subtle`）+ `.spacer` 推底 + 登录/退出。窄屏（≤768px）折叠为顶部横向导航。
-- 顶部搜索 `.topbar`：sticky，含 `.searchbar`（输入框 `.input` + `.btn`），为全局搜索入口（当前提交为占位提示，待接搜索接口）。
-- 内容区 `.content`：最大宽 `--container-max`(760px) 水平居中，承载路由页面（`<Outlet/>`）。
-- 列表/网格：feed 用 `.feed-grid`（`grid-template-columns: repeat(auto-fit, minmax(220px, 1fr))`，列数随内容区宽度自动、空轨道折叠，最后一行卡片铺满不空白；≤`--bp-sm`560 强制单列）；用户行用 `.user-row`；统计用 `.stats-row`。
+- 应用骨架 `.app-shell`：flex 左右布局，左侧 `.sidebar` 固定宽 `--sidebar-width`(220px)，右侧 `.main-area` 自适应。
+- 左侧导航 `.sidebar`：sticky 全高，含品牌 `.sidebar-brand`（📕 图标+名字）+ 导航 `.sidebar-nav`（`.sidebar-link` 含 `.nav-icon` 图标+文字，hover/active 用 `--color-brand-subtle`）+ 底部 `.sidebar-footer`/`.sidebar-user`（当前登录用户头像+昵称+用户名+退出按钮）。按功能分区用 `.sidebar-divider` 分组标签。窄屏（≤768px）折叠为顶部横向导航（隐藏品牌字、分组标签、底部用户卡）。
+- 顶部搜索 `.topbar`：sticky + 毛玻璃（`backdrop-filter: blur(12px)` 半透明白底），含 `.searchbar`（药丸形 `.input` 圆角 full + `.btn`）。当前提交为占位提示，待接搜索接口。
+- 内容区 `.content`：最大宽 `--content-max`(1040px) 水平居中，承载路由页面（`<Outlet/>`）。
+- 首页信息流：瀑布流 `.waterfall`（`column-count` 5/4/3/2 随视口自适应，见 §9），卡片 `.waterfall-card`（图片主体 `.card-img-wrap` + 底部渐变遮罩 `.card-img-overlay` 显示点赞数 `.overlay-like` + 标题 `.card-title` + 作者 footer `.card-footer`/`.name`）。个人主页/赞收藏页用等宽网格 `.feed-grid`（`grid` 3 列，配 `.waterfall-card`）。
 - 页面标题区：用 `.section-title`（18px/700/上下间距）。内容区直接放置卡片或列表。
-- 发布入口不在导航，而是首页右下角的浮动加号 `.fab`（跳转 `/publish`）。
+- 发布入口不在导航，而是首页右下角的浮动加号 `.fab`（品牌红圆形 FAB，固定右下角，跳转 `/publish`，仅首页渲染）。
 
 ---
 
 ## 9. 响应式规则
 
-| 维度 | 桌面（>560px） | 移动（≤560px） |
-|------|----------------|----------------|
-| 页面边距 | 16px（容器） | 16px（容器） |
-| feed 网格 | 随宽自动（auto-fit minmax 220px，多为 3~4 列，末行铺满） | 1 列（≤560px） |
-| 导航 | 横向品牌+链接 | 同左（窄屏不折叠，链接少） |
-| 弹窗宽度 | 最大 560px | 最大 92vw（预留 Modal） |
-| 表格 | 正常 | 横向滚动（预留） |
-| 字号 | 如上 | 不变（移动优先） |
-| 图片比例 | 封面 4:3、缩略图 1:1 | 同左 |
-| 操作按钮 | 行内 | 行内；必要时换行 |
+| 维度 | 桌面（>1024px） | 中屏（768–1024px） | 移动（≤640px） |
+|------|----------------|-------------------|----------------|
+| 页面边距 | 16px | 16px | 12px（容器） |
+| 瀑布流列数 | 5 列（>1200px）/ 4 列（900–1200px） | 3 列（640–900px） | 2 列（≤640px） |
+| 侧边导航 | 左侧固定（220px） | 左侧固定 | 顶部横向导航（隐藏品牌字/分组/底部用户卡） |
+| 弹窗宽度 | 最大 560px | 最大 92vw | 最大 92vw |
+| 字号 | 如上 | 不变 | 不变（移动优先） |
+| 图片比例 | 瀑布流交错比例（见 §14） | 同左 | 同左 |
+| 操作按钮 | 行内 | 行内；必要时换行 | 行内；必要时换行 |
 
-- 断点：移动 `--bp-sm`560（feed 网格强制单列）；中屏 `--bp-md`768（侧边栏折叠为顶部横向导航）；大屏 `--bp-lg`1024 预留。feed 网格列数在 `--bp-sm` 以上随内容区宽度自动（auto-fill minmax 220px）。
-- 所有新页面必须至少验证桌面与移动（≤560px）两种宽度。
+- 断点：中屏 `--bp-md`768（侧边栏折叠为顶部横向导航）；大屏 `--bp-lg`1024 预留；瀑布流列数断点 1200 / 900 / 640px（详见 §3.5）。
+- 所有新页面必须至少验证桌面（>1024px）、平板（768–1024px）、移动（≤640px）三种宽度。
 
 ---
 
@@ -162,20 +162,21 @@
 
 | 组件 | 位置 | 类型 | 用途 | 主要变体 | 禁止用法 |
 |------|------|------|------|----------|----------|
-| `Layout` | `components/Layout.tsx` | 布局 | 左侧导航栏 + 顶部搜索栏 + 内容区(`<Outlet/>`) | 骨架 class：`.app-shell/.sidebar/.topbar/.content` | 不要在页面内再写导航 |
-| `Avatar` | `components/Avatar.tsx` | 基础 UI | 头像（自带签名 URL + 兜底） | `size` 40/44/64/96 | 不要用裸 `<img>` 替代 |
-| `FeedCardGrid` | `components/FeedCardGrid.tsx` | 数据展示 | feed 卡片网格 + 无限滚动哨兵 | props: `items/loading/hasMore/sentinelRef` | 不要在各页重写网格 |
+| `Layout` | `components/Layout.tsx` | 布局 | 左侧导航栏 + 顶部搜索栏 + 内容区(`<Outlet/>`) | 骨架 class：`.app-shell/.sidebar/.sidebar-brand/.sidebar-nav/.sidebar-user/.topbar/.content` | 不要在页面内再写导航 |
+| `Avatar` | `components/Avatar.tsx` | 基础 UI | 头像（自带签名 URL + 兜底） | props: `src/size/alt` | 不要用裸 `<img>` 替代 |
+| `FeedCardGrid` | `components/FeedCardGrid.tsx` | 数据展示 | feed 卡片网格 + 无限滚动哨兵 | props: `items/loading/hasMore/sentinelRef/variant`（`'waterfall'｜'grid'`） | 不要在各页重写网格 |
+| `Skeleton` | `components/Skeleton.tsx` | 反馈 | 加载占位骨架屏（shimmer 动效） | 变体 `card/line/circle` | 不要在页面内手写占位条 |
 | `useCursorList` | `hooks/useCursorList.ts` | Hook | cursor 分页无限滚动 | 泛型 `T` | 不要对 cursor 接口手写分页 |
 | `toast` | `utils/toast.ts` | 反馈 | 轻提示（textContent，安全） | `toast(msg, type?)` | 不要用 `alert` |
 | `RequireAuth` | `App.tsx` | 导航守卫 | 登录保护 | — | 不要绕过守卫 |
 
 ### 10.2 必须复用而非新建的通用元件（已以 class 形式沉淀于 `styles.css`）
 
-`Button`(`.btn` 含 `.block/.ghost/.small/.active-state`)、`Input`(`.input`)、`Textarea`(`.textarea`)、`Tabs`(`.tabs/.tab`)、`Card`(`.card`)、`Badge/文本色`(`.text-brand/.text-secondary/.text-muted`)、`SectionHeader`(`.section-title`)、`EmptyState/Loading/Error`(`.list-end` 文本态)、`FloatingActionButton`(`.fab`，固定右下角浮动操作按钮，首页发布入口，跳转 `/publish`，仅首页渲染)。
+`Button`(`.btn` 含 `.block/.ghost/.small/.icon/.active-state`)、`Input`(`.input` 药丸形用于搜索框)、`Textarea`(`.textarea`)、`Tabs`(分类胶囊 `.category-tabs/.category-tab`，通用 `.tabs/.tab`)、`Card`(`.card`)、`Badge/文本色`(`.text-brand/.text-secondary/.text-muted`)、`SectionHeader`(`.section-title`)、`EmptyState/Loading/Error`(`.list-end` 文本态)、`FloatingActionButton`(`.fab`，品牌红圆形固定右下角，首页发布入口，跳转 `/publish`，仅首页渲染)、`Skeleton`(`components/Skeleton.tsx`，变体 `card/line/circle`)。
 
 ### 10.3 缺失组件（待建，新增前须先登记 DESIGN.md）
 
-`Modal` / `ConfirmDialog`（当前删除用原生 `confirm()`，**已知技术债**，新代码禁止新增 `confirm()`，应改用未来的 `ConfirmDialog`）、`Skeleton`、`Table`、`Select/Checkbox/Radio/Switch`、`Tooltip/Dropdown`、`Pagination`、`Drawer`、`Badge`、`EmptyState`/`ErrorState` 组件化、`LoadingState` 组件化。
+`Modal` / `ConfirmDialog`（当前删除用原生 `confirm()`，**已知技术债**，新代码禁止新增 `confirm()`，应改用未来的 `ConfirmDialog`）、`Table`、`Select/Checkbox/Radio/Switch`、`Tooltip/Dropdown`、`Pagination`、`Drawer`、`Badge`、`EmptyState`/`ErrorState` 组件化、`LoadingState` 组件化。
 
 ### 10.4 规则
 
@@ -223,10 +224,9 @@
 
 ## 14. 图片和媒体规范
 
-- 封面比例 4:3（`aspect-ratio:4/3`，`object-fit:cover`，占位 `--color-bg-placeholder`）。
-- 头像圆形（`--radius-full`），失败兜底 `--color-avatar-fallback`；`Avatar` 组件已处理签名 URL。
-- 缩略图 1:1；视频占满网格行。
-- 加载失败：已有 `onError` 兜底（Avatar）；feed 封面用占位底色。
+- 瀑布流封面：按卡片 index 注入交错比例（`3/4`、`1/1`、`4/5`、`4/3` 循环），形成高低错落的瀑布流；`object-fit:cover`，加载前用 `--color-bg-placeholder` 占位（`.card-img-wrap` 兜底 `aspect-ratio:3/4`），`onError` 隐藏破损图露出占位底色。
+- 头像圆形（`--radius-full`），失败兜底首字母/兜底色；`Avatar` 组件已处理签名 URL。
+- 个人主页/赞收藏页缩略图 1:1（`.feed-grid` 网格）；详情页媒体九宫格 1:1、视频占满行（`media-grid`）。
 - 懒加载：`loading="lazy"`（feed 图片已用）。
 
 ---

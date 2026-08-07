@@ -49,16 +49,16 @@ export default function RelationPage() {
   };
 
   return (
-    <div className="card">
-      <div className="tabs">
+    <div className="card page-narrow">
+      <div className="category-tabs">
         <button
-          className={`tab ${isFollowingTab ? 'active' : ''}`}
+          className={`category-tab ${isFollowingTab ? 'active' : ''}`}
           onClick={() => navigate(`/users/${id}/relations/following`)}
         >
           关注
         </button>
         <button
-          className={`tab ${!isFollowingTab ? 'active' : ''}`}
+          className={`category-tab ${!isFollowingTab ? 'active' : ''}`}
           onClick={() => navigate(`/users/${id}/relations/followers`)}
         >
           粉丝

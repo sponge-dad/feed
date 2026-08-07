@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { deleteFeed, getFeedDetail } from '@/api/feed';
 import { collectFeed, likeFeed, uncollectFeed, unlikeFeed } from '@/api/interaction';
@@ -18,6 +18,7 @@ import { useAuthStore } from '@/store/auth';
 import { formatRelative, formatTime } from '@/utils/time';
 import { toast } from '@/utils/toast';
 import Avatar from '@/components/Avatar';
+import Skeleton from '@/components/Skeleton';
 
 interface ReplyTarget {
   rootId: string;
@@ -37,6 +38,18 @@ export default function FeedDetailPage() {
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
   const [expandedReplies, setExpandedReplies] = useState<Record<string, CommentReply[]>>({});
 
+  // 防重复触发：并发点击同一操作时直接忽略
+  const pending = useRef<Record<string, boolean>>({});
+  const runGuarded = async (key: string, fn: () => Promise<void>) => {
+    if (pending.current[key]) return;
+    pending.current[key] = true;
+    try {
+      await fn();
+    } finally {
+      pending.current[key] = false;
+    }
+  };
+
   useEffect(() => {
     getFeedDetail(id).then(setFeed).catch(() => {});
   }, [id]);
@@ -52,7 +65,16 @@ export default function FeedDetailPage() {
   );
   const comments = useCursorList(commentFetcher);
 
-  if (!feed) return <div className="list-end">加载中…</div>;
+  if (!feed) {
+    return (
+      <div className="card page-narrow">
+        <div className="skeleton" style={{ height: 40, width: 200, marginBottom: 16, borderRadius: 'var(--radius-full)' }} />
+        <Skeleton variant="line" height={16} width="90%" style={{ marginBottom: 8 }} />
+        <Skeleton variant="line" height={16} width="60%" style={{ marginBottom: 16 }} />
+        <Skeleton variant="card" style={{ marginBottom: 0 }} />
+      </div>
+    );
+  }
 
   // ---- 帖子互动 ----
   const toggleLike = async () => {
@@ -124,15 +146,17 @@ export default function FeedDetailPage() {
   };
 
   return (
-    <>
+    <div className="page-narrow">
       <div className="card">
         {/* 作者栏 */}
         <div className="user-row flush">
           <Link to={`/users/${feed.author.id}`}>
-            <Avatar src={feed.author.avatar} size={40} />
+            <Avatar src={feed.author.avatar} size={40} alt={feed.author.nickname} />
           </Link>
           <div className="info">
-            <Link to={`/users/${feed.author.id}`}><strong>{feed.author.nickname}</strong></Link>
+            <Link to={`/users/${feed.author.id}`}>
+              <strong>{feed.author.nickname}</strong>
+            </Link>
             <div className="bio">
               {formatTime(feed.created_at)}
               {feed.ip_location ? ` · ${feed.ip_location}` : ''}
@@ -142,13 +166,16 @@ export default function FeedDetailPage() {
           {me && me.id !== feed.author.id && (
             <button
               className={`btn small ${feed.author.is_following ? 'active-state' : ''}`}
-              onClick={toggleFollow}
+              onClick={() => runGuarded('follow', toggleFollow)}
             >
               {feed.author.is_following ? '已关注' : '关注'}
             </button>
           )}
+          {/* 权限校验：仅作者本人可见删除入口（AuthZ 红线） */}
           {me && me.id === feed.author.id && (
-            <button className="btn ghost small" onClick={onDeleteFeed}>删除</button>
+            <button className="btn ghost small" onClick={onDeleteFeed}>
+              删除
+            </button>
           )}
         </div>
 
@@ -169,13 +196,13 @@ export default function FeedDetailPage() {
         <div className="detail-actions">
           <button
             className={`btn ghost small ${feed.interaction.is_liked ? 'active-state' : ''}`}
-            onClick={toggleLike}
+            onClick={() => runGuarded('like', toggleLike)}
           >
             {feed.interaction.is_liked ? '❤️' : '🤍'} 赞 {feed.stats.like_count}
           </button>
           <button
             className={`btn ghost small ${feed.interaction.is_collected ? 'active-state' : ''}`}
-            onClick={toggleCollect}
+            onClick={() => runGuarded('collect', toggleCollect)}
           >
             ⭐ 收藏 {feed.stats.collect_count}
           </button>
@@ -207,16 +234,18 @@ export default function FeedDetailPage() {
             placeholder={replyTarget ? `回复 @${replyTarget.nickname}` : '说点什么…'}
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && submitComment()}
+            onKeyDown={(e) => { if (e.key === 'Enter') runGuarded('comment', submitComment); }}
           />
-          <button className="btn" onClick={submitComment}>发送</button>
+          <button className="btn" onClick={() => runGuarded('comment', submitComment)}>
+            发送
+          </button>
         </div>
 
         {/* 评论列表（首屏含热评） */}
         {comments.items.map((c) => (
           <div className="comment-item" key={c.id}>
             <Link to={`/users/${c.author.id}`}>
-              <Avatar src={c.author.avatar} size={32} />
+              <Avatar src={c.author.avatar} size={32} alt={c.author.nickname} />
             </Link>
             <div className="content">
               <div className="nick">{c.author.nickname}</div>
@@ -243,6 +272,7 @@ export default function FeedDetailPage() {
                 >
                   回复
                 </button>
+                {/* 权限校验：仅评论作者本人可见删除入口 */}
                 {me?.id === c.author.id && (
                   <button type="button" onClick={() => onDeleteComment(c.id)}>
                     删除
@@ -292,11 +322,14 @@ export default function FeedDetailPage() {
             </div>
           </div>
         ))}
+        {!comments.loading && comments.items.length === 0 && (
+          <div className="list-end">暂无评论</div>
+        )}
         <div ref={comments.sentinelRef as React.RefObject<HTMLDivElement>} />
         <div className="list-end">
           {comments.loading ? '加载中…' : comments.hasMore ? '' : '没有更多评论'}
         </div>
       </div>
-    </>
+    </div>
   );
 }

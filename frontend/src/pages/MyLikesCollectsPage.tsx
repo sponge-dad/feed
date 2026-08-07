@@ -23,15 +23,21 @@ export default function MyLikesCollectsPage() {
 
   return (
     <>
-      <div className="tabs">
-        <button className={`tab ${isLikes ? 'active' : ''}`} onClick={() => navigate('/me/likes')}>
+      <div className="category-tabs">
+        <button className={`category-tab ${isLikes ? 'active' : ''}`} onClick={() => navigate('/me/likes')}>
           我的赞
         </button>
-        <button className={`tab ${!isLikes ? 'active' : ''}`} onClick={() => navigate('/me/collects')}>
+        <button className={`category-tab ${!isLikes ? 'active' : ''}`} onClick={() => navigate('/me/collects')}>
           我的收藏
         </button>
       </div>
-      <FeedCardGrid items={items} loading={loading} hasMore={hasMore} sentinelRef={sentinelRef} />
+      <FeedCardGrid
+        items={items}
+        loading={loading}
+        hasMore={hasMore}
+        sentinelRef={sentinelRef}
+        variant="grid"
+      />
     </>
   );
 }

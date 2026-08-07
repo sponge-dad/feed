@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth';
 import { toast } from '@/utils/toast';
+import Avatar from './Avatar';
 
 export default function Layout() {
-  const { user, token, logout } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
 
@@ -14,41 +15,56 @@ export default function Layout() {
     if (q) toast(`搜索「${q}」功能即将上线`);
   };
 
+  const linkClass = ({ isActive }: { isActive: boolean }) =>
+    isActive ? 'sidebar-link active' : 'sidebar-link';
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <NavLink to="/" className="brand" end>
-          Feed
+        <NavLink to="/" className="sidebar-brand" end>
+          <span aria-hidden="true">📕</span> 小红薯
         </NavLink>
         <nav className="sidebar-nav">
-          <NavLink to="/" className="sidebar-link" end>
-            首页
+          <NavLink to="/" className={linkClass} end>
+            <span className="nav-icon" aria-hidden="true">🏠</span> 首页
           </NavLink>
-          <NavLink to="/me/likes" className="sidebar-link">
-            赞·收藏
+          <NavLink to="/me/likes" className={linkClass}>
+            <span className="nav-icon" aria-hidden="true">❤️</span> 赞·收藏
           </NavLink>
           {user && (
-            <NavLink to={`/users/${user.id}`} className="sidebar-link">
-              我的主页
+            <NavLink to={`/users/${user.id}`} className={linkClass}>
+              <span className="nav-icon" aria-hidden="true">👤</span> 我的主页
             </NavLink>
           )}
         </nav>
-        <span className="spacer" />
-        {token ? (
-          <button
-            className="btn ghost block"
-            onClick={() => {
-              logout();
-              navigate('/login');
-            }}
-          >
-            退出（{user?.nickname || '我'}）
-          </button>
-        ) : (
-          <NavLink to="/login" className="sidebar-link">
-            登录
-          </NavLink>
-        )}
+        <div className="sidebar-footer">
+          <div className="sidebar-user">
+            {user ? (
+              <>
+                <Avatar src={user.avatar} size={36} alt={user.nickname} />
+                <div className="info">
+                  <div className="nick">{user.nickname}</div>
+                  <div className="uname">@{user.username}</div>
+                </div>
+                <button
+                  type="button"
+                  className="link-action-btn"
+                  aria-label="退出登录"
+                  onClick={() => {
+                    logout();
+                    navigate('/login');
+                  }}
+                >
+                  <span className="nav-icon" aria-hidden="true">⏻</span>
+                </button>
+              </>
+            ) : (
+              <NavLink to="/login" className="sidebar-link" style={{ padding: 0 }}>
+                <span className="nav-icon" aria-hidden="true">👤</span> 登录
+              </NavLink>
+            )}
+          </div>
+        </div>
       </aside>
 
       <div className="main-area">

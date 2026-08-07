@@ -4,6 +4,7 @@ import { getTimeline } from '@/api/feed';
 import type { FeedCard, TimelineType } from '@/types/feed';
 import { useCursorList, type CursorResp } from '@/hooks/useCursorList';
 import FeedCardGrid from '@/components/FeedCardGrid';
+import Skeleton from '@/components/Skeleton';
 
 const TABS: { key: TimelineType; label: string }[] = [
   { key: 'recommend', label: '推荐' },
@@ -24,19 +25,29 @@ export default function HomePage() {
 
   return (
     <>
-      <div className="tabs">
+      <div className="category-tabs">
         {TABS.map((t) => (
           <button
             key={t.key}
-            className={`tab ${type === t.key ? 'active' : ''}`}
+            className={`category-tab ${type === t.key ? 'active' : ''}`}
             onClick={() => setType(t.key)}
           >
             {t.label}
           </button>
         ))}
       </div>
-      <FeedCardGrid items={items} loading={loading} hasMore={hasMore} sentinelRef={sentinelRef} />
-      <Link to="/publish" className="fab" aria-label="发布帖子">+</Link>
+      {loading && items.length === 0 ? (
+        <div className="waterfall">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} variant="card" />
+          ))}
+        </div>
+      ) : (
+        <FeedCardGrid items={items} loading={loading} hasMore={hasMore} sentinelRef={sentinelRef} />
+      )}
+      <Link to="/publish" className="fab" aria-label="发布帖子">
+        +
+      </Link>
     </>
   );
 }

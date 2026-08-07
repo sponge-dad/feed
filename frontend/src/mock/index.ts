@@ -218,6 +218,7 @@ function toCard(f: MockFeed): FeedCard {
     stats: { like_count: f.like_count, comment_count: f.comment_count, collect_count: f.collect_count },
     interaction: { is_liked: likedFeeds.has(f.id), is_collected: collectedFeeds.has(f.id) },
     created_at: f.created_at,
+    source: 0,
   };
 }
 
