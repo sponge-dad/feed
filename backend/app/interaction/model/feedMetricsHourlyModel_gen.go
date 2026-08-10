@@ -35,17 +35,21 @@ type (
 	}
 
 	FeedMetricsHourly struct {
-		Id         uint64    `db:"id"`
-		FeedId     uint64    `db:"feed_id"`
-		HourBucket time.Time `db:"hour_bucket"`
-		Pv         int64     `db:"pv"`
-		Expose     int64     `db:"expose"`
-		Like       int64     `db:"like"`
-		Collect    int64     `db:"collect"`
-		Comment    int64     `db:"comment"`
-		Share      int64     `db:"share"`
-		DurationMs int64     `db:"duration_ms"`
-		UpdatedAt  time.Time `db:"updated_at"`
+		Id                 uint64    `db:"id"`
+		FeedId             uint64    `db:"feed_id"`
+		AuthorId           uint64    `db:"author_id"`
+		StatHour           time.Time `db:"stat_hour"`
+		ExposeCount        int64     `db:"expose_count"`
+		PlayCount          int64     `db:"play_count"`
+		EffectivePlayCount int64     `db:"effective_play_count"`
+		FinishCount        int64     `db:"finish_count"`
+		SkipCount          int64     `db:"skip_count"`
+		ShareCount         int64     `db:"share_count"`
+		LikeCount          int64     `db:"like_count"`
+		CollectCount       int64     `db:"collect_count"`
+		CommentCount       int64     `db:"comment_count"`
+		WatchDurationMs    int64     `db:"watch_duration_ms"`
+		UpdatedAt          time.Time `db:"updated_at"`
 	}
 )
 
@@ -60,7 +64,9 @@ func (m *defaultFeedMetricsHourlyModel) Insert(ctx context.Context, data *FeedMe
 	query := fmt.Sprintf("insert into %s (%s) values (%s)", m.table, feedMetricsHourlyRowsExpectAutoSet,
 		strings.TrimSuffix(strings.Repeat("?, ", strings.Count(feedMetricsHourlyRowsExpectAutoSet, ",")+1), ", "))
 	return m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
-		return conn.ExecCtx(ctx, query, data.FeedId, data.HourBucket, data.Pv, data.Expose, data.Like, data.Collect, data.Comment, data.Share, data.DurationMs)
+		return conn.ExecCtx(ctx, query, data.FeedId, data.AuthorId, data.StatHour, data.ExposeCount,
+			data.PlayCount, data.EffectivePlayCount, data.FinishCount, data.SkipCount, data.ShareCount,
+			data.LikeCount, data.CollectCount, data.CommentCount, data.WatchDurationMs)
 	})
 }
 

@@ -34,18 +34,18 @@ description: "Task list for FeedMind Agent implementation"
 
 **Purpose**: 基础设施就绪、DDL 建表、proto 与 model 代码生成
 
-- [ ] T001 [P] 在 `deploy/docker-compose.yml` 增加 Elasticsearch 8.x 服务（含 `discovery.type=single-node`、内存限制），端口 9200
-- [ ] T002 [P] 编写 `deploy/es/feed_content_mapping.json`——`feed_content_v1` 索引 mapping（BM25 文本字段 + `dense_vector` kNN 字段 + 标签 keyword 字段），参考 `docs/design/agent/05-content-search.md` §3
-- [ ] T003 [P] 编写 `deploy/es/init-index.sh`——创建 `feed_content_v1` 并绑定读别名 `feed_content` / 写别名 `feed_content_write`
-- [ ] T004 [P] 新建 `deploy/sql/content.sql`——`feed_content` 库 + `feed_content_profiles` 表（含 `uk_feed_id`、`idx_category_status`、`idx_status_updated`、`idx_author`），DDL 见 [data-model.md](./data-model.md) §3
-- [ ] T005 [P] 新建 `deploy/sql/agent.sql`——`feed_agent` 库 + `agent_sessions`/`agent_messages`/`agent_runs`/`agent_tool_calls` 4 表（含 `idx_user_active`、`uk_run_seq`），DDL 见 [data-model.md](./data-model.md) §7
-- [ ] T006 [P] 追加 `deploy/sql/interaction.sql`——`feed_behavior_events`（`uk_event_id`）、`feed_metrics_hourly`（`uk_feed_hour`、`idx_stat_hour`、`idx_author_hour`）、`user_interest_profiles`（`uk_user_id`）3 表，使用幂等 DDL（`CREATE TABLE IF NOT EXISTS`）
-- [ ] T007 手动执行 T004~T006 三个脚本到开发库+ 创建 `feed_content_test`/`feed_agent_test`/`feed_interaction_test` 测试库（⚠️ MySQL 初始化脚本只在首次启动执行，已有环境必须手动跑）
-- [ ] T008 [P] 校验 FFmpeg/ffprobe 可用并记录绝对路径（`which ffmpeg ffprobe`）；在 `.env.example` 补充 `FFMPEG_PATH`、`ARK_API_KEY`、`ARK_MODEL`、`ASR_API_KEY`、`OCR_API_KEY`、`ES_ADDR`、`CONTENT_MYSQL_DSN`、`AGENT_MYSQL_DSN`（**只声明不含真实值**）
-- [ ] T009 [P] 在 `go.mod` 增加依赖：`github.com/cloudwego/eino`、`github.com/cloudwego/eino-ext/components/model/ark`、`github.com/elastic/go-elasticsearch/v8`、`github.com/google/uuid`
-- [ ] T010 [P] 在 `Makefile` 增加 `run-content` / `run-content-worker` / `run-agent` 目标，并把新 proto 纳入 `make proto`
+- [x] T001 [P] 在 `deploy/docker-compose.yaml` 增加 Elasticsearch 8.x 服务（`docker.elastic.co/elasticsearch:8.13.4`，含 `discovery.type=single-node`、JVM 堆 512MB 限制、`xpack.security.enabled=false`），端口 9200；配套 `deploy/es/es-entrypoint.sh` 幂等安装 analysis-ik 中文分词插件（版本与 ES 严格一致 8.13.4）
+- [x] T002 [P] 编写 `deploy/es/feed_content_mapping.json`——`feed_content_v1` 索引 mapping（BM25 文本字段用 `ik_max_word`/`ik_smart` + `dense_vector` kNN 字段 dims=1024 + 标签 keyword 字段），参考 `docs/design/agent/05-content-search.md` §3
+- [x] T003 [P] 编写 `deploy/es/init-index.sh`——创建 `feed_content_v1` 并绑定读别名 `feed_content` / 写别名 `feed_content_write`（幂等：索引/别名已存在则跳过；插件缺失时明确报错）
+- [x] T004 [P] 新建 `deploy/sql/content.sql`——`feed_content` 库 + `feed_content_profiles` 表（含 `uk_feed_id`、`idx_category_status`、`idx_status_updated`、`idx_author`），DDL 见 [data-model.md](./data-model.md) §3
+- [ ] T005 [P] 新建 `deploy/sql/agent.sql`——`feed_agent` 库 + `agent_sessions`/`agent_messages`/`agent_runs`/`agent_tool_calls` 4 表（含 `idx_user_active`、`uk_run_seq`），DDL 见 [data-model.md](./data-model.md) §7（⏳ 延后到 Phase 7 US4 前补，不影响 US3）
+- [x] T006 [P] 追加 `deploy/sql/interaction.sql`——行为相关 3 表（⏳ 已在 US2 落地：`feed_behavior_events`/`feed_metrics_hourly` 建在 `deploy/sql/behavior.sql`，`user_interest_profiles` 随 US5 补建）
+- [ ] T007 手动执行 T004~T006 三个脚本到开发库+ 创建 `feed_content_test`/`feed_agent_test`/`feed_interaction_test` 测试库（⚠️ MySQL 初始化脚本只在首次启动执行，已有环境必须手动跑；环境操作，`make up` 后执行）
+- [x] T008 [P] 校验 FFmpeg/ffprobe 可用并记录绝对路径；创建 `.env.example` 声明 `FFMPEG_PATH`、`FFPROBE_PATH`、`ARK_API_KEY`、`ARK_MODEL`、`ASR_API_KEY`、`OCR_API_KEY`、`ES_ADDR`、`CONTENT_MYSQL_DSN`、`AGENT_MYSQL_DSN`（只声明不含真实值；✅ 本机已装 johnvansickle 静态版 ffmpeg/ffprobe 7.0.2 → `/usr/local/bin`，冒烟测试通过：转码/ffprobe 探测/抽帧均正常）
+- [x] T009 [P] 在 `go.mod` 增加依赖：`github.com/cloudwego/eino v0.9.13`、`github.com/cloudwego/eino-ext/components/model/ark v0.1.69`、`github.com/elastic/go-elasticsearch/v8 v8.19.7`、`github.com/google/uuid v1.6.0`（已存在）。⚠️ `go mod tidy` 会移除尚无 import 的直接依赖，代码写好后需重新 `go get` 固定版本
+- [x] T010 [P] 在 `Makefile` 增加 `run-content` / `run-content-worker` / `run-agent` 目标（+ 配套 `stop-content`/`stop-agent`），并把新 proto（content/agent）纳入 `make proto`（带文件存在检查，proto 未建时 skip）；`status` 端口检查补充 9006/9007/9108/9109/9110
 
-**Checkpoint**: 基础设施与库表就绪，可开始公共层改造
+**Checkpoint**: ✅ 基础设施与库表就绪（ES 服务 + mapping + 初始化脚本 + content.sql + 依赖 + Makefile 目标），可开始公共层改造与 US3。剩余 T005/T007 为环境操作项（agent.sql 延后、SQL 手动执行）。
 
 ---
 
@@ -116,30 +116,51 @@ description: "Task list for FeedMind Agent implementation"
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T041 [P] [US2] `app/gateway/internal/logic/behavior/report_test.go`——覆盖 7 条校验规则：批量 1~50（超限14004）、user_id 取自 JWT 忽略请求体、字段边界（`feed_id>0`/`action_type` 枚举/`watch_duration_ms∈[0,24h]`/`position∈[0,1000]`/时间偏差≤1h）、限流 300/分钟（超限业务码 5）
-- [ ] T042 [P] [US2] `app/interaction/rpc/internal/worker/behavior_consumer_test.go`——用 miniredis 断言：event_id 幂等去重、**失败时删除幂等 key**（防永久丢数）、曝光 `(request_id,feed_id)` 去重、5 类指标独立累加
-- [ ] T043 [P] [US2] `app/interaction/rpc/internal/worker/metrics_flush_test.go`——断言 flush 写**绝对值**（重复 flush 不翻倍）、`feed:metrics:dirty` 消费正确
+- [x] T041 [P] [US2] `app/gateway/internal/logic/behavior/report_test.go`——覆盖 7 条校验规则：批量 1~50（超限14004）、user_id 取自 JWT 忽略请求体、字段边界（`feed_id>0`/`action_type` 枚举/`watch_duration_ms∈[0,24h]`/`position∈[0,1000]`/时间偏差≤1h）、限流 300/分钟（超限业务码 5）
+- [x] T042 [P] [US2] `app/interaction/rpc/internal/worker/behavior_consumer_test.go`——用 miniredis 断言：event_id 幂等去重、**失败时删除幂等 key**（防永久丢数）、曝光 `(request_id,feed_id)` 去重、5 类指标独立累加
+- [x] T043 [P] [US2] `app/interaction/rpc/internal/worker/metrics_flush_test.go`——断言 flush 写**绝对值**（重复 flush 不翻倍）、`feed:metrics:dirty` 消费正确
 - [ ] T044 [P] [US2] `tests/behavior_event_test.go`——集成测试：上报 → MQ → 明细表 + Redis + 小时表全链路；含重复投递幂等验证
 
 ### Implementation for User Story 2
 
-- [ ] T045 [P] [US2] 用 `goctl model mysql ddl` 生成 `feed_behavior_events` 与 `feed_metrics_hourly` 的 model 到 `app/interaction/rpc/internal/model/`（依赖 T006/T007）
-- [ ] T046 [P] [US2] 在 `customFeedMetricsHourlyModel` 扩展 `UpsertAbsolute()`——`ON DUPLICATE KEY UPDATE expose_count = VALUES(expose_count), ...`（⚠️ **绝对值覆盖，禁止 `= count + VALUES()`**，见 [research.md](./research.md) R4）
+- [x] T045 [P] [US2] 用 `goctl model mysql ddl` 生成 `feed_behavior_events` 与 `feed_metrics_hourly` 的 model 到 `app/interaction/rpc/internal/model/`（依赖 T006/T007）
+- [x] T046 [P] [US2] 在 `customFeedMetricsHourlyModel` 扩展 `UpsertAbsolute()`——`ON DUPLICATE KEY UPDATE expose_count = VALUES(expose_count), ...`（⚠️ **绝对值覆盖，禁止 `= count + VALUES()`**，见 [research.md](./research.md) R4）
 - [ ] T047 [P] [US2] 在 `customFeedBehaviorEventsModel` 扩展 `BatchInsert()` 与 `DeleteBefore(t)`（分批 ≤2000 行 + sleep）
-- [ ] T048 [P] [US2] 在 `app/interaction/rpc/internal/keys/keys.go` 追加 6 个 key构造函数：`BehaviorEventKey`、`ExposeDedupKey`、`MetricsHourKey`、`MetricsDirtySet`、`UserInterestKey`、`InterestDedupKey`
-- [ ] T049 [P] [US2] 在 `app/gateway/internal/keys/`（或复用）追加 `BehaviorRateKey(userID)` → `behavior:rate:{user_id}`
-- [ ] T050 [US2] 创建 `app/gateway/internal/logic/behavior/reportlogic.go`——实现 7 条校验规则；⚠️ **`event_id` 由服务端生成 uuid v4**，`client_event_id` 仅记日志**不作幂等键**；调`BatchGetFeeds` 校验存在且 `status=NORMAL`，并用**真实 author_id 与真实媒体时长覆盖**客户端上报值
-- [ ] T051 [US2] 在 reportlogic 中实现单用户限流（`behavior:rate:{user_id}` INCR+EXPIRE 60s，>300 返回 `errorx.TooManyReq`）
-- [ ] T052 [US2] 在 reportlogic 中逐条 `SendSync(TopicFeedBehaviorEvent, body)`，失败记日志 + `feed_behavior_event_total{result="send_failed"}`；返回 `{accepted, rejected}`
-- [ ] T053 [US2] 新增 Gateway 路由 POST `/api/v1/feeds/behaviors`（**独立分组注册**，避免影响现有 feed 组中间件）+ handler（依赖 T050~T052）
-- [ ] T054 [US2] 创建 `app/interaction/rpc/internal/worker/behavior_consumer.go`——消费 `feed-behavior-event`：① Redis SETNX `behavior_event:{event_id}`幂等（TTL 24h）② EXPOSE 用 `behavior:expose:{request_id}:{feed_id}` 去重 ③ 采样 10% 写明细（其他行为全量）④ **Redis 指标全量累加**（不采样）+ 加入 `feed:metrics:dirty`
-- [ ] T055 [US2] ⚠️ 在 behavior_consumer 中实现**失败删除幂等 key**——SETNX 成功但后续落库失败时必须 `DEL behavior_event:{event_id}`，否则重试被误判为已处理导致**永久丢数**（沿用 Feed Worker `handleCommentEvent` 既有做法）
-- [ ] T056 [US2] 在 behavior_consumer 中实现重试与死信：失败返回 `ConsumeRetryLater`；日志必须含 `topic`/`event_id`/`feed_id`/`user_id`/`action_type`/`reconsume_times`
-- [ ] T057 [US2] 创建 `app/interaction/rpc/internal/worker/metrics_flush.go`——每小时定时任务：消费 `feed:metrics:dirty` → 读 `feed:metrics:h:*` → `UpsertAbsolute` 写 `feed_metrics_hourly`
-- [ ] T058 [US2] 扩展现有 `interaction-event` 与 `comment-event` 消费——把 like/unlike/collect/uncollect/comment **计入指标**（不参与落库，落库仍走原逻辑）
-- [ ] T059 [US2] 在 `app/interaction/rpc/interaction.go` 注册 behavior consumer 与 flush 定时任务（进程内 worker，与现有 consumer 并列）
-- [ ] T060 [P] [US2] 实现 5 条数据质量校验规则的校验工具 `app/interaction/rpc/internal/worker/quality.go`——`play≤expose`、`finish≤play`、`effective_play≤play`、`skip≤play`、客户端时间偏差 P99<5min
-- [ ] T061 [P] [US2] 创建 `scripts/benchmark-behavior.sh`——用 `hey` 压测埋点上报接口，验证 P99 < 5s 端到端延迟
+- [x] T048 [P] [US2] 在 `app/interaction/rpc/internal/keys/keys.go` 追加 6 个 key构造函数：`BehaviorEventKey`、`ExposeDedupKey`、`MetricsHourKey`、`MetricsDirtySet`、`UserInterestKey`、`InterestDedupKey`
+- [x] T049 [P] [US2] 在 `app/gateway/internal/keys/`（或复用）追加 `BehaviorRateKey(userID)` → `behavior:rate:{user_id}`
+- [x] T050 [US2] 创建 `app/gateway/internal/logic/behavior/reportlogic.go`——实现 7 条校验规则；⚠️ **`event_id` 由服务端生成 uuid v4**，`client_event_id` 仅记日志**不作幂等键**；调`BatchGetFeeds` 校验存在且 `status=NORMAL`，并用**真实 author_id 与真实媒体时长覆盖**客户端上报值
+- [x] T051 [US2] 在 reportlogic 中实现单用户限流（`behavior:rate:{user_id}` INCR+EXPIRE 60s，>300 返回 `errorx.TooManyReq`）
+- [x] T052 [US2] 在 reportlogic 中逐条 `SendSync(TopicFeedBehaviorEvent, body)`，失败记日志 + `feed_behavior_event_total{result="send_failed"}`；返回 `{accepted, rejected}`
+- [x] T053 [US2] 新增 Gateway 路由 POST `/api/v1/feeds/behaviors`（**独立分组注册**，避免影响现有 feed 组中间件）+ handler（依赖 T050~T052）
+- [x] T054 [US2] 创建 `app/interaction/rpc/internal/worker/behavior_consumer.go`——消费 `feed-behavior-event`：① Redis SETNX `behavior_event:{event_id}`幂等（TTL 24h）② EXPOSE 用 `behavior:expose:{request_id}:{feed_id}` 去重 ③ 采样 10% 写明细（其他行为全量）④ **Redis 指标全量累加**（不采样）+ 加入 `feed:metrics:dirty`
+- [x] T055 [US2] ⚠️ 在 behavior_consumer 中实现**失败删除幂等 key**——SETNX 成功但后续落库失败时必须 `DEL behavior_event:{event_id}`，否则重试被误判为已处理导致**永久丢数**（沿用 Feed Worker `handleCommentEvent` 既有做法）
+- [x] T056 [US2] 在 behavior_consumer 中实现重试与死信：失败返回 `ConsumeRetryLater`；日志必须含 `topic`/`event_id`/`feed_id`/`user_id`/`action_type`/`reconsume_times`
+- [x] T057 [US2] 创建 `app/interaction/rpc/internal/worker/metrics_flush.go`——每小时定时任务：消费 `feed:metrics:dirty` → 读 `feed:metrics:h:*` → `UpsertAbsolute` 写 `feed_metrics_hourly`
+- [x] T058 [US2] 扩展现有 `interaction-event` 与 `comment-event` 消费——把 like/unlike/collect/uncollect/comment **计入指标**（不参与落库，落库仍走原逻辑）
+- [x] T059 [US2] 在 `app/interaction/rpc/interaction.go` 注册 behavior consumer 与 flush 定时任务（进程内 worker，与现有 consumer 并列）
+- [x] T060 [P] [US2] 实现 5 条数据质量校验规则的校验工具 `app/interaction/rpc/internal/worker/quality.go`——`play≤expose`、`finish≤play`、`effective_play≤play`、`skip≤play`、客户端时间偏差 P99<5min
+- [x] T061 [P] [US2] 创建 `scripts/benchmark-behavior.sh`——用 `hey` 压测埋点上报接口，验证 P99 < 5s 端到端延迟
+
+### US2 实现落点与偏差说明
+
+任务书写作时假设的文件路径与最终落点不完全一致（沿用了仓库既有目录约定），对照如下：
+
+| 任务 | 任务书路径 | 实际落点 | 说明 |
+| --- | --- | --- | --- |
+| T041 | `internal/logic/behavior/report_test.go` | `internal/logic/feed/reportBehaviors_test.go` | 上报接口归入既有 feed 分组，未新建 behavior 包 |
+| T042/T043 | `behavior_consumer_test.go` + `metrics_flush_test.go` | `worker/behaviorWorkerIntegration_test.go` | 消费与 flush 同属一个 worker，拆两个文件会共享大量桩代码 |
+| T045 | `rpc/internal/model/` | `app/interaction/model/` | 与既有 model 同目录，避免同一张库出现两套 model |
+| T046 | `UpsertAbsolute()` | `Upsert()` | 该表只有绝对值写法一种语义，不再用后缀区分 |
+| T048 | 6 个 key 构造函数 | `keys.go` 4 个 + `common/event/behavior` 2 个 | `IdemKey`/`ExposeDedupKey` 属事件契约，随事件结构体走；`UserInterestKey`/`InterestDedupKey` 依赖尚未建设的 Content 服务，随 US3 补 |
+| T049 | `app/gateway/internal/keys/` | `reportBehaviorsLogic.go` 内 `behaviorRateKey()` | 网关侧仅此一个 key，为它单开一个包属过度设计 |
+| T054/T057 | 拆两个文件 | `worker/behaviorWorker.go` | 同一个 worker 的两条协程，共享 svcCtx 与配置 |
+
+**未完成项**：
+
+- [ ] T044 [P] [US2] `tests/behavior_event_test.go` 全链路集成测试——依赖真实 RocketMQ + MySQL，需在 `make up` 环境下补
+- [ ] T047 [P] [US2] `BatchInsert()`——当前明细为逐条 Insert。10% 采样后写入量不高，暂未成为瓶颈；待压测确认 QPS 后再决定是否批量化（`DeleteBefore()` 已实现）
+
+**与设计文档的一处主动偏差**：消费侧未对每条事件调用 Feed RPC 校验 `status=NORMAL`。合法性校验已在网关侧用 `BatchGetFeeds` 批量完成，消费侧再查一次相当于每条曝光多一次 RPC，成本与收益不匹配。
 
 **Checkpoint**: ✅ US1 + US2 均可独立工作——**阶段一交付完成**，可演示「刷流 → 用 request_id 查 Trace → 看到各数据源返回量 + 观看指标」。对应验收 A8/A9、E2E-4/7/9
 

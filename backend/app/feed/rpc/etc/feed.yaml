@@ -40,3 +40,14 @@ Trace:
   TTL: 86400
   # InternalUserIDs:
   #   - 10086
+
+# 日志配置（全项目统一规范）：file 模式落盘到独立子目录 logs/feed，避免多服务互相覆盖；
+# json 编码便于后续采集；KeepDays+Compress 按天滚动仅保留 7 天并压缩，避免无限增长。
+# 注意：Path 为相对路径，进程工作目录必须是 backend/（`make run` 已保证）。
+Log:
+  Mode: file
+  Encoding: json
+  Path: logs/feed
+  Level: info
+  KeepDays: 7
+  Compress: true

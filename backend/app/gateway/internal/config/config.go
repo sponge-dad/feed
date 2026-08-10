@@ -2,6 +2,7 @@
 package config
 
 import (
+	"github.com/zeromicro/go-zero/core/stores/redis"
 	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/zrpc"
 )
@@ -48,6 +49,16 @@ type Config struct {
 	RocketMQ struct {
 		NameServer []string
 		GroupName  string
+	}
+
+	// BehaviorRedis 行为埋点限流用 Redis（与业务缓存同实例即可）。
+	BehaviorRedis redis.RedisConf
+
+	// Behavior 行为埋点上报配置。
+	Behavior struct {
+		// RateLimitPerUserPerMin 单用户每分钟可上报的事件条数上限（默认 300）。
+		// 见 docs/design/agent/03-behavior-event.md §3。
+		RateLimitPerUserPerMin int
 	}
 }
 

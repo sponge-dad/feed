@@ -22,8 +22,7 @@ func ReportBehaviorsHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 
-		ctx := feed.WithClientMeta(r.Context(), r)
-		l := feed.NewReportBehaviorsLogic(ctx, svcCtx)
+		l := feed.NewReportBehaviorsLogic(r.Context(), svcCtx)
 		resp, err := l.ReportBehaviors(&req)
 		if err != nil {
 			response.ErrorFrom(r.Context(), w, err)

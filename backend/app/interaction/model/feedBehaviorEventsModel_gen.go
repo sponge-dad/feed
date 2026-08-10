@@ -36,16 +36,19 @@ type (
 	}
 
 	FeedBehaviorEvents struct {
-		Id        uint64    `db:"id"`
-		EventId   string    `db:"event_id"`
-		UserId    uint64    `db:"user_id"`
-		FeedId    uint64    `db:"feed_id"`
-		Action    string    `db:"action"`
-		TargetId  uint64    `db:"target_id"`
-		ClientIp  string    `db:"client_ip"`
-		UserAgent string    `db:"user_agent"`
-		ReqId     string    `db:"req_id"`
-		CreatedAt time.Time `db:"created_at"`
+		Id              uint64    `db:"id"`
+		EventId         string    `db:"event_id"`
+		RequestId       string    `db:"request_id"`
+		UserId          uint64    `db:"user_id"`
+		FeedId          uint64    `db:"feed_id"`
+		AuthorId        uint64    `db:"author_id"`
+		ActionType      string    `db:"action_type"`
+		Position        int64     `db:"position"`
+		WatchDurationMs int64     `db:"watch_duration_ms"`
+		MediaDurationMs int64     `db:"media_duration_ms"`
+		Abnormal        int64     `db:"abnormal"`
+		EventTime       time.Time `db:"event_time"`
+		CreatedAt       time.Time `db:"created_at"`
 	}
 )
 
@@ -60,7 +63,7 @@ func (m *defaultFeedBehaviorEventsModel) Insert(ctx context.Context, data *FeedB
 	query := fmt.Sprintf("insert into %s (%s) values (%s)", m.table, feedBehaviorEventsRowsExpectAutoSet,
 		strings.TrimSuffix(strings.Repeat("?, ", strings.Count(feedBehaviorEventsRowsExpectAutoSet, ",")+1), ", "))
 	return m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
-		return conn.ExecCtx(ctx, query, data.Id, data.EventId, data.UserId, data.FeedId, data.Action, data.TargetId, data.ClientIp, data.UserAgent, data.ReqId)
+		return conn.ExecCtx(ctx, query, data.Id, data.EventId, data.RequestId, data.UserId, data.FeedId, data.AuthorId, data.ActionType, data.Position, data.WatchDurationMs, data.MediaDurationMs, data.Abnormal, data.EventTime)
 	})
 }
 

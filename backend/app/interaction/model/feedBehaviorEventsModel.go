@@ -4,6 +4,11 @@
 package model
 
 import (
+	"context"
+	"database/sql"
+	"fmt"
+	"time"
+
 	"github.com/zeromicro/go-zero/core/stores/cache"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
@@ -13,6 +18,9 @@ var _ FeedBehaviorEventsModel = (*customFeedBehaviorEventsModel)(nil)
 type (
 	FeedBehaviorEventsModel interface {
 		feedBehaviorEventsModel
+		// DeleteBefore 清理 before 之前的明细（保留 30 天），分批执行避免长事务。
+		// 返回本次删除行数，调用方可循环直至返回 0。
+		DeleteBefore(ctx context.Context, before time.Time, limit int64) (int64, error)
 	}
 
 	customFeedBehaviorEventsModel struct {
@@ -24,4 +32,19 @@ func NewFeedBehaviorEventsModel(conn sqlx.SqlConn, c cache.CacheConf, opts ...ca
 	return &customFeedBehaviorEventsModel{
 		defaultFeedBehaviorEventsModel: newFeedBehaviorEventsModel(conn, c, opts...),
 	}
+}
+
+// DeleteBefore 按 event_time 分批清理过期明细。
+func (m *customFeedBehaviorEventsModel) DeleteBefore(ctx context.Context, before time.Time, limit int64) (int64, error) {
+	if limit <= 0 {
+		limit = 1000
+	}
+	query := fmt.Sprintf("delete from %s where `event_time` < ? limit ?", m.table)
+	res, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (sql.Result, error) {
+		return conn.ExecCtx(ctx, query, before, limit)
+	})
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
 }

@@ -43,6 +43,17 @@ InteractionRpc:
     Key: interaction.rpc
   Timeout: 3000
 
+# 行为埋点限流用 Redis（与其余服务共用同一实例）。
+BehaviorRedis:
+  Host: 127.0.0.1:6379
+  Type: node
+  Pass: "mUd0ZLc312DPJ4Acaf4PnIoF"
+
+# 行为埋点上报配置，见 docs/design/agent/03-behavior-event.md §3。
+Behavior:
+  # 单用户每分钟上报条数上限；超限返回 429（业务码 5）
+  RateLimitPerUserPerMin: 300
+
 # 同城流 IP 定位兜底配置：本地/内网开发环境统一按默认城市处理。
 # 生产环境接入真实 GeoIP 后可移除；三项均为空时定位失败返回业务码 12006。
 IPLocation:
@@ -55,10 +66,19 @@ Auth:
   AccessSecret: "feed-user-service-jwt-secret-CHANGE-ME"
   AccessExpire: 2592000
 
+# 日志配置（全项目统一规范，见 backend/logs/README 或 Makefile 注释）：
+# - Mode: file，落盘到独立子目录 logs/<服务名>，避免多服务互相覆盖/混淆
+# - Encoding: json，便于后续采集/检索，与其余RPC 服务保持一致
+# - KeepDays + Compress：按天滚动，仅保留 7 天历史并压缩，避免日志无限增长
+# 注意：Path 为相对路径，进程工作目录必须是 backend/（`make run` 已保证），
+# 若手动运行二进制，务必先 cd 到 backend/ 目录，否则日志会落到别处。
 Log:
-  Encoding: plain
   Mode: file
-  Path: logs
+  Encoding: json
+  Path: logs/gateway
+  Level: info
+  KeepDays: 7
+  Compress: true
 
 # 关闭 HTTP breaker 中间件。
 # login/register 涉及 bcrypt CPU 计算，响应时间在几十到上百毫秒属于正常，
@@ -78,3 +98,10 @@ Cos:
   StsDuration: 3600
   SignDuration: 600
   BaseURL: "https://feed-1250000000-1317318750.cos.ap-guangzhou.myqcloud.com"
+
+# 行为埋点生产者：网关把行为事件 SendSync 到 feed-behavior-event，由 Interaction RPC 消费。
+# 见 docs/design/agent/03-behavior-event.md
+RocketMQ:
+  NameServer:
+    - 127.0.0.1:9876
+  GroupName: gateway-behavior-producer

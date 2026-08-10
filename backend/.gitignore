@@ -14,7 +14,12 @@ vendor/
 *.swp
 
 # 日志与临时文件
+# logs/ 为统一日志根目录（见 Makefile /各服务 etc/*.yaml 的 Log 配置），整体忽略，
+# 同时兼容 logx 按天滚动产生的带日期后缀文件（如 access.log-2026-08-05）及压缩产物。
+logs/
 *.log
+*.log-*
+*.log.gz
 tmp/
 .DS_Store
 

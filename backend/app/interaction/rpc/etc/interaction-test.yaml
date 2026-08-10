@@ -24,3 +24,18 @@ RocketMQ:
   - 127.0.0.1:9876
   GroupName: interaction_producer_group_test
   ConsumeGroup: interaction-persistence-consumer-test
+
+# 行为埋点消费配置，见 docs/design/agent/03-behavior-event.md。
+# 测试环境把 flush 间隔调小，便于用例尽快断言小时指标落库。
+Behavior:
+  ConsumeGroup: behavior-persistence-consumer-test
+  MetricsFlushIntervalSec: 1
+  MetricsFlushBatch: 500
+  # 测试需要断言明细全量落库，故曝光不抽样
+  ExposeSampleRate: 1
+  DetailRetentionDays: 30
+  Rule:
+    EffectivePlayMs: 3000
+    EffectivePlayRatio: 0.5
+    FinishRatio: 0.95
+    SkipMs: 3000

@@ -90,9 +90,9 @@ service Feed {
 | 0 | `FEED_SOURCE_UNKNOWN` | 未知（**默认值，语义安全**） |
 | 1 | `FEED_SOURCE_FOLLOW_INBOX` | 关注收件箱（推模式） |
 | 2 | `FEED_SOURCE_VIP_OUTBOX` | 大V 发件箱（拉模式） |
-| 3 | `FEED_SOURCE_RECOMMEND_POOL` | 推荐池 |
+| 3 | `FEED_SOURCE_INBOX_REBUILD` | 收件箱回源重建 |
 | 4 | `FEED_SOURCE_CITY_POOL` | 同城池 |
-| 5 | `FEED_SOURCE_INBOX_REBUILD` | 收件箱回源重建 |
+| 5 | `FEED_SOURCE_RECOMMEND_POOL` | 推荐池 |
 
 ---
 

@@ -74,12 +74,12 @@ Metadata 键统一在 `common/interceptors/keys.go` 定义，禁止各服务硬�
 
 ```protobuf
 enum FeedSource {
-  FEED_SOURCE_UNKNOWN   = 0;
-  FEED_SOURCE_FOLLOW_INBOX    = 1; // 关注作者推入的收件箱
-  FEED_SOURCE_VIP_OUTBOX      = 2; // 关注的大 V 发件箱实时拉取
-  FEED_SOURCE_RECOMMEND_POOL  = 3; // 公共推荐池
-  FEED_SOURCE_CITY_POOL       = 4; // 同城池
-  FEED_SOURCE_INBOX_REBUILD   = 5; // 收件箱缺失后回源重建
+  FEED_SOURCE_UNKNOWN        = 0; // 未知 / 未标记（proto3 默认值）
+  FEED_SOURCE_FOLLOW_INBOX   = 1; // 关注作者推入的收件箱
+  FEED_SOURCE_VIP_OUTBOX     = 2; // 关注的大 V 发件箱实时拉取
+  FEED_SOURCE_INBOX_REBUILD  = 3; // 收件箱缺失后回源重建
+  FEED_SOURCE_CITY_POOL      = 4; // 同城池
+  FEED_SOURCE_RECOMMEND_POOL = 5; // 公共推荐池
 }
 ```
 
@@ -94,7 +94,7 @@ enum FeedSource {
 | `getcitytimelinelogic.go` | `CITY_POOL` |
 | 回源重建路径 | `INBOX_REBUILD` |
 
-**注意（现状差异，已落地 2026-08-05）**：`getfollowtimelinelogic.go` 已补齐收件箱回源重建逻辑——`inbox` 读取为空且用户有关注关系时，由 `rebuildInbox` 并行拉取各作者 `outbox` 兜底重建并回写 inbox，命中该路径的 feed 标记为 `INBOX_REBUILD`（重建失败不致命，仅记日志）。多路命中按优先级收敛：`FOLLOW_INBOX > INBOX_REBUILD > VIP_OUTBOX`。`FeedSource` 枚举与 `source` 字段（`FeedBrief.source(10)` / `FeedInfo.source(18)`）已生成并透传至 gateway `FeedCard.source`。
+**注意（已落地 2026-08-05）**：`getfollowtimelinelogic.go` 已补齐收件箱回源重建逻辑——`inbox` 读取为空且用户有关注关系时，由 `rebuildInbox` 并行拉取各作者 `outbox` 兜底重建并回写 inbox，命中该路径的 feed 标记为 `INBOX_REBUILD`（重建失败不致命，仅记日志）。多路命中按优先级收敛：`FOLLOW_INBOX > INBOX_REBUILD > VIP_OUTBOX`。`FeedSource` 枚举与 `source` 字段（`FeedBrief.source(10)` / `FeedInfo.source(18)`）已生成并透传至 gateway `FeedCard.source`。
 
 ## 6. 请求级 Trace 记录
 

@@ -26,11 +26,29 @@ RocketMQ:
 FeedRpc:
   Etcd:
     Hosts:
-      - 127.0.0.1:2379
+      # 注意：本机是 K8s 节点，2379 被 K8s 自带 etcd 占用，开发用 etcd 容器映射在 2479
+      - 127.0.0.1:2479
     Key: feed.rpc
 Behavior:
   ConsumeGroup: behavior-persistence-consumer
-  MetricsFlushIntervalSec: 5
+  MetricsFlushIntervalSec: 60
+  MetricsFlushBatch: 500
   ExposeSampleRate: 0.1
-  RateLimitPerUserPerSec: 50
-  RateLimitPerActionFeedPerSec: 5
+  DetailRetentionDays: 30
+  # 行为判定阈值：服务端重判 EFFECTIVE_PLAY / FINISH / SKIP，客户端结论不作准
+  Rule:
+    EffectivePlayMs: 3000
+    EffectivePlayRatio: 0.5
+    FinishRatio: 0.95
+    SkipMs: 3000
+
+# 日志配置（全项目统一规范）：file 模式落盘到独立子目录 logs/interaction，避免多服务互相覆盖；
+# json 编码便于后续采集；KeepDays+Compress 按天滚动仅保留 7 天并压缩，避免无限增长。
+# 注意：Path 为相对路径，进程工作目录必须是 backend/（`make run` 已保证）。
+Log:
+  Mode: file
+  Encoding: json
+  Path: logs/interaction
+  Level: info
+  KeepDays: 7
+  Compress: true

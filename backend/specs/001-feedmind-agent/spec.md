@@ -25,9 +25,9 @@
 3. **Given** 客户端发起请求并携带格式非法的 X-Request-Id（含特殊字符或超长），**When** Gateway 接收请求，**Then** 丢弃非法值并重新生成 request_id。
 4. **Given** 下游 RPC 服务收到不带 request_id 的 Metadata，**When** 服务处理请求，**Then** 日志记录 `request_id=missing` 并触发告警，但不中断请求处理。
 5. **Given** 用户获取关注流时间线，**When** Feed RPC 返回 Feed 列表，**Then** 每条 Feed 的 `feed_source` 字段正确标注为：普通关注用户帖子返回 `FEED_SOURCE_FOLLOW_INBOX`(1)，大V（粉丝>10万）帖子返回 `FEED_SOURCE_VIP_OUTBOX`(2)。
-6. **Given** 用户获取推荐流，**When** Feed RPC 返回 Feed 列表，**Then** 每条 Feed 标注为 `FEED_SOURCE_RECOMMEND_POOL`(3)。
+6. **Given** 用户获取推荐流，**When** Feed RPC 返回 Feed 列表，**Then** 每条 Feed 标注为 `FEED_SOURCE_RECOMMEND_POOL`(5)。
 7. **Given** 用户获取同城流，**When** Feed RPC 返回 Feed 列表，**Then** 每条 Feed 标注为 `FEED_SOURCE_CITY_POOL`(4)。
-8. **Given** 收件箱缺失后回源重建的场景，**When** Feed RPC 返回重建的 Feed，**Then** 标注为 `FEED_SOURCE_INBOX_REBUILD`(5)。
+8. **Given** 收件箱缺失后回源重建的场景，**When** Feed RPC 返回重建的 Feed，**Then** 标注为 `FEED_SOURCE_INBOX_REBUILD`(3)。
 
 ---
 

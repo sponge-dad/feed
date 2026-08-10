@@ -9,6 +9,7 @@ import (
 	"github.com/sponge-dad/feed/app/interaction/model"
 	"github.com/sponge-dad/feed/app/interaction/rpc/internal/config"
 	"github.com/sponge-dad/feed/common/idgen"
+	"github.com/sponge-dad/feed/common/interceptors"
 	"github.com/sponge-dad/feed/common/mq"
 
 	"github.com/zeromicro/go-zero/core/stores/redis"
@@ -55,13 +56,16 @@ func NewServiceContext(c config.Config) (*ServiceContext, error) {
 		return nil, err
 	}
 	return &ServiceContext{
-		Config:                  c,
-		Redis:                   rds,
-		LikesModel:              model.NewLikesModel(conn, c.CacheRedis),
-		CollectionsModel:        model.NewCollectionsModel(conn, c.CacheRedis),
-		Producer:                producer,
-		Consumer:                consumer,
-		FeedRpc:                 feedClient.NewFeed(zrpc.MustNewClient(c.FeedRpc)),
+		Config:           c,
+		Redis:            rds,
+		LikesModel:       model.NewLikesModel(conn, c.CacheRedis),
+		CollectionsModel: model.NewCollectionsModel(conn, c.CacheRedis),
+		Producer:         producer,
+		Consumer:         consumer,
+		// 必须挂 UnaryClientRequestID：否则 Interaction → Feed 这一跳会丢失 request_id，
+		// 造成全链路追踪断链（其余服务的下游 client 均已注册）。
+		FeedRpc: feedClient.NewFeed(zrpc.MustNewClient(c.FeedRpc,
+			zrpc.WithUnaryClientInterceptor(interceptors.UnaryClientRequestID))),
 		FeedBehaviorEventsModel: model.NewFeedBehaviorEventsModel(conn, c.CacheRedis),
 		FeedMetricsHourlyModel:  model.NewFeedMetricsHourlyModel(conn, c.CacheRedis),
 		BehaviorConsumer:        behaviorConsumer,
