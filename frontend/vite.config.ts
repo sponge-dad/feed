@@ -13,6 +13,7 @@ export default defineConfig(({ mode }) => {
       alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
     },
     server: {
+      host: true, // 监听 0.0.0.0，允许通过 CVM 地址（如 OA/公网）直接访问
       port: 5173,
       proxy: {
         '/api/v1': {
