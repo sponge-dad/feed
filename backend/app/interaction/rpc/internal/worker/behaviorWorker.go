@@ -37,6 +37,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sponge-dad/feed/app/interaction/interest"
 	"github.com/sponge-dad/feed/app/interaction/model"
 	"github.com/sponge-dad/feed/app/interaction/rpc/internal/config"
 	"github.com/sponge-dad/feed/app/interaction/rpc/internal/keys"
@@ -256,8 +257,8 @@ func (bw *BehaviorWorker) HandleBehaviorEvent(ctx context.Context, ev *bhv.FeedB
 		return err
 	}
 
-	// 7) 兴趣更新（待 Content 服务落地）
-	bw.updateInterest(ev.UserID, ev.FeedID, ev.ActionType)
+	// 7) 兴趣更新（依赖 Content 画像标签；失败不阻断）
+	bw.updateInterest(ctx, ev.UserID, ev.FeedID, ev.ActionType)
 	return nil
 }
 
@@ -395,19 +396,24 @@ func (bw *BehaviorWorker) HandleInteractionMessage(ctx context.Context, msg *pri
 
 	var field string
 	var delta int
+	var interestAction string
 	switch ev.ActionType {
 	case intev.ActionLike:
 		field, delta = keys.FieldLike, 1
+		interestAction = "LIKE"
 	case intev.ActionUnlike:
 		field, delta = keys.FieldLike, -1
+		interestAction = "UNLIKE"
 	case intev.ActionCollect:
 		field, delta = keys.FieldCollect, 1
+		interestAction = "COLLECT"
 	case intev.ActionUncollect:
 		field, delta = keys.FieldCollect, -1
+		interestAction = "UNCOLLECT"
 	default:
 		return nil
 	}
-	err := bw.applyCounterEvent(ctx, keys.CounterEventIdem(ev.EventID), ev.FeedID, ev.Timestamp, field, delta, ev.UserID)
+	err := bw.applyCounterEvent(ctx, keys.CounterEventIdem(ev.EventID), ev.FeedID, ev.Timestamp, field, delta, ev.UserID, interestAction)
 	if err != nil {
 		logRetry(ctx, intev.TopicInteractionEvent, msg, "event_id="+ev.EventID, err)
 	}
@@ -428,15 +434,18 @@ func (bw *BehaviorWorker) HandleCommentMessage(ctx context.Context, msg *primiti
 	}
 
 	var delta int
+	var interestAction string
 	switch ev.ActionType {
 	case cmtev.ActionCreate:
 		delta = 1
+		interestAction = "CREATE"
 	case cmtev.ActionDelete:
 		delta = -1
+		interestAction = "DELETE"
 	default:
 		return nil
 	}
-	err := bw.applyCounterEvent(ctx, keys.CounterEventIdem(ev.EventID), ev.FeedID, ev.Timestamp, keys.FieldComment, delta, ev.UserID)
+	err := bw.applyCounterEvent(ctx, keys.CounterEventIdem(ev.EventID), ev.FeedID, ev.Timestamp, keys.FieldComment, delta, ev.UserID, interestAction)
 	if err != nil {
 		logRetry(ctx, cmtev.TopicCommentEvent, msg, "event_id="+ev.EventID, err)
 	}
@@ -447,7 +456,7 @@ func (bw *BehaviorWorker) HandleCommentMessage(ctx context.Context, msg *primiti
 //
 // 计数按小时净增减记录（如上一小时点赞、本小时取消 → 本小时为 -1），跨小时求和即为净值，
 // 因此这里不做非负截断。
-func (bw *BehaviorWorker) applyCounterEvent(ctx context.Context, idemKey string, feedID, tsMs int64, field string, delta int, userID int64) error {
+func (bw *BehaviorWorker) applyCounterEvent(ctx context.Context, idemKey string, feedID, tsMs int64, field string, delta int, userID int64, interestAction string) error {
 	fresh, err := bw.svcCtx.Redis.SetnxEx(idemKey, "1", bhv.IdemExpireSec)
 	if err != nil {
 		return err
@@ -463,7 +472,7 @@ func (bw *BehaviorWorker) applyCounterEvent(ctx context.Context, idemKey string,
 		bw.dropIdem(idemKey)
 		return err
 	}
-	bw.updateInterest(userID, feedID, field)
+	bw.updateInterest(ctx, userID, feedID, interestAction)
 	return nil
 }
 
@@ -700,13 +709,21 @@ func isDuplicateErr(err error) bool {
 	return strings.Contains(err.Error(), "Duplicate entry") || strings.Contains(err.Error(), "Error 1062")
 }
 
-// updateInterest 更新用户兴趣画像（步骤 7）。
+// updateInterest 更新用户兴趣画像（步骤 7，见 06-user-interest.md）。
 //
-// 兴趣聚合依赖阶段二 Content 服务产出的内容画像（tags/category），该服务尚未实现
-// （见 06-user-interest.md）。此处仅保留扩展点：待 06 落地后，按行为权重 + 时间衰减
-// 聚合到 user_interest_profiles（MySQL）+ user:interest:{uid}（Redis）。
-// 当前不写入，避免产生无标签来源的空数据。
-func (bw *BehaviorWorker) updateInterest(userID, feedID int64, action string) {
-	logx.Debugf("behavior-worker: interest update deferred (06-user-interest.md) uid=%d feed=%d action=%s",
-		userID, feedID, action)
+// 幂等由 interest.ApplyEvent 内部去重保证（同 feed 同行为 24h 只计一次）。
+// ⚠️ 兴趣累加失败不阻断主流程：不重投行为事件，避免影响指标正确性
+// （兴趣是衍生数据，指标是核心数据，核心优先级高于衍生）。
+func (bw *BehaviorWorker) updateInterest(ctx context.Context, userID, feedID int64, action string) {
+	if userID <= 0 || feedID <= 0 {
+		return
+	}
+	// Content RPC 未装配（如单测环境）时跳过兴趣更新。
+	if bw.svcCtx.ContentRpc == nil {
+		return
+	}
+	if err := interest.ApplyEvent(ctx, bw.svcCtx.Redis, bw.svcCtx.ContentRpc, userID, feedID, action); err != nil {
+		logx.WithContext(ctx).Errorf("behavior-worker: update interest uid=%d feed=%d action=%s err=%v",
+			userID, feedID, action, err)
+	}
 }

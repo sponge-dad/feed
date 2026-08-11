@@ -92,6 +92,37 @@ const (
 
 	BehaviorInvalid      = 14003 // 埋点非法（feed 不存在 / status 异常 / 字段非法）
 	BehaviorFeedNotFound = 14004 // 帖子不存在（埋点上报时）
+
+	InteractionMetricsForbidden = 14005 // 无权查看该作品指标（非作者本人）
+	InteractionPeerInsufficient = 14006 // 同类作品样本不足，暂不做对比
+)
+
+// ---------- Content 服务 15000~15999 ----------
+const (
+	ContentProfileNotFound   = 15001 // 内容画像不存在
+	ContentAnalysisRunning   = 15002 // 内容分析进行中
+	ContentAnalysisFailed    = 15003 // 内容分析失败
+	ContentTypeUnsupported   = 15004 // 该内容类型不支持分析
+	ContentMediaInvalid      = 15005 // 媒体地址非法或不可访问
+	ContentSearchEmptyQuery  = 15006 // 检索条件为空
+	ContentSearchUnavailable = 15007 // 检索服务不可用
+	ContentProfileForbidden  = 15008 // 无权查看该内容的完整画像
+)
+
+// ---------- Agent 服务 16000~16999 ----------
+const (
+	AgentSessionNotFound   = 16001 // 会话不存在
+	AgentSessionForbidden  = 16002 // 无权访问该会话
+	AgentRunNotFound       = 16003 // 执行任务不存在
+	AgentRunNotCancelable  = 16004 // 任务已结束，无法取消
+	AgentIntentUnsupported = 16005 // 暂不支持该类问题
+	AgentToolParamInvalid  = 16006 // 工具参数非法
+	AgentToolCallFailed    = 16007 // 数据获取失败
+	AgentLimitExceeded     = 16008 // 本次执行超过调用上限
+	AgentModelError        = 16009 // 模型服务不可用
+	AgentDataForbidden     = 16010 // 只能查询本人数据
+	AgentInputTooLong      = 16011 // 输入内容过长
+	AgentRunConflict       = 16012 // 当前会话已有任务在执行
 )
 
 // messages 错误码 → 默认提示 映射
@@ -134,6 +165,31 @@ var messages = map[int]string{
 
 	BehaviorInvalid:      "埋点非法",
 	BehaviorFeedNotFound: "帖子不存在",
+
+	InteractionMetricsForbidden: "无权查看该作品指标",
+	InteractionPeerInsufficient: "同类作品样本不足，暂不做对比",
+
+	ContentProfileNotFound:   "内容画像不存在",
+	ContentAnalysisRunning:   "内容分析进行中",
+	ContentAnalysisFailed:    "内容分析失败",
+	ContentTypeUnsupported:   "该内容类型不支持分析",
+	ContentMediaInvalid:      "媒体地址非法或不可访问",
+	ContentSearchEmptyQuery:  "检索条件为空",
+	ContentSearchUnavailable: "检索服务不可用",
+	ContentProfileForbidden:  "无权查看该内容的完整画像",
+
+	AgentSessionNotFound:   "会话不存在",
+	AgentSessionForbidden:  "无权访问该会话",
+	AgentRunNotFound:       "执行任务不存在",
+	AgentRunNotCancelable:  "任务已结束，无法取消",
+	AgentIntentUnsupported: "暂不支持该类问题",
+	AgentToolParamInvalid:  "工具参数非法",
+	AgentToolCallFailed:    "数据获取失败",
+	AgentLimitExceeded:     "本次执行超过调用上限",
+	AgentModelError:        "模型服务不可用",
+	AgentDataForbidden:     "只能查询本人数据",
+	AgentInputTooLong:      "输入内容过长",
+	AgentRunConflict:       "当前会话已有任务在执行",
 }
 
 // message 返回错误码的默认提示

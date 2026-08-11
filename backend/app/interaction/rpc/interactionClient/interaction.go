@@ -14,23 +14,39 @@ import (
 )
 
 type (
+	BatchGetFeedMetricsReq            = interaction.BatchGetFeedMetricsReq
+	BatchGetFeedMetricsResp           = interaction.BatchGetFeedMetricsResp
 	BatchGetFeedStatsReq              = interaction.BatchGetFeedStatsReq
 	BatchGetFeedStatsResp             = interaction.BatchGetFeedStatsResp
 	BatchGetUserInteractionStatusReq  = interaction.BatchGetUserInteractionStatusReq
 	BatchGetUserInteractionStatusResp = interaction.BatchGetUserInteractionStatusResp
 	CollectFeedReq                    = interaction.CollectFeedReq
 	CollectFeedResp                   = interaction.CollectFeedResp
+	FeedMetrics                       = interaction.FeedMetrics
+	FeedMetricsRate                   = interaction.FeedMetricsRate
+	FeedMetricsRaw                    = interaction.FeedMetricsRaw
 	FeedStats                         = interaction.FeedStats
+	GetCreatorMetricsReq              = interaction.GetCreatorMetricsReq
+	GetCreatorMetricsResp             = interaction.GetCreatorMetricsResp
+	GetFeedMetricsReq                 = interaction.GetFeedMetricsReq
+	GetFeedMetricsResp                = interaction.GetFeedMetricsResp
 	GetFeedStatsReq                   = interaction.GetFeedStatsReq
 	GetFeedStatsResp                  = interaction.GetFeedStatsResp
+	GetPeerAverageMetricsReq          = interaction.GetPeerAverageMetricsReq
+	GetPeerAverageMetricsResp         = interaction.GetPeerAverageMetricsResp
 	GetUserCollectedFeedsReq          = interaction.GetUserCollectedFeedsReq
 	GetUserCollectedFeedsResp         = interaction.GetUserCollectedFeedsResp
 	GetUserInteractionStatusReq       = interaction.GetUserInteractionStatusReq
 	GetUserInteractionStatusResp      = interaction.GetUserInteractionStatusResp
+	GetUserInterestProfileReq         = interaction.GetUserInterestProfileReq
+	GetUserInterestProfileResp        = interaction.GetUserInterestProfileResp
 	GetUserLikedFeedsReq              = interaction.GetUserLikedFeedsReq
 	GetUserLikedFeedsResp             = interaction.GetUserLikedFeedsResp
+	InterestItem                      = interaction.InterestItem
 	LikeFeedReq                       = interaction.LikeFeedReq
 	LikeFeedResp                      = interaction.LikeFeedResp
+	PeerRateDistribution              = interaction.PeerRateDistribution
+	Percentile                        = interaction.Percentile
 	UncollectFeedReq                  = interaction.UncollectFeedReq
 	UncollectFeedResp                 = interaction.UncollectFeedResp
 	UnlikeFeedReq                     = interaction.UnlikeFeedReq
@@ -51,6 +67,12 @@ type (
 		// 列表类
 		GetUserLikedFeeds(ctx context.Context, in *GetUserLikedFeedsReq, opts ...grpc.CallOption) (*GetUserLikedFeedsResp, error)
 		GetUserCollectedFeeds(ctx context.Context, in *GetUserCollectedFeedsReq, opts ...grpc.CallOption) (*GetUserCollectedFeedsResp, error)
+		// 创作者数据（US5）
+		GetFeedMetrics(ctx context.Context, in *GetFeedMetricsReq, opts ...grpc.CallOption) (*GetFeedMetricsResp, error)
+		BatchGetFeedMetrics(ctx context.Context, in *BatchGetFeedMetricsReq, opts ...grpc.CallOption) (*BatchGetFeedMetricsResp, error)
+		GetCreatorMetrics(ctx context.Context, in *GetCreatorMetricsReq, opts ...grpc.CallOption) (*GetCreatorMetricsResp, error)
+		GetPeerAverageMetrics(ctx context.Context, in *GetPeerAverageMetricsReq, opts ...grpc.CallOption) (*GetPeerAverageMetricsResp, error)
+		GetUserInterestProfile(ctx context.Context, in *GetUserInterestProfileReq, opts ...grpc.CallOption) (*GetUserInterestProfileResp, error)
 	}
 
 	defaultInteraction struct {
@@ -115,4 +137,30 @@ func (m *defaultInteraction) GetUserLikedFeeds(ctx context.Context, in *GetUserL
 func (m *defaultInteraction) GetUserCollectedFeeds(ctx context.Context, in *GetUserCollectedFeedsReq, opts ...grpc.CallOption) (*GetUserCollectedFeedsResp, error) {
 	client := interaction.NewInteractionClient(m.cli.Conn())
 	return client.GetUserCollectedFeeds(ctx, in, opts...)
+}
+
+// 创作者数据（US5）
+func (m *defaultInteraction) GetFeedMetrics(ctx context.Context, in *GetFeedMetricsReq, opts ...grpc.CallOption) (*GetFeedMetricsResp, error) {
+	client := interaction.NewInteractionClient(m.cli.Conn())
+	return client.GetFeedMetrics(ctx, in, opts...)
+}
+
+func (m *defaultInteraction) BatchGetFeedMetrics(ctx context.Context, in *BatchGetFeedMetricsReq, opts ...grpc.CallOption) (*BatchGetFeedMetricsResp, error) {
+	client := interaction.NewInteractionClient(m.cli.Conn())
+	return client.BatchGetFeedMetrics(ctx, in, opts...)
+}
+
+func (m *defaultInteraction) GetCreatorMetrics(ctx context.Context, in *GetCreatorMetricsReq, opts ...grpc.CallOption) (*GetCreatorMetricsResp, error) {
+	client := interaction.NewInteractionClient(m.cli.Conn())
+	return client.GetCreatorMetrics(ctx, in, opts...)
+}
+
+func (m *defaultInteraction) GetPeerAverageMetrics(ctx context.Context, in *GetPeerAverageMetricsReq, opts ...grpc.CallOption) (*GetPeerAverageMetricsResp, error) {
+	client := interaction.NewInteractionClient(m.cli.Conn())
+	return client.GetPeerAverageMetrics(ctx, in, opts...)
+}
+
+func (m *defaultInteraction) GetUserInterestProfile(ctx context.Context, in *GetUserInterestProfileReq, opts ...grpc.CallOption) (*GetUserInterestProfileResp, error) {
+	client := interaction.NewInteractionClient(m.cli.Conn())
+	return client.GetUserInterestProfile(ctx, in, opts...)
 }

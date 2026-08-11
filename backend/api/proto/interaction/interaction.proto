@@ -123,6 +123,119 @@ message GetUserCollectedFeedsResp {
   int64          total       = 3;
 }
 
+// ==================== 创作者数据（US5） ====================
+
+// 原子指标（feed_metrics_hourly 聚合 + Redis 当前小时，见 08-creator-metrics.md §2）
+message FeedMetricsRaw {
+  int64 expose = 1;              // 曝光量
+  int64 play = 2;                // 播放量
+  int64 effective_play = 3;      // 有效播放量
+  int64 finish = 4;              // 完播量
+  int64 skip = 5;                // 快速划走量
+  int64 watch_duration_ms = 6;   // 累计观看毫秒
+  int64 like = 7;
+  int64 collect = 8;
+  int64 comment = 9;
+  int64 share = 10;
+}
+
+// 派生率（optional：分母为 0 时为 null，不返回 0，避免误导）
+message FeedMetricsRate {
+  optional double play_rate = 1;           // 播放率 = play/expose
+  optional double effective_play_rate = 2; // 有效播放率 = effective_play/expose
+  optional double finish_rate = 3;         // 完播率 = finish/play
+  optional double skip_rate = 4;           // 快速划走率 = skip/expose
+  optional double avg_watch_ms = 5;        // 平均播放时长 = watch_duration_ms/play
+  optional double like_rate = 6;           // 点赞率 = like/play
+  optional double collect_rate = 7;        // 收藏率 = collect/play
+  optional double comment_rate = 8;        // 评论率 = comment/play
+  optional double share_rate = 9;          // 分享率 = share/play
+}
+
+message FeedMetrics {
+  int64 feed_id = 1;
+  string window = 2;          // 1h / 24h / 7d / all
+  int64 published_at = 3;     // 发布时间的绝对时间戳
+  FeedMetricsRaw raw = 4;
+  FeedMetricsRate rate = 5;
+  bool data_complete = 6;     // 窗口内数据是否完整（当前小时未结束为 false）
+}
+
+// 单 feed 原子指标 + 派生率（供内部聚合，作者归属校验在 GetCreatorMetrics）
+message GetFeedMetricsReq {
+  int64 feed_id = 1;
+  string window = 2; // 默认 24h
+}
+message GetFeedMetricsResp {
+  FeedMetrics metrics = 1;
+}
+
+// 批量原子指标（≤100，仅 raw，内部服务间调用）
+message BatchGetFeedMetricsReq {
+  repeated int64 feed_ids = 1; // ≤100
+}
+message BatchGetFeedMetricsResp {
+  repeated FeedMetrics metrics_list = 1; // 按请求顺序
+}
+
+// 创作者视角：含 viewer_id 归属校验
+message GetCreatorMetricsReq {
+  int64 feed_id = 1;
+  int64 viewer_id = 2; // 归属校验：非作者本人/内部 → 14005
+  string window = 3;
+}
+message GetCreatorMetricsResp {
+  FeedMetrics metrics = 1;
+}
+
+// 分位数（optional：样本不足时为 null）
+message Percentile {
+  optional double avg = 1;
+  optional double p25 = 2;
+  optional double p50 = 3;
+  optional double p75 = 4;
+}
+
+message PeerRateDistribution {
+  Percentile play_rate = 1;
+  Percentile skip_rate = 2;
+  Percentile finish_rate = 3;
+}
+
+// 同类对比（匿名聚合，禁止泄漏 feed_id/author_id）
+message GetPeerAverageMetricsReq {
+  int64 feed_id = 1;
+  int64 viewer_id = 2;
+  string window = 3;
+}
+message GetPeerAverageMetricsResp {
+  string peer_level = 1;         // L1 / L2 / L3 / FALLBACK
+  int32 sample_size = 2;
+  string category = 3;
+  string duration_bucket = 4;    // 0-15s / 15-30s / 30-60s / 60s+
+  PeerRateDistribution rate = 5;
+  bool insufficient_sample = 6;  // 样本不足（Agent 需如实说明）
+}
+
+// 用户兴趣画像（仅本人可查，内部例外）
+message InterestItem {
+  string name = 1;
+  double ratio = 2; // 归一化相对占比（0~1）
+}
+message GetUserInterestProfileReq {
+  int64 user_id = 1;
+  int32 top_n = 2; // 默认 10
+  int64 viewer_id = 3; // 归属校验：非本人/内部 → Forbidden
+}
+message GetUserInterestProfileResp {
+  int64 user_id = 1;
+  bool is_cold_start = 2;      // 有效行为 < 10 为冷启动
+  repeated InterestItem top_topics = 3;
+  repeated InterestItem top_categories = 4;
+  int64 total_actions = 5;
+  int64 calculated_at = 6;
+}
+
 // ==================== 服务定义 ====================
 service Interaction {
   // 动作类
@@ -140,4 +253,11 @@ service Interaction {
   // 列表类
   rpc GetUserLikedFeeds(GetUserLikedFeedsReq) returns (GetUserLikedFeedsResp);
   rpc GetUserCollectedFeeds(GetUserCollectedFeedsReq) returns (GetUserCollectedFeedsResp);
+
+  // 创作者数据（US5）
+  rpc GetFeedMetrics(GetFeedMetricsReq) returns (GetFeedMetricsResp);
+  rpc BatchGetFeedMetrics(BatchGetFeedMetricsReq) returns (BatchGetFeedMetricsResp);
+  rpc GetCreatorMetrics(GetCreatorMetricsReq) returns (GetCreatorMetricsResp);
+  rpc GetPeerAverageMetrics(GetPeerAverageMetricsReq) returns (GetPeerAverageMetricsResp);
+  rpc GetUserInterestProfile(GetUserInterestProfileReq) returns (GetUserInterestProfileResp);
 }

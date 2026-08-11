@@ -5,6 +5,7 @@
 package svc
 
 import (
+	contentClient "github.com/sponge-dad/feed/app/content/rpc/contentClient"
 	feedClient "github.com/sponge-dad/feed/app/feed/rpc/feedclient"
 	"github.com/sponge-dad/feed/app/interaction/model"
 	"github.com/sponge-dad/feed/app/interaction/rpc/internal/config"
@@ -32,10 +33,14 @@ type ServiceContext struct {
 	Producer                Publisher
 	Consumer                *mq.Consumer
 	FeedRpc                 feedClient.Feed
+	ContentRpc              contentClient.Content
 	FeedBehaviorEventsModel model.FeedBehaviorEventsModel
 	FeedMetricsHourlyModel  model.FeedMetricsHourlyModel
+	UserInterestModel       model.UserInterestProfilesModel
 	BehaviorConsumer        *mq.Consumer
 	IdGen                   func() int64
+	// InternalUsers 内部用户集合（O(1) 查询用 map）。
+	InternalUsers map[int64]bool
 }
 
 // NewServiceContext 装配生产环境依赖。
@@ -66,9 +71,27 @@ func NewServiceContext(c config.Config) (*ServiceContext, error) {
 		// 造成全链路追踪断链（其余服务的下游 client 均已注册）。
 		FeedRpc: feedClient.NewFeed(zrpc.MustNewClient(c.FeedRpc,
 			zrpc.WithUnaryClientInterceptor(interceptors.UnaryClientRequestID))),
+		ContentRpc: contentClient.NewContent(zrpc.MustNewClient(c.ContentRpc,
+			zrpc.WithUnaryClientInterceptor(interceptors.UnaryClientRequestID))),
 		FeedBehaviorEventsModel: model.NewFeedBehaviorEventsModel(conn, c.CacheRedis),
 		FeedMetricsHourlyModel:  model.NewFeedMetricsHourlyModel(conn, c.CacheRedis),
+		UserInterestModel:       model.NewUserInterestProfilesModel(conn, c.CacheRedis),
 		BehaviorConsumer:        behaviorConsumer,
 		IdGen:                   idgen.Next,
+		InternalUsers:           toUserSet(c.InternalUserIDs),
 	}, nil
+}
+
+// toUserSet 内部用户 ID 列表 → map（O(1) 查询）。
+func toUserSet(ids []int64) map[int64]bool {
+	m := make(map[int64]bool, len(ids))
+	for _, id := range ids {
+		m[id] = true
+	}
+	return m
+}
+
+// IsInternal 是否内部用户（创作者指标/兴趣画像越权例外）。
+func (s *ServiceContext) IsInternal(userID int64) bool {
+	return s.InternalUsers[userID]
 }

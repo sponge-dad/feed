@@ -235,3 +235,103 @@ func (mr *MockInteractionMockRecorder) UnlikeFeed(arg0, arg1 interface{}, arg2 .
 	varargs := append([]interface{}{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UnlikeFeed", reflect.TypeOf((*MockInteraction)(nil).UnlikeFeed), varargs...)
 }
+
+// GetFeedMetrics mocks base method.
+func (m *MockInteraction) GetFeedMetrics(arg0 context.Context, arg1 *interaction.GetFeedMetricsReq, arg2 ...grpc.CallOption) (*interaction.GetFeedMetricsResp, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetFeedMetrics", varargs...)
+	ret0, _ := ret[0].(*interaction.GetFeedMetricsResp)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetFeedMetrics indicates an expected call of GetFeedMetrics.
+func (mr *MockInteractionMockRecorder) GetFeedMetrics(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFeedMetrics", reflect.TypeOf((*MockInteraction)(nil).GetFeedMetrics), varargs...)
+}
+
+// BatchGetFeedMetrics mocks base method.
+func (m *MockInteraction) BatchGetFeedMetrics(arg0 context.Context, arg1 *interaction.BatchGetFeedMetricsReq, arg2 ...grpc.CallOption) (*interaction.BatchGetFeedMetricsResp, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "BatchGetFeedMetrics", varargs...)
+	ret0, _ := ret[0].(*interaction.BatchGetFeedMetricsResp)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// BatchGetFeedMetrics indicates an expected call of BatchGetFeedMetrics.
+func (mr *MockInteractionMockRecorder) BatchGetFeedMetrics(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchGetFeedMetrics", reflect.TypeOf((*MockInteraction)(nil).BatchGetFeedMetrics), varargs...)
+}
+
+// GetCreatorMetrics mocks base method.
+func (m *MockInteraction) GetCreatorMetrics(arg0 context.Context, arg1 *interaction.GetCreatorMetricsReq, arg2 ...grpc.CallOption) (*interaction.GetCreatorMetricsResp, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetCreatorMetrics", varargs...)
+	ret0, _ := ret[0].(*interaction.GetCreatorMetricsResp)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCreatorMetrics indicates an expected call of GetCreatorMetrics.
+func (mr *MockInteractionMockRecorder) GetCreatorMetrics(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCreatorMetrics", reflect.TypeOf((*MockInteraction)(nil).GetCreatorMetrics), varargs...)
+}
+
+// GetPeerAverageMetrics mocks base method.
+func (m *MockInteraction) GetPeerAverageMetrics(arg0 context.Context, arg1 *interaction.GetPeerAverageMetricsReq, arg2 ...grpc.CallOption) (*interaction.GetPeerAverageMetricsResp, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetPeerAverageMetrics", varargs...)
+	ret0, _ := ret[0].(*interaction.GetPeerAverageMetricsResp)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPeerAverageMetrics indicates an expected call of GetPeerAverageMetrics.
+func (mr *MockInteractionMockRecorder) GetPeerAverageMetrics(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPeerAverageMetrics", reflect.TypeOf((*MockInteraction)(nil).GetPeerAverageMetrics), varargs...)
+}
+
+// GetUserInterestProfile mocks base method.
+func (m *MockInteraction) GetUserInterestProfile(arg0 context.Context, arg1 *interaction.GetUserInterestProfileReq, arg2 ...grpc.CallOption) (*interaction.GetUserInterestProfileResp, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetUserInterestProfile", varargs...)
+	ret0, _ := ret[0].(*interaction.GetUserInterestProfileResp)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserInterestProfile indicates an expected call of GetUserInterestProfile.
+func (mr *MockInteractionMockRecorder) GetUserInterestProfile(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserInterestProfile", reflect.TypeOf((*MockInteraction)(nil).GetUserInterestProfile), varargs...)
+}

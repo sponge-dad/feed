@@ -38,6 +38,11 @@ const (
 	Interaction_BatchGetUserInteractionStatus_FullMethodName = "/interaction.Interaction/BatchGetUserInteractionStatus"
 	Interaction_GetUserLikedFeeds_FullMethodName             = "/interaction.Interaction/GetUserLikedFeeds"
 	Interaction_GetUserCollectedFeeds_FullMethodName         = "/interaction.Interaction/GetUserCollectedFeeds"
+	Interaction_GetFeedMetrics_FullMethodName                = "/interaction.Interaction/GetFeedMetrics"
+	Interaction_BatchGetFeedMetrics_FullMethodName           = "/interaction.Interaction/BatchGetFeedMetrics"
+	Interaction_GetCreatorMetrics_FullMethodName             = "/interaction.Interaction/GetCreatorMetrics"
+	Interaction_GetPeerAverageMetrics_FullMethodName         = "/interaction.Interaction/GetPeerAverageMetrics"
+	Interaction_GetUserInterestProfile_FullMethodName        = "/interaction.Interaction/GetUserInterestProfile"
 )
 
 // InteractionClient is the client API for Interaction service.
@@ -59,6 +64,12 @@ type InteractionClient interface {
 	// 列表类
 	GetUserLikedFeeds(ctx context.Context, in *GetUserLikedFeedsReq, opts ...grpc.CallOption) (*GetUserLikedFeedsResp, error)
 	GetUserCollectedFeeds(ctx context.Context, in *GetUserCollectedFeedsReq, opts ...grpc.CallOption) (*GetUserCollectedFeedsResp, error)
+	// 创作者数据（US5）
+	GetFeedMetrics(ctx context.Context, in *GetFeedMetricsReq, opts ...grpc.CallOption) (*GetFeedMetricsResp, error)
+	BatchGetFeedMetrics(ctx context.Context, in *BatchGetFeedMetricsReq, opts ...grpc.CallOption) (*BatchGetFeedMetricsResp, error)
+	GetCreatorMetrics(ctx context.Context, in *GetCreatorMetricsReq, opts ...grpc.CallOption) (*GetCreatorMetricsResp, error)
+	GetPeerAverageMetrics(ctx context.Context, in *GetPeerAverageMetricsReq, opts ...grpc.CallOption) (*GetPeerAverageMetricsResp, error)
+	GetUserInterestProfile(ctx context.Context, in *GetUserInterestProfileReq, opts ...grpc.CallOption) (*GetUserInterestProfileResp, error)
 }
 
 type interactionClient struct {
@@ -169,6 +180,56 @@ func (c *interactionClient) GetUserCollectedFeeds(ctx context.Context, in *GetUs
 	return out, nil
 }
 
+func (c *interactionClient) GetFeedMetrics(ctx context.Context, in *GetFeedMetricsReq, opts ...grpc.CallOption) (*GetFeedMetricsResp, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetFeedMetricsResp)
+	err := c.cc.Invoke(ctx, Interaction_GetFeedMetrics_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *interactionClient) BatchGetFeedMetrics(ctx context.Context, in *BatchGetFeedMetricsReq, opts ...grpc.CallOption) (*BatchGetFeedMetricsResp, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BatchGetFeedMetricsResp)
+	err := c.cc.Invoke(ctx, Interaction_BatchGetFeedMetrics_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *interactionClient) GetCreatorMetrics(ctx context.Context, in *GetCreatorMetricsReq, opts ...grpc.CallOption) (*GetCreatorMetricsResp, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCreatorMetricsResp)
+	err := c.cc.Invoke(ctx, Interaction_GetCreatorMetrics_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *interactionClient) GetPeerAverageMetrics(ctx context.Context, in *GetPeerAverageMetricsReq, opts ...grpc.CallOption) (*GetPeerAverageMetricsResp, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPeerAverageMetricsResp)
+	err := c.cc.Invoke(ctx, Interaction_GetPeerAverageMetrics_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *interactionClient) GetUserInterestProfile(ctx context.Context, in *GetUserInterestProfileReq, opts ...grpc.CallOption) (*GetUserInterestProfileResp, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUserInterestProfileResp)
+	err := c.cc.Invoke(ctx, Interaction_GetUserInterestProfile_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // InteractionServer is the server API for Interaction service.
 // All implementations must embed UnimplementedInteractionServer
 // for forward compatibility.
@@ -188,6 +249,12 @@ type InteractionServer interface {
 	// 列表类
 	GetUserLikedFeeds(context.Context, *GetUserLikedFeedsReq) (*GetUserLikedFeedsResp, error)
 	GetUserCollectedFeeds(context.Context, *GetUserCollectedFeedsReq) (*GetUserCollectedFeedsResp, error)
+	// 创作者数据（US5）
+	GetFeedMetrics(context.Context, *GetFeedMetricsReq) (*GetFeedMetricsResp, error)
+	BatchGetFeedMetrics(context.Context, *BatchGetFeedMetricsReq) (*BatchGetFeedMetricsResp, error)
+	GetCreatorMetrics(context.Context, *GetCreatorMetricsReq) (*GetCreatorMetricsResp, error)
+	GetPeerAverageMetrics(context.Context, *GetPeerAverageMetricsReq) (*GetPeerAverageMetricsResp, error)
+	GetUserInterestProfile(context.Context, *GetUserInterestProfileReq) (*GetUserInterestProfileResp, error)
 	mustEmbedUnimplementedInteractionServer()
 }
 
@@ -227,6 +294,21 @@ func (UnimplementedInteractionServer) GetUserLikedFeeds(context.Context, *GetUse
 }
 func (UnimplementedInteractionServer) GetUserCollectedFeeds(context.Context, *GetUserCollectedFeedsReq) (*GetUserCollectedFeedsResp, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetUserCollectedFeeds not implemented")
+}
+func (UnimplementedInteractionServer) GetFeedMetrics(context.Context, *GetFeedMetricsReq) (*GetFeedMetricsResp, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetFeedMetrics not implemented")
+}
+func (UnimplementedInteractionServer) BatchGetFeedMetrics(context.Context, *BatchGetFeedMetricsReq) (*BatchGetFeedMetricsResp, error) {
+	return nil, status.Error(codes.Unimplemented, "method BatchGetFeedMetrics not implemented")
+}
+func (UnimplementedInteractionServer) GetCreatorMetrics(context.Context, *GetCreatorMetricsReq) (*GetCreatorMetricsResp, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCreatorMetrics not implemented")
+}
+func (UnimplementedInteractionServer) GetPeerAverageMetrics(context.Context, *GetPeerAverageMetricsReq) (*GetPeerAverageMetricsResp, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPeerAverageMetrics not implemented")
+}
+func (UnimplementedInteractionServer) GetUserInterestProfile(context.Context, *GetUserInterestProfileReq) (*GetUserInterestProfileResp, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUserInterestProfile not implemented")
 }
 func (UnimplementedInteractionServer) mustEmbedUnimplementedInteractionServer() {}
 func (UnimplementedInteractionServer) testEmbeddedByValue()                     {}
@@ -429,6 +511,96 @@ func _Interaction_GetUserCollectedFeeds_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Interaction_GetFeedMetrics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFeedMetricsReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InteractionServer).GetFeedMetrics(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Interaction_GetFeedMetrics_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InteractionServer).GetFeedMetrics(ctx, req.(*GetFeedMetricsReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Interaction_BatchGetFeedMetrics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BatchGetFeedMetricsReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InteractionServer).BatchGetFeedMetrics(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Interaction_BatchGetFeedMetrics_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InteractionServer).BatchGetFeedMetrics(ctx, req.(*BatchGetFeedMetricsReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Interaction_GetCreatorMetrics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCreatorMetricsReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InteractionServer).GetCreatorMetrics(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Interaction_GetCreatorMetrics_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InteractionServer).GetCreatorMetrics(ctx, req.(*GetCreatorMetricsReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Interaction_GetPeerAverageMetrics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPeerAverageMetricsReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InteractionServer).GetPeerAverageMetrics(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Interaction_GetPeerAverageMetrics_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InteractionServer).GetPeerAverageMetrics(ctx, req.(*GetPeerAverageMetricsReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Interaction_GetUserInterestProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserInterestProfileReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InteractionServer).GetUserInterestProfile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Interaction_GetUserInterestProfile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InteractionServer).GetUserInterestProfile(ctx, req.(*GetUserInterestProfileReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Interaction_ServiceDesc is the grpc.ServiceDesc for Interaction service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -475,6 +647,26 @@ var Interaction_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUserCollectedFeeds",
 			Handler:    _Interaction_GetUserCollectedFeeds_Handler,
+		},
+		{
+			MethodName: "GetFeedMetrics",
+			Handler:    _Interaction_GetFeedMetrics_Handler,
+		},
+		{
+			MethodName: "BatchGetFeedMetrics",
+			Handler:    _Interaction_BatchGetFeedMetrics_Handler,
+		},
+		{
+			MethodName: "GetCreatorMetrics",
+			Handler:    _Interaction_GetCreatorMetrics_Handler,
+		},
+		{
+			MethodName: "GetPeerAverageMetrics",
+			Handler:    _Interaction_GetPeerAverageMetrics_Handler,
+		},
+		{
+			MethodName: "GetUserInterestProfile",
+			Handler:    _Interaction_GetUserInterestProfile_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -133,6 +133,21 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Path:    "/feeds/behaviors",
 				Handler: feed.ReportBehaviorsHandler(serverCtx),
 			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/feeds/:feedId/content-profile",
+				Handler: feed.ContentProfileHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/feeds/:feedId/content-profile/feedback",
+				Handler: feed.ContentProfileFeedbackHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/creator/feeds/:feedId/metrics",
+				Handler: feed.CreatorMetricsHandler(serverCtx),
+			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
 		rest.WithPrefix("/api/v1"),

@@ -29,6 +29,15 @@ FeedRpc:
       # 注意：本机是 K8s 节点，2379 被 K8s 自带 etcd 占用，开发用 etcd 容器映射在 2479
       - 127.0.0.1:2479
     Key: feed.rpc
+ContentRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2479
+    Key: content.rpc
+  Timeout: 3000
+# 内部用户集合：创作者指标/兴趣画像越权例外（仅审计系统账号，禁止塞普通用户）
+InternalUserIDs:
+  - 1
 Behavior:
   ConsumeGroup: behavior-persistence-consumer
   MetricsFlushIntervalSec: 60

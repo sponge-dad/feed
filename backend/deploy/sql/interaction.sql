@@ -38,3 +38,19 @@ CREATE TABLE IF NOT EXISTS `collections` (
     KEY `idx_feed` (`feed_id`),
     KEY `idx_user_created` (`user_id`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户收藏记录表';
+
+-- user_interest_profiles：用户兴趣画像快照（US5，见 docs/design/agent/10-data-model.md §5）
+-- 双写模型：Redis ZSet user:interest:{user_id}（实时）+ 本表快照（兜底/离线）
+-- version 单调递增：并发写入时识别新旧快照，防旧快照回退覆盖新数据
+CREATE TABLE IF NOT EXISTS `user_interest_profiles` (
+    `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `user_id`       BIGINT   NOT NULL COMMENT '用户 ID（uk）',
+    `interest_json` JSON     NOT NULL COMMENT '{categories:[],topics:[],total_actions,window_days}',
+    `version`       BIGINT   NOT NULL DEFAULT 1 COMMENT '单调递增，识别新旧快照',
+    `calculated_at` DATETIME(3) NOT NULL COMMENT '计算时间',
+    `created_at`    DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updated_at`    DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_id` (`user_id`),
+    KEY `idx_calculated_at` (`calculated_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户兴趣画像快照';

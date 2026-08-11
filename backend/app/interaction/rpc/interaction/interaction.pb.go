@@ -1122,6 +1122,1078 @@ func (x *GetUserCollectedFeedsResp) GetTotal() int64 {
 	return 0
 }
 
+// 原子指标（feed_metrics_hourly 聚合 + Redis 当前小时，见 08-creator-metrics.md §2）
+type FeedMetricsRaw struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Expose          int64                  `protobuf:"varint,1,opt,name=expose,proto3" json:"expose,omitempty"`                                            // 曝光量
+	Play            int64                  `protobuf:"varint,2,opt,name=play,proto3" json:"play,omitempty"`                                                // 播放量
+	EffectivePlay   int64                  `protobuf:"varint,3,opt,name=effective_play,json=effectivePlay,proto3" json:"effective_play,omitempty"`         // 有效播放量
+	Finish          int64                  `protobuf:"varint,4,opt,name=finish,proto3" json:"finish,omitempty"`                                            // 完播量
+	Skip            int64                  `protobuf:"varint,5,opt,name=skip,proto3" json:"skip,omitempty"`                                                // 快速划走量
+	WatchDurationMs int64                  `protobuf:"varint,6,opt,name=watch_duration_ms,json=watchDurationMs,proto3" json:"watch_duration_ms,omitempty"` // 累计观看毫秒
+	Like            int64                  `protobuf:"varint,7,opt,name=like,proto3" json:"like,omitempty"`
+	Collect         int64                  `protobuf:"varint,8,opt,name=collect,proto3" json:"collect,omitempty"`
+	Comment         int64                  `protobuf:"varint,9,opt,name=comment,proto3" json:"comment,omitempty"`
+	Share           int64                  `protobuf:"varint,10,opt,name=share,proto3" json:"share,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *FeedMetricsRaw) Reset() {
+	*x = FeedMetricsRaw{}
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FeedMetricsRaw) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FeedMetricsRaw) ProtoMessage() {}
+
+func (x *FeedMetricsRaw) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FeedMetricsRaw.ProtoReflect.Descriptor instead.
+func (*FeedMetricsRaw) Descriptor() ([]byte, []int) {
+	return file_api_proto_interaction_interaction_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *FeedMetricsRaw) GetExpose() int64 {
+	if x != nil {
+		return x.Expose
+	}
+	return 0
+}
+
+func (x *FeedMetricsRaw) GetPlay() int64 {
+	if x != nil {
+		return x.Play
+	}
+	return 0
+}
+
+func (x *FeedMetricsRaw) GetEffectivePlay() int64 {
+	if x != nil {
+		return x.EffectivePlay
+	}
+	return 0
+}
+
+func (x *FeedMetricsRaw) GetFinish() int64 {
+	if x != nil {
+		return x.Finish
+	}
+	return 0
+}
+
+func (x *FeedMetricsRaw) GetSkip() int64 {
+	if x != nil {
+		return x.Skip
+	}
+	return 0
+}
+
+func (x *FeedMetricsRaw) GetWatchDurationMs() int64 {
+	if x != nil {
+		return x.WatchDurationMs
+	}
+	return 0
+}
+
+func (x *FeedMetricsRaw) GetLike() int64 {
+	if x != nil {
+		return x.Like
+	}
+	return 0
+}
+
+func (x *FeedMetricsRaw) GetCollect() int64 {
+	if x != nil {
+		return x.Collect
+	}
+	return 0
+}
+
+func (x *FeedMetricsRaw) GetComment() int64 {
+	if x != nil {
+		return x.Comment
+	}
+	return 0
+}
+
+func (x *FeedMetricsRaw) GetShare() int64 {
+	if x != nil {
+		return x.Share
+	}
+	return 0
+}
+
+// 派生率（optional：分母为 0 时为 null，不返回 0，避免误导）
+type FeedMetricsRate struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	PlayRate          *float64               `protobuf:"fixed64,1,opt,name=play_rate,json=playRate,proto3,oneof" json:"play_rate,omitempty"`                              // 播放率 = play/expose
+	EffectivePlayRate *float64               `protobuf:"fixed64,2,opt,name=effective_play_rate,json=effectivePlayRate,proto3,oneof" json:"effective_play_rate,omitempty"` // 有效播放率 = effective_play/expose
+	FinishRate        *float64               `protobuf:"fixed64,3,opt,name=finish_rate,json=finishRate,proto3,oneof" json:"finish_rate,omitempty"`                        // 完播率 = finish/play
+	SkipRate          *float64               `protobuf:"fixed64,4,opt,name=skip_rate,json=skipRate,proto3,oneof" json:"skip_rate,omitempty"`                              // 快速划走率 = skip/expose
+	AvgWatchMs        *float64               `protobuf:"fixed64,5,opt,name=avg_watch_ms,json=avgWatchMs,proto3,oneof" json:"avg_watch_ms,omitempty"`                      // 平均播放时长 = watch_duration_ms/play
+	LikeRate          *float64               `protobuf:"fixed64,6,opt,name=like_rate,json=likeRate,proto3,oneof" json:"like_rate,omitempty"`                              // 点赞率 = like/play
+	CollectRate       *float64               `protobuf:"fixed64,7,opt,name=collect_rate,json=collectRate,proto3,oneof" json:"collect_rate,omitempty"`                     // 收藏率 = collect/play
+	CommentRate       *float64               `protobuf:"fixed64,8,opt,name=comment_rate,json=commentRate,proto3,oneof" json:"comment_rate,omitempty"`                     // 评论率 = comment/play
+	ShareRate         *float64               `protobuf:"fixed64,9,opt,name=share_rate,json=shareRate,proto3,oneof" json:"share_rate,omitempty"`                           // 分享率 = share/play
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *FeedMetricsRate) Reset() {
+	*x = FeedMetricsRate{}
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FeedMetricsRate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FeedMetricsRate) ProtoMessage() {}
+
+func (x *FeedMetricsRate) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FeedMetricsRate.ProtoReflect.Descriptor instead.
+func (*FeedMetricsRate) Descriptor() ([]byte, []int) {
+	return file_api_proto_interaction_interaction_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *FeedMetricsRate) GetPlayRate() float64 {
+	if x != nil && x.PlayRate != nil {
+		return *x.PlayRate
+	}
+	return 0
+}
+
+func (x *FeedMetricsRate) GetEffectivePlayRate() float64 {
+	if x != nil && x.EffectivePlayRate != nil {
+		return *x.EffectivePlayRate
+	}
+	return 0
+}
+
+func (x *FeedMetricsRate) GetFinishRate() float64 {
+	if x != nil && x.FinishRate != nil {
+		return *x.FinishRate
+	}
+	return 0
+}
+
+func (x *FeedMetricsRate) GetSkipRate() float64 {
+	if x != nil && x.SkipRate != nil {
+		return *x.SkipRate
+	}
+	return 0
+}
+
+func (x *FeedMetricsRate) GetAvgWatchMs() float64 {
+	if x != nil && x.AvgWatchMs != nil {
+		return *x.AvgWatchMs
+	}
+	return 0
+}
+
+func (x *FeedMetricsRate) GetLikeRate() float64 {
+	if x != nil && x.LikeRate != nil {
+		return *x.LikeRate
+	}
+	return 0
+}
+
+func (x *FeedMetricsRate) GetCollectRate() float64 {
+	if x != nil && x.CollectRate != nil {
+		return *x.CollectRate
+	}
+	return 0
+}
+
+func (x *FeedMetricsRate) GetCommentRate() float64 {
+	if x != nil && x.CommentRate != nil {
+		return *x.CommentRate
+	}
+	return 0
+}
+
+func (x *FeedMetricsRate) GetShareRate() float64 {
+	if x != nil && x.ShareRate != nil {
+		return *x.ShareRate
+	}
+	return 0
+}
+
+type FeedMetrics struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	FeedId        int64                  `protobuf:"varint,1,opt,name=feed_id,json=feedId,proto3" json:"feed_id,omitempty"`
+	Window        string                 `protobuf:"bytes,2,opt,name=window,proto3" json:"window,omitempty"`                               // 1h / 24h / 7d / all
+	PublishedAt   int64                  `protobuf:"varint,3,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"` // 发布时间的绝对时间戳
+	Raw           *FeedMetricsRaw        `protobuf:"bytes,4,opt,name=raw,proto3" json:"raw,omitempty"`
+	Rate          *FeedMetricsRate       `protobuf:"bytes,5,opt,name=rate,proto3" json:"rate,omitempty"`
+	DataComplete  bool                   `protobuf:"varint,6,opt,name=data_complete,json=dataComplete,proto3" json:"data_complete,omitempty"` // 窗口内数据是否完整（当前小时未结束为 false）
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FeedMetrics) Reset() {
+	*x = FeedMetrics{}
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FeedMetrics) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FeedMetrics) ProtoMessage() {}
+
+func (x *FeedMetrics) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FeedMetrics.ProtoReflect.Descriptor instead.
+func (*FeedMetrics) Descriptor() ([]byte, []int) {
+	return file_api_proto_interaction_interaction_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *FeedMetrics) GetFeedId() int64 {
+	if x != nil {
+		return x.FeedId
+	}
+	return 0
+}
+
+func (x *FeedMetrics) GetWindow() string {
+	if x != nil {
+		return x.Window
+	}
+	return ""
+}
+
+func (x *FeedMetrics) GetPublishedAt() int64 {
+	if x != nil {
+		return x.PublishedAt
+	}
+	return 0
+}
+
+func (x *FeedMetrics) GetRaw() *FeedMetricsRaw {
+	if x != nil {
+		return x.Raw
+	}
+	return nil
+}
+
+func (x *FeedMetrics) GetRate() *FeedMetricsRate {
+	if x != nil {
+		return x.Rate
+	}
+	return nil
+}
+
+func (x *FeedMetrics) GetDataComplete() bool {
+	if x != nil {
+		return x.DataComplete
+	}
+	return false
+}
+
+// 单 feed 原子指标 + 派生率（供内部聚合，作者归属校验在 GetCreatorMetrics）
+type GetFeedMetricsReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	FeedId        int64                  `protobuf:"varint,1,opt,name=feed_id,json=feedId,proto3" json:"feed_id,omitempty"`
+	Window        string                 `protobuf:"bytes,2,opt,name=window,proto3" json:"window,omitempty"` // 默认 24h
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetFeedMetricsReq) Reset() {
+	*x = GetFeedMetricsReq{}
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetFeedMetricsReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetFeedMetricsReq) ProtoMessage() {}
+
+func (x *GetFeedMetricsReq) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetFeedMetricsReq.ProtoReflect.Descriptor instead.
+func (*GetFeedMetricsReq) Descriptor() ([]byte, []int) {
+	return file_api_proto_interaction_interaction_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *GetFeedMetricsReq) GetFeedId() int64 {
+	if x != nil {
+		return x.FeedId
+	}
+	return 0
+}
+
+func (x *GetFeedMetricsReq) GetWindow() string {
+	if x != nil {
+		return x.Window
+	}
+	return ""
+}
+
+type GetFeedMetricsResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Metrics       *FeedMetrics           `protobuf:"bytes,1,opt,name=metrics,proto3" json:"metrics,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetFeedMetricsResp) Reset() {
+	*x = GetFeedMetricsResp{}
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetFeedMetricsResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetFeedMetricsResp) ProtoMessage() {}
+
+func (x *GetFeedMetricsResp) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetFeedMetricsResp.ProtoReflect.Descriptor instead.
+func (*GetFeedMetricsResp) Descriptor() ([]byte, []int) {
+	return file_api_proto_interaction_interaction_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *GetFeedMetricsResp) GetMetrics() *FeedMetrics {
+	if x != nil {
+		return x.Metrics
+	}
+	return nil
+}
+
+// 批量原子指标（≤100，仅 raw，内部服务间调用）
+type BatchGetFeedMetricsReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	FeedIds       []int64                `protobuf:"varint,1,rep,packed,name=feed_ids,json=feedIds,proto3" json:"feed_ids,omitempty"` // ≤100
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BatchGetFeedMetricsReq) Reset() {
+	*x = BatchGetFeedMetricsReq{}
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BatchGetFeedMetricsReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BatchGetFeedMetricsReq) ProtoMessage() {}
+
+func (x *BatchGetFeedMetricsReq) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BatchGetFeedMetricsReq.ProtoReflect.Descriptor instead.
+func (*BatchGetFeedMetricsReq) Descriptor() ([]byte, []int) {
+	return file_api_proto_interaction_interaction_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *BatchGetFeedMetricsReq) GetFeedIds() []int64 {
+	if x != nil {
+		return x.FeedIds
+	}
+	return nil
+}
+
+type BatchGetFeedMetricsResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MetricsList   []*FeedMetrics         `protobuf:"bytes,1,rep,name=metrics_list,json=metricsList,proto3" json:"metrics_list,omitempty"` // 按请求顺序
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BatchGetFeedMetricsResp) Reset() {
+	*x = BatchGetFeedMetricsResp{}
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BatchGetFeedMetricsResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BatchGetFeedMetricsResp) ProtoMessage() {}
+
+func (x *BatchGetFeedMetricsResp) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BatchGetFeedMetricsResp.ProtoReflect.Descriptor instead.
+func (*BatchGetFeedMetricsResp) Descriptor() ([]byte, []int) {
+	return file_api_proto_interaction_interaction_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *BatchGetFeedMetricsResp) GetMetricsList() []*FeedMetrics {
+	if x != nil {
+		return x.MetricsList
+	}
+	return nil
+}
+
+// 创作者视角：含 viewer_id 归属校验
+type GetCreatorMetricsReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	FeedId        int64                  `protobuf:"varint,1,opt,name=feed_id,json=feedId,proto3" json:"feed_id,omitempty"`
+	ViewerId      int64                  `protobuf:"varint,2,opt,name=viewer_id,json=viewerId,proto3" json:"viewer_id,omitempty"` // 归属校验：非作者本人/内部 → 14005
+	Window        string                 `protobuf:"bytes,3,opt,name=window,proto3" json:"window,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCreatorMetricsReq) Reset() {
+	*x = GetCreatorMetricsReq{}
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCreatorMetricsReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCreatorMetricsReq) ProtoMessage() {}
+
+func (x *GetCreatorMetricsReq) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCreatorMetricsReq.ProtoReflect.Descriptor instead.
+func (*GetCreatorMetricsReq) Descriptor() ([]byte, []int) {
+	return file_api_proto_interaction_interaction_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *GetCreatorMetricsReq) GetFeedId() int64 {
+	if x != nil {
+		return x.FeedId
+	}
+	return 0
+}
+
+func (x *GetCreatorMetricsReq) GetViewerId() int64 {
+	if x != nil {
+		return x.ViewerId
+	}
+	return 0
+}
+
+func (x *GetCreatorMetricsReq) GetWindow() string {
+	if x != nil {
+		return x.Window
+	}
+	return ""
+}
+
+type GetCreatorMetricsResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Metrics       *FeedMetrics           `protobuf:"bytes,1,opt,name=metrics,proto3" json:"metrics,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCreatorMetricsResp) Reset() {
+	*x = GetCreatorMetricsResp{}
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCreatorMetricsResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCreatorMetricsResp) ProtoMessage() {}
+
+func (x *GetCreatorMetricsResp) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCreatorMetricsResp.ProtoReflect.Descriptor instead.
+func (*GetCreatorMetricsResp) Descriptor() ([]byte, []int) {
+	return file_api_proto_interaction_interaction_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *GetCreatorMetricsResp) GetMetrics() *FeedMetrics {
+	if x != nil {
+		return x.Metrics
+	}
+	return nil
+}
+
+// 分位数（optional：样本不足时为 null）
+type Percentile struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Avg           *float64               `protobuf:"fixed64,1,opt,name=avg,proto3,oneof" json:"avg,omitempty"`
+	P25           *float64               `protobuf:"fixed64,2,opt,name=p25,proto3,oneof" json:"p25,omitempty"`
+	P50           *float64               `protobuf:"fixed64,3,opt,name=p50,proto3,oneof" json:"p50,omitempty"`
+	P75           *float64               `protobuf:"fixed64,4,opt,name=p75,proto3,oneof" json:"p75,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Percentile) Reset() {
+	*x = Percentile{}
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Percentile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Percentile) ProtoMessage() {}
+
+func (x *Percentile) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Percentile.ProtoReflect.Descriptor instead.
+func (*Percentile) Descriptor() ([]byte, []int) {
+	return file_api_proto_interaction_interaction_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *Percentile) GetAvg() float64 {
+	if x != nil && x.Avg != nil {
+		return *x.Avg
+	}
+	return 0
+}
+
+func (x *Percentile) GetP25() float64 {
+	if x != nil && x.P25 != nil {
+		return *x.P25
+	}
+	return 0
+}
+
+func (x *Percentile) GetP50() float64 {
+	if x != nil && x.P50 != nil {
+		return *x.P50
+	}
+	return 0
+}
+
+func (x *Percentile) GetP75() float64 {
+	if x != nil && x.P75 != nil {
+		return *x.P75
+	}
+	return 0
+}
+
+type PeerRateDistribution struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PlayRate      *Percentile            `protobuf:"bytes,1,opt,name=play_rate,json=playRate,proto3" json:"play_rate,omitempty"`
+	SkipRate      *Percentile            `protobuf:"bytes,2,opt,name=skip_rate,json=skipRate,proto3" json:"skip_rate,omitempty"`
+	FinishRate    *Percentile            `protobuf:"bytes,3,opt,name=finish_rate,json=finishRate,proto3" json:"finish_rate,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PeerRateDistribution) Reset() {
+	*x = PeerRateDistribution{}
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PeerRateDistribution) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PeerRateDistribution) ProtoMessage() {}
+
+func (x *PeerRateDistribution) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PeerRateDistribution.ProtoReflect.Descriptor instead.
+func (*PeerRateDistribution) Descriptor() ([]byte, []int) {
+	return file_api_proto_interaction_interaction_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *PeerRateDistribution) GetPlayRate() *Percentile {
+	if x != nil {
+		return x.PlayRate
+	}
+	return nil
+}
+
+func (x *PeerRateDistribution) GetSkipRate() *Percentile {
+	if x != nil {
+		return x.SkipRate
+	}
+	return nil
+}
+
+func (x *PeerRateDistribution) GetFinishRate() *Percentile {
+	if x != nil {
+		return x.FinishRate
+	}
+	return nil
+}
+
+// 同类对比（匿名聚合，禁止泄漏 feed_id/author_id）
+type GetPeerAverageMetricsReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	FeedId        int64                  `protobuf:"varint,1,opt,name=feed_id,json=feedId,proto3" json:"feed_id,omitempty"`
+	ViewerId      int64                  `protobuf:"varint,2,opt,name=viewer_id,json=viewerId,proto3" json:"viewer_id,omitempty"`
+	Window        string                 `protobuf:"bytes,3,opt,name=window,proto3" json:"window,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetPeerAverageMetricsReq) Reset() {
+	*x = GetPeerAverageMetricsReq{}
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPeerAverageMetricsReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPeerAverageMetricsReq) ProtoMessage() {}
+
+func (x *GetPeerAverageMetricsReq) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPeerAverageMetricsReq.ProtoReflect.Descriptor instead.
+func (*GetPeerAverageMetricsReq) Descriptor() ([]byte, []int) {
+	return file_api_proto_interaction_interaction_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *GetPeerAverageMetricsReq) GetFeedId() int64 {
+	if x != nil {
+		return x.FeedId
+	}
+	return 0
+}
+
+func (x *GetPeerAverageMetricsReq) GetViewerId() int64 {
+	if x != nil {
+		return x.ViewerId
+	}
+	return 0
+}
+
+func (x *GetPeerAverageMetricsReq) GetWindow() string {
+	if x != nil {
+		return x.Window
+	}
+	return ""
+}
+
+type GetPeerAverageMetricsResp struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	PeerLevel          string                 `protobuf:"bytes,1,opt,name=peer_level,json=peerLevel,proto3" json:"peer_level,omitempty"` // L1 / L2 / L3 / FALLBACK
+	SampleSize         int32                  `protobuf:"varint,2,opt,name=sample_size,json=sampleSize,proto3" json:"sample_size,omitempty"`
+	Category           string                 `protobuf:"bytes,3,opt,name=category,proto3" json:"category,omitempty"`
+	DurationBucket     string                 `protobuf:"bytes,4,opt,name=duration_bucket,json=durationBucket,proto3" json:"duration_bucket,omitempty"` // 0-15s / 15-30s / 30-60s / 60s+
+	Rate               *PeerRateDistribution  `protobuf:"bytes,5,opt,name=rate,proto3" json:"rate,omitempty"`
+	InsufficientSample bool                   `protobuf:"varint,6,opt,name=insufficient_sample,json=insufficientSample,proto3" json:"insufficient_sample,omitempty"` // 样本不足（Agent 需如实说明）
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *GetPeerAverageMetricsResp) Reset() {
+	*x = GetPeerAverageMetricsResp{}
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPeerAverageMetricsResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPeerAverageMetricsResp) ProtoMessage() {}
+
+func (x *GetPeerAverageMetricsResp) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPeerAverageMetricsResp.ProtoReflect.Descriptor instead.
+func (*GetPeerAverageMetricsResp) Descriptor() ([]byte, []int) {
+	return file_api_proto_interaction_interaction_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *GetPeerAverageMetricsResp) GetPeerLevel() string {
+	if x != nil {
+		return x.PeerLevel
+	}
+	return ""
+}
+
+func (x *GetPeerAverageMetricsResp) GetSampleSize() int32 {
+	if x != nil {
+		return x.SampleSize
+	}
+	return 0
+}
+
+func (x *GetPeerAverageMetricsResp) GetCategory() string {
+	if x != nil {
+		return x.Category
+	}
+	return ""
+}
+
+func (x *GetPeerAverageMetricsResp) GetDurationBucket() string {
+	if x != nil {
+		return x.DurationBucket
+	}
+	return ""
+}
+
+func (x *GetPeerAverageMetricsResp) GetRate() *PeerRateDistribution {
+	if x != nil {
+		return x.Rate
+	}
+	return nil
+}
+
+func (x *GetPeerAverageMetricsResp) GetInsufficientSample() bool {
+	if x != nil {
+		return x.InsufficientSample
+	}
+	return false
+}
+
+// 用户兴趣画像（仅本人可查，内部例外）
+type InterestItem struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Ratio         float64                `protobuf:"fixed64,2,opt,name=ratio,proto3" json:"ratio,omitempty"` // 归一化相对占比（0~1）
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InterestItem) Reset() {
+	*x = InterestItem{}
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InterestItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InterestItem) ProtoMessage() {}
+
+func (x *InterestItem) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InterestItem.ProtoReflect.Descriptor instead.
+func (*InterestItem) Descriptor() ([]byte, []int) {
+	return file_api_proto_interaction_interaction_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *InterestItem) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *InterestItem) GetRatio() float64 {
+	if x != nil {
+		return x.Ratio
+	}
+	return 0
+}
+
+type GetUserInterestProfileReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	TopN          int32                  `protobuf:"varint,2,opt,name=top_n,json=topN,proto3" json:"top_n,omitempty"`             // 默认 10
+	ViewerId      int64                  `protobuf:"varint,3,opt,name=viewer_id,json=viewerId,proto3" json:"viewer_id,omitempty"` // 归属校验：非本人/内部 → Forbidden
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetUserInterestProfileReq) Reset() {
+	*x = GetUserInterestProfileReq{}
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetUserInterestProfileReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetUserInterestProfileReq) ProtoMessage() {}
+
+func (x *GetUserInterestProfileReq) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetUserInterestProfileReq.ProtoReflect.Descriptor instead.
+func (*GetUserInterestProfileReq) Descriptor() ([]byte, []int) {
+	return file_api_proto_interaction_interaction_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *GetUserInterestProfileReq) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *GetUserInterestProfileReq) GetTopN() int32 {
+	if x != nil {
+		return x.TopN
+	}
+	return 0
+}
+
+func (x *GetUserInterestProfileReq) GetViewerId() int64 {
+	if x != nil {
+		return x.ViewerId
+	}
+	return 0
+}
+
+type GetUserInterestProfileResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	IsColdStart   bool                   `protobuf:"varint,2,opt,name=is_cold_start,json=isColdStart,proto3" json:"is_cold_start,omitempty"` // 有效行为 < 10 为冷启动
+	TopTopics     []*InterestItem        `protobuf:"bytes,3,rep,name=top_topics,json=topTopics,proto3" json:"top_topics,omitempty"`
+	TopCategories []*InterestItem        `protobuf:"bytes,4,rep,name=top_categories,json=topCategories,proto3" json:"top_categories,omitempty"`
+	TotalActions  int64                  `protobuf:"varint,5,opt,name=total_actions,json=totalActions,proto3" json:"total_actions,omitempty"`
+	CalculatedAt  int64                  `protobuf:"varint,6,opt,name=calculated_at,json=calculatedAt,proto3" json:"calculated_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetUserInterestProfileResp) Reset() {
+	*x = GetUserInterestProfileResp{}
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetUserInterestProfileResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetUserInterestProfileResp) ProtoMessage() {}
+
+func (x *GetUserInterestProfileResp) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_interaction_interaction_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetUserInterestProfileResp.ProtoReflect.Descriptor instead.
+func (*GetUserInterestProfileResp) Descriptor() ([]byte, []int) {
+	return file_api_proto_interaction_interaction_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *GetUserInterestProfileResp) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *GetUserInterestProfileResp) GetIsColdStart() bool {
+	if x != nil {
+		return x.IsColdStart
+	}
+	return false
+}
+
+func (x *GetUserInterestProfileResp) GetTopTopics() []*InterestItem {
+	if x != nil {
+		return x.TopTopics
+	}
+	return nil
+}
+
+func (x *GetUserInterestProfileResp) GetTopCategories() []*InterestItem {
+	if x != nil {
+		return x.TopCategories
+	}
+	return nil
+}
+
+func (x *GetUserInterestProfileResp) GetTotalActions() int64 {
+	if x != nil {
+		return x.TotalActions
+	}
+	return 0
+}
+
+func (x *GetUserInterestProfileResp) GetCalculatedAt() int64 {
+	if x != nil {
+		return x.CalculatedAt
+	}
+	return 0
+}
+
 var File_api_proto_interaction_interaction_proto protoreflect.FileDescriptor
 
 const file_api_proto_interaction_interaction_proto_rawDesc = "" +
@@ -1189,7 +2261,110 @@ const file_api_proto_interaction_interaction_proto_rawDesc = "" +
 	"\bfeed_ids\x18\x01 \x03(\x03R\afeedIds\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
 	"nextCursor\x12\x14\n" +
-	"\x05total\x18\x03 \x01(\x03R\x05total2\x8d\a\n" +
+	"\x05total\x18\x03 \x01(\x03R\x05total\"\x99\x02\n" +
+	"\x0eFeedMetricsRaw\x12\x16\n" +
+	"\x06expose\x18\x01 \x01(\x03R\x06expose\x12\x12\n" +
+	"\x04play\x18\x02 \x01(\x03R\x04play\x12%\n" +
+	"\x0eeffective_play\x18\x03 \x01(\x03R\reffectivePlay\x12\x16\n" +
+	"\x06finish\x18\x04 \x01(\x03R\x06finish\x12\x12\n" +
+	"\x04skip\x18\x05 \x01(\x03R\x04skip\x12*\n" +
+	"\x11watch_duration_ms\x18\x06 \x01(\x03R\x0fwatchDurationMs\x12\x12\n" +
+	"\x04like\x18\a \x01(\x03R\x04like\x12\x18\n" +
+	"\acollect\x18\b \x01(\x03R\acollect\x12\x18\n" +
+	"\acomment\x18\t \x01(\x03R\acomment\x12\x14\n" +
+	"\x05share\x18\n" +
+	" \x01(\x03R\x05share\"\x81\x04\n" +
+	"\x0fFeedMetricsRate\x12 \n" +
+	"\tplay_rate\x18\x01 \x01(\x01H\x00R\bplayRate\x88\x01\x01\x123\n" +
+	"\x13effective_play_rate\x18\x02 \x01(\x01H\x01R\x11effectivePlayRate\x88\x01\x01\x12$\n" +
+	"\vfinish_rate\x18\x03 \x01(\x01H\x02R\n" +
+	"finishRate\x88\x01\x01\x12 \n" +
+	"\tskip_rate\x18\x04 \x01(\x01H\x03R\bskipRate\x88\x01\x01\x12%\n" +
+	"\favg_watch_ms\x18\x05 \x01(\x01H\x04R\n" +
+	"avgWatchMs\x88\x01\x01\x12 \n" +
+	"\tlike_rate\x18\x06 \x01(\x01H\x05R\blikeRate\x88\x01\x01\x12&\n" +
+	"\fcollect_rate\x18\a \x01(\x01H\x06R\vcollectRate\x88\x01\x01\x12&\n" +
+	"\fcomment_rate\x18\b \x01(\x01H\aR\vcommentRate\x88\x01\x01\x12\"\n" +
+	"\n" +
+	"share_rate\x18\t \x01(\x01H\bR\tshareRate\x88\x01\x01B\f\n" +
+	"\n" +
+	"_play_rateB\x16\n" +
+	"\x14_effective_play_rateB\x0e\n" +
+	"\f_finish_rateB\f\n" +
+	"\n" +
+	"_skip_rateB\x0f\n" +
+	"\r_avg_watch_msB\f\n" +
+	"\n" +
+	"_like_rateB\x0f\n" +
+	"\r_collect_rateB\x0f\n" +
+	"\r_comment_rateB\r\n" +
+	"\v_share_rate\"\xe7\x01\n" +
+	"\vFeedMetrics\x12\x17\n" +
+	"\afeed_id\x18\x01 \x01(\x03R\x06feedId\x12\x16\n" +
+	"\x06window\x18\x02 \x01(\tR\x06window\x12!\n" +
+	"\fpublished_at\x18\x03 \x01(\x03R\vpublishedAt\x12-\n" +
+	"\x03raw\x18\x04 \x01(\v2\x1b.interaction.FeedMetricsRawR\x03raw\x120\n" +
+	"\x04rate\x18\x05 \x01(\v2\x1c.interaction.FeedMetricsRateR\x04rate\x12#\n" +
+	"\rdata_complete\x18\x06 \x01(\bR\fdataComplete\"D\n" +
+	"\x11GetFeedMetricsReq\x12\x17\n" +
+	"\afeed_id\x18\x01 \x01(\x03R\x06feedId\x12\x16\n" +
+	"\x06window\x18\x02 \x01(\tR\x06window\"H\n" +
+	"\x12GetFeedMetricsResp\x122\n" +
+	"\ametrics\x18\x01 \x01(\v2\x18.interaction.FeedMetricsR\ametrics\"3\n" +
+	"\x16BatchGetFeedMetricsReq\x12\x19\n" +
+	"\bfeed_ids\x18\x01 \x03(\x03R\afeedIds\"V\n" +
+	"\x17BatchGetFeedMetricsResp\x12;\n" +
+	"\fmetrics_list\x18\x01 \x03(\v2\x18.interaction.FeedMetricsR\vmetricsList\"d\n" +
+	"\x14GetCreatorMetricsReq\x12\x17\n" +
+	"\afeed_id\x18\x01 \x01(\x03R\x06feedId\x12\x1b\n" +
+	"\tviewer_id\x18\x02 \x01(\x03R\bviewerId\x12\x16\n" +
+	"\x06window\x18\x03 \x01(\tR\x06window\"K\n" +
+	"\x15GetCreatorMetricsResp\x122\n" +
+	"\ametrics\x18\x01 \x01(\v2\x18.interaction.FeedMetricsR\ametrics\"\x88\x01\n" +
+	"\n" +
+	"Percentile\x12\x15\n" +
+	"\x03avg\x18\x01 \x01(\x01H\x00R\x03avg\x88\x01\x01\x12\x15\n" +
+	"\x03p25\x18\x02 \x01(\x01H\x01R\x03p25\x88\x01\x01\x12\x15\n" +
+	"\x03p50\x18\x03 \x01(\x01H\x02R\x03p50\x88\x01\x01\x12\x15\n" +
+	"\x03p75\x18\x04 \x01(\x01H\x03R\x03p75\x88\x01\x01B\x06\n" +
+	"\x04_avgB\x06\n" +
+	"\x04_p25B\x06\n" +
+	"\x04_p50B\x06\n" +
+	"\x04_p75\"\xbc\x01\n" +
+	"\x14PeerRateDistribution\x124\n" +
+	"\tplay_rate\x18\x01 \x01(\v2\x17.interaction.PercentileR\bplayRate\x124\n" +
+	"\tskip_rate\x18\x02 \x01(\v2\x17.interaction.PercentileR\bskipRate\x128\n" +
+	"\vfinish_rate\x18\x03 \x01(\v2\x17.interaction.PercentileR\n" +
+	"finishRate\"h\n" +
+	"\x18GetPeerAverageMetricsReq\x12\x17\n" +
+	"\afeed_id\x18\x01 \x01(\x03R\x06feedId\x12\x1b\n" +
+	"\tviewer_id\x18\x02 \x01(\x03R\bviewerId\x12\x16\n" +
+	"\x06window\x18\x03 \x01(\tR\x06window\"\x88\x02\n" +
+	"\x19GetPeerAverageMetricsResp\x12\x1d\n" +
+	"\n" +
+	"peer_level\x18\x01 \x01(\tR\tpeerLevel\x12\x1f\n" +
+	"\vsample_size\x18\x02 \x01(\x05R\n" +
+	"sampleSize\x12\x1a\n" +
+	"\bcategory\x18\x03 \x01(\tR\bcategory\x12'\n" +
+	"\x0fduration_bucket\x18\x04 \x01(\tR\x0edurationBucket\x125\n" +
+	"\x04rate\x18\x05 \x01(\v2!.interaction.PeerRateDistributionR\x04rate\x12/\n" +
+	"\x13insufficient_sample\x18\x06 \x01(\bR\x12insufficientSample\"8\n" +
+	"\fInterestItem\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
+	"\x05ratio\x18\x02 \x01(\x01R\x05ratio\"f\n" +
+	"\x19GetUserInterestProfileReq\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x13\n" +
+	"\x05top_n\x18\x02 \x01(\x05R\x04topN\x12\x1b\n" +
+	"\tviewer_id\x18\x03 \x01(\x03R\bviewerId\"\x9f\x02\n" +
+	"\x1aGetUserInterestProfileResp\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\"\n" +
+	"\ris_cold_start\x18\x02 \x01(\bR\visColdStart\x128\n" +
+	"\n" +
+	"top_topics\x18\x03 \x03(\v2\x19.interaction.InterestItemR\ttopTopics\x12@\n" +
+	"\x0etop_categories\x18\x04 \x03(\v2\x19.interaction.InterestItemR\rtopCategories\x12#\n" +
+	"\rtotal_actions\x18\x05 \x01(\x03R\ftotalActions\x12#\n" +
+	"\rcalculated_at\x18\x06 \x01(\x03R\fcalculatedAt2\xf1\n" +
+	"\n" +
 	"\vInteraction\x12?\n" +
 	"\bLikeFeed\x12\x18.interaction.LikeFeedReq\x1a\x19.interaction.LikeFeedResp\x12E\n" +
 	"\n" +
@@ -1201,7 +2376,12 @@ const file_api_proto_interaction_interaction_proto_rawDesc = "" +
 	"\x18GetUserInteractionStatus\x12(.interaction.GetUserInteractionStatusReq\x1a).interaction.GetUserInteractionStatusResp\x12~\n" +
 	"\x1dBatchGetUserInteractionStatus\x12-.interaction.BatchGetUserInteractionStatusReq\x1a..interaction.BatchGetUserInteractionStatusResp\x12Z\n" +
 	"\x11GetUserLikedFeeds\x12!.interaction.GetUserLikedFeedsReq\x1a\".interaction.GetUserLikedFeedsResp\x12f\n" +
-	"\x15GetUserCollectedFeeds\x12%.interaction.GetUserCollectedFeedsReq\x1a&.interaction.GetUserCollectedFeedsRespB\x0fZ\r./interactionb\x06proto3"
+	"\x15GetUserCollectedFeeds\x12%.interaction.GetUserCollectedFeedsReq\x1a&.interaction.GetUserCollectedFeedsResp\x12Q\n" +
+	"\x0eGetFeedMetrics\x12\x1e.interaction.GetFeedMetricsReq\x1a\x1f.interaction.GetFeedMetricsResp\x12`\n" +
+	"\x13BatchGetFeedMetrics\x12#.interaction.BatchGetFeedMetricsReq\x1a$.interaction.BatchGetFeedMetricsResp\x12Z\n" +
+	"\x11GetCreatorMetrics\x12!.interaction.GetCreatorMetricsReq\x1a\".interaction.GetCreatorMetricsResp\x12f\n" +
+	"\x15GetPeerAverageMetrics\x12%.interaction.GetPeerAverageMetricsReq\x1a&.interaction.GetPeerAverageMetricsResp\x12i\n" +
+	"\x16GetUserInterestProfile\x12&.interaction.GetUserInterestProfileReq\x1a'.interaction.GetUserInterestProfileRespB\x0fZ\r./interactionb\x06proto3"
 
 var (
 	file_api_proto_interaction_interaction_proto_rawDescOnce sync.Once
@@ -1215,7 +2395,7 @@ func file_api_proto_interaction_interaction_proto_rawDescGZIP() []byte {
 	return file_api_proto_interaction_interaction_proto_rawDescData
 }
 
-var file_api_proto_interaction_interaction_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_api_proto_interaction_interaction_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
 var file_api_proto_interaction_interaction_proto_goTypes = []any{
 	(*FeedStats)(nil),                         // 0: interaction.FeedStats
 	(*UserInteractionStatus)(nil),             // 1: interaction.UserInteractionStatus
@@ -1239,37 +2419,74 @@ var file_api_proto_interaction_interaction_proto_goTypes = []any{
 	(*GetUserLikedFeedsResp)(nil),             // 19: interaction.GetUserLikedFeedsResp
 	(*GetUserCollectedFeedsReq)(nil),          // 20: interaction.GetUserCollectedFeedsReq
 	(*GetUserCollectedFeedsResp)(nil),         // 21: interaction.GetUserCollectedFeedsResp
+	(*FeedMetricsRaw)(nil),                    // 22: interaction.FeedMetricsRaw
+	(*FeedMetricsRate)(nil),                   // 23: interaction.FeedMetricsRate
+	(*FeedMetrics)(nil),                       // 24: interaction.FeedMetrics
+	(*GetFeedMetricsReq)(nil),                 // 25: interaction.GetFeedMetricsReq
+	(*GetFeedMetricsResp)(nil),                // 26: interaction.GetFeedMetricsResp
+	(*BatchGetFeedMetricsReq)(nil),            // 27: interaction.BatchGetFeedMetricsReq
+	(*BatchGetFeedMetricsResp)(nil),           // 28: interaction.BatchGetFeedMetricsResp
+	(*GetCreatorMetricsReq)(nil),              // 29: interaction.GetCreatorMetricsReq
+	(*GetCreatorMetricsResp)(nil),             // 30: interaction.GetCreatorMetricsResp
+	(*Percentile)(nil),                        // 31: interaction.Percentile
+	(*PeerRateDistribution)(nil),              // 32: interaction.PeerRateDistribution
+	(*GetPeerAverageMetricsReq)(nil),          // 33: interaction.GetPeerAverageMetricsReq
+	(*GetPeerAverageMetricsResp)(nil),         // 34: interaction.GetPeerAverageMetricsResp
+	(*InterestItem)(nil),                      // 35: interaction.InterestItem
+	(*GetUserInterestProfileReq)(nil),         // 36: interaction.GetUserInterestProfileReq
+	(*GetUserInterestProfileResp)(nil),        // 37: interaction.GetUserInterestProfileResp
 }
 var file_api_proto_interaction_interaction_proto_depIdxs = []int32{
 	0,  // 0: interaction.GetFeedStatsResp.stats:type_name -> interaction.FeedStats
 	0,  // 1: interaction.BatchGetFeedStatsResp.stats_list:type_name -> interaction.FeedStats
 	1,  // 2: interaction.GetUserInteractionStatusResp.status:type_name -> interaction.UserInteractionStatus
 	1,  // 3: interaction.BatchGetUserInteractionStatusResp.status_list:type_name -> interaction.UserInteractionStatus
-	2,  // 4: interaction.Interaction.LikeFeed:input_type -> interaction.LikeFeedReq
-	4,  // 5: interaction.Interaction.UnlikeFeed:input_type -> interaction.UnlikeFeedReq
-	6,  // 6: interaction.Interaction.CollectFeed:input_type -> interaction.CollectFeedReq
-	8,  // 7: interaction.Interaction.UncollectFeed:input_type -> interaction.UncollectFeedReq
-	10, // 8: interaction.Interaction.GetFeedStats:input_type -> interaction.GetFeedStatsReq
-	12, // 9: interaction.Interaction.BatchGetFeedStats:input_type -> interaction.BatchGetFeedStatsReq
-	14, // 10: interaction.Interaction.GetUserInteractionStatus:input_type -> interaction.GetUserInteractionStatusReq
-	16, // 11: interaction.Interaction.BatchGetUserInteractionStatus:input_type -> interaction.BatchGetUserInteractionStatusReq
-	18, // 12: interaction.Interaction.GetUserLikedFeeds:input_type -> interaction.GetUserLikedFeedsReq
-	20, // 13: interaction.Interaction.GetUserCollectedFeeds:input_type -> interaction.GetUserCollectedFeedsReq
-	3,  // 14: interaction.Interaction.LikeFeed:output_type -> interaction.LikeFeedResp
-	5,  // 15: interaction.Interaction.UnlikeFeed:output_type -> interaction.UnlikeFeedResp
-	7,  // 16: interaction.Interaction.CollectFeed:output_type -> interaction.CollectFeedResp
-	9,  // 17: interaction.Interaction.UncollectFeed:output_type -> interaction.UncollectFeedResp
-	11, // 18: interaction.Interaction.GetFeedStats:output_type -> interaction.GetFeedStatsResp
-	13, // 19: interaction.Interaction.BatchGetFeedStats:output_type -> interaction.BatchGetFeedStatsResp
-	15, // 20: interaction.Interaction.GetUserInteractionStatus:output_type -> interaction.GetUserInteractionStatusResp
-	17, // 21: interaction.Interaction.BatchGetUserInteractionStatus:output_type -> interaction.BatchGetUserInteractionStatusResp
-	19, // 22: interaction.Interaction.GetUserLikedFeeds:output_type -> interaction.GetUserLikedFeedsResp
-	21, // 23: interaction.Interaction.GetUserCollectedFeeds:output_type -> interaction.GetUserCollectedFeedsResp
-	14, // [14:24] is the sub-list for method output_type
-	4,  // [4:14] is the sub-list for method input_type
-	4,  // [4:4] is the sub-list for extension type_name
-	4,  // [4:4] is the sub-list for extension extendee
-	0,  // [0:4] is the sub-list for field type_name
+	22, // 4: interaction.FeedMetrics.raw:type_name -> interaction.FeedMetricsRaw
+	23, // 5: interaction.FeedMetrics.rate:type_name -> interaction.FeedMetricsRate
+	24, // 6: interaction.GetFeedMetricsResp.metrics:type_name -> interaction.FeedMetrics
+	24, // 7: interaction.BatchGetFeedMetricsResp.metrics_list:type_name -> interaction.FeedMetrics
+	24, // 8: interaction.GetCreatorMetricsResp.metrics:type_name -> interaction.FeedMetrics
+	31, // 9: interaction.PeerRateDistribution.play_rate:type_name -> interaction.Percentile
+	31, // 10: interaction.PeerRateDistribution.skip_rate:type_name -> interaction.Percentile
+	31, // 11: interaction.PeerRateDistribution.finish_rate:type_name -> interaction.Percentile
+	32, // 12: interaction.GetPeerAverageMetricsResp.rate:type_name -> interaction.PeerRateDistribution
+	35, // 13: interaction.GetUserInterestProfileResp.top_topics:type_name -> interaction.InterestItem
+	35, // 14: interaction.GetUserInterestProfileResp.top_categories:type_name -> interaction.InterestItem
+	2,  // 15: interaction.Interaction.LikeFeed:input_type -> interaction.LikeFeedReq
+	4,  // 16: interaction.Interaction.UnlikeFeed:input_type -> interaction.UnlikeFeedReq
+	6,  // 17: interaction.Interaction.CollectFeed:input_type -> interaction.CollectFeedReq
+	8,  // 18: interaction.Interaction.UncollectFeed:input_type -> interaction.UncollectFeedReq
+	10, // 19: interaction.Interaction.GetFeedStats:input_type -> interaction.GetFeedStatsReq
+	12, // 20: interaction.Interaction.BatchGetFeedStats:input_type -> interaction.BatchGetFeedStatsReq
+	14, // 21: interaction.Interaction.GetUserInteractionStatus:input_type -> interaction.GetUserInteractionStatusReq
+	16, // 22: interaction.Interaction.BatchGetUserInteractionStatus:input_type -> interaction.BatchGetUserInteractionStatusReq
+	18, // 23: interaction.Interaction.GetUserLikedFeeds:input_type -> interaction.GetUserLikedFeedsReq
+	20, // 24: interaction.Interaction.GetUserCollectedFeeds:input_type -> interaction.GetUserCollectedFeedsReq
+	25, // 25: interaction.Interaction.GetFeedMetrics:input_type -> interaction.GetFeedMetricsReq
+	27, // 26: interaction.Interaction.BatchGetFeedMetrics:input_type -> interaction.BatchGetFeedMetricsReq
+	29, // 27: interaction.Interaction.GetCreatorMetrics:input_type -> interaction.GetCreatorMetricsReq
+	33, // 28: interaction.Interaction.GetPeerAverageMetrics:input_type -> interaction.GetPeerAverageMetricsReq
+	36, // 29: interaction.Interaction.GetUserInterestProfile:input_type -> interaction.GetUserInterestProfileReq
+	3,  // 30: interaction.Interaction.LikeFeed:output_type -> interaction.LikeFeedResp
+	5,  // 31: interaction.Interaction.UnlikeFeed:output_type -> interaction.UnlikeFeedResp
+	7,  // 32: interaction.Interaction.CollectFeed:output_type -> interaction.CollectFeedResp
+	9,  // 33: interaction.Interaction.UncollectFeed:output_type -> interaction.UncollectFeedResp
+	11, // 34: interaction.Interaction.GetFeedStats:output_type -> interaction.GetFeedStatsResp
+	13, // 35: interaction.Interaction.BatchGetFeedStats:output_type -> interaction.BatchGetFeedStatsResp
+	15, // 36: interaction.Interaction.GetUserInteractionStatus:output_type -> interaction.GetUserInteractionStatusResp
+	17, // 37: interaction.Interaction.BatchGetUserInteractionStatus:output_type -> interaction.BatchGetUserInteractionStatusResp
+	19, // 38: interaction.Interaction.GetUserLikedFeeds:output_type -> interaction.GetUserLikedFeedsResp
+	21, // 39: interaction.Interaction.GetUserCollectedFeeds:output_type -> interaction.GetUserCollectedFeedsResp
+	26, // 40: interaction.Interaction.GetFeedMetrics:output_type -> interaction.GetFeedMetricsResp
+	28, // 41: interaction.Interaction.BatchGetFeedMetrics:output_type -> interaction.BatchGetFeedMetricsResp
+	30, // 42: interaction.Interaction.GetCreatorMetrics:output_type -> interaction.GetCreatorMetricsResp
+	34, // 43: interaction.Interaction.GetPeerAverageMetrics:output_type -> interaction.GetPeerAverageMetricsResp
+	37, // 44: interaction.Interaction.GetUserInterestProfile:output_type -> interaction.GetUserInterestProfileResp
+	30, // [30:45] is the sub-list for method output_type
+	15, // [15:30] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_api_proto_interaction_interaction_proto_init() }
@@ -1277,13 +2494,15 @@ func file_api_proto_interaction_interaction_proto_init() {
 	if File_api_proto_interaction_interaction_proto != nil {
 		return
 	}
+	file_api_proto_interaction_interaction_proto_msgTypes[23].OneofWrappers = []any{}
+	file_api_proto_interaction_interaction_proto_msgTypes[31].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_proto_interaction_interaction_proto_rawDesc), len(file_api_proto_interaction_interaction_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   22,
+			NumMessages:   38,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

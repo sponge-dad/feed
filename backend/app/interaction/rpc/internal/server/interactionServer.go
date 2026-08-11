@@ -75,3 +75,30 @@ func (s *InteractionServer) GetUserCollectedFeeds(ctx context.Context, in *inter
 	l := logic.NewGetUserCollectedFeedsLogic(ctx, s.svcCtx)
 	return l.GetUserCollectedFeeds(in)
 }
+
+// ---------- 创作者数据（US5） ----------
+
+func (s *InteractionServer) GetFeedMetrics(ctx context.Context, in *interaction.GetFeedMetricsReq) (*interaction.GetFeedMetricsResp, error) {
+	l := logic.NewGetFeedMetricsLogic(ctx, s.svcCtx)
+	return l.GetFeedMetrics(in)
+}
+
+func (s *InteractionServer) BatchGetFeedMetrics(ctx context.Context, in *interaction.BatchGetFeedMetricsReq) (*interaction.BatchGetFeedMetricsResp, error) {
+	l := logic.NewBatchGetFeedMetricsLogic(ctx, s.svcCtx)
+	return l.BatchGetFeedMetrics(in)
+}
+
+func (s *InteractionServer) GetCreatorMetrics(ctx context.Context, in *interaction.GetCreatorMetricsReq) (*interaction.GetCreatorMetricsResp, error) {
+	l := logic.NewGetCreatorMetricsLogic(ctx, s.svcCtx)
+	return l.GetCreatorMetrics(in)
+}
+
+func (s *InteractionServer) GetPeerAverageMetrics(ctx context.Context, in *interaction.GetPeerAverageMetricsReq) (*interaction.GetPeerAverageMetricsResp, error) {
+	l := logic.NewGetPeerAverageMetricsLogic(ctx, s.svcCtx)
+	return l.GetPeerAverageMetrics(in)
+}
+
+func (s *InteractionServer) GetUserInterestProfile(ctx context.Context, in *interaction.GetUserInterestProfileReq) (*interaction.GetUserInterestProfileResp, error) {
+	l := logic.NewGetUserInterestProfileLogic(ctx, s.svcCtx)
+	return l.GetUserInterestProfile(in)
+}

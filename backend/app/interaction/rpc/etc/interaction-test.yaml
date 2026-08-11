@@ -39,3 +39,6 @@ Behavior:
     EffectivePlayRatio: 0.5
     FinishRatio: 0.95
     SkipMs: 3000
+
+# 内部用户集合（US5）：集成测试不涉及创作者指标，保持空
+InternalUserIDs: []

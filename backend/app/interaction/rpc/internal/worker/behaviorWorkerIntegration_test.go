@@ -120,6 +120,22 @@ func (s *stubMetricsHourlyModel) FindOne(context.Context, uint64) (*model.FeedMe
 	return nil, model.ErrNotFound
 }
 
+func (s *stubMetricsHourlyModel) SumByFeedAndWindow(ctx context.Context, feedID int64, since time.Time) (*model.FeedMetricsHourly, error) {
+	return &model.FeedMetricsHourly{}, nil
+}
+
+func (s *stubMetricsHourlyModel) SumByAuthorAndWindow(ctx context.Context, authorID int64, since time.Time) (*model.FeedMetricsHourly, error) {
+	return &model.FeedMetricsHourly{}, nil
+}
+
+func (s *stubMetricsHourlyModel) SumByFeedIDs(ctx context.Context, feedIDs []int64, since time.Time) (map[int64]*model.FeedMetricsHourly, error) {
+	return map[int64]*model.FeedMetricsHourly{}, nil
+}
+
+func (s *stubMetricsHourlyModel) AvgByFeedIDs(ctx context.Context, feedIDs []int64, since time.Time) (*model.FeedMetricsHourly, error) {
+	return &model.FeedMetricsHourly{}, nil
+}
+
 // ---------- 测试环境 ----------
 
 type behaviorEnv struct {

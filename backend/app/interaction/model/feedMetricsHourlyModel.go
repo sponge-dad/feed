@@ -7,6 +7,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/zeromicro/go-zero/core/stores/cache"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
@@ -21,6 +23,15 @@ type (
 		// 关键：冲突时写【绝对值】(= VALUES(x))，而非增量累加，
 		// 从而保证 flush 重复执行不会造成指标翻倍（见 03-behavior-event.md §6.2）。
 		Upsert(ctx context.Context, data *FeedMetricsHourly) error
+		// SumByFeedAndWindow 汇总单 feed 在 [since, now) 窗口的原子指标。
+		// 返回的 FeedMetricsHourly 仅聚合字段有效（FeedId/StatHour 由调用方使用）。
+		SumByFeedAndWindow(ctx context.Context, feedID int64, since time.Time) (*FeedMetricsHourly, error)
+		// SumByAuthorAndWindow 汇总作者名下所有 feed 在窗口内的原子指标。
+		SumByAuthorAndWindow(ctx context.Context, authorID int64, since time.Time) (*FeedMetricsHourly, error)
+		// SumByFeedIDs 批量汇总多个 feed（同类对比用），返回 feed_id → 聚合结果。
+		SumByFeedIDs(ctx context.Context, feedIDs []int64, since time.Time) (map[int64]*FeedMetricsHourly, error)
+		// AvgByFeedIDs 计算多个 feed 的平均指标（SUM / COUNT(DISTINCT feed_id)）。
+		AvgByFeedIDs(ctx context.Context, feedIDs []int64, since time.Time) (*FeedMetricsHourly, error)
 	}
 
 	customFeedMetricsHourlyModel struct {
@@ -66,4 +77,88 @@ func (m *customFeedMetricsHourlyModel) Upsert(ctx context.Context, data *FeedMet
 			data.LikeCount, data.CollectCount, data.CommentCount, data.WatchDurationMs)
 	})
 	return err
+}
+
+// metricsSumColumns 聚合列（SUM 汇总）。
+const metricsSumColumns = `sum(expose_count), sum(play_count), sum(effective_play_count), sum(finish_count),
+	sum(skip_count), sum(share_count), sum(like_count), sum(collect_count), sum(comment_count), sum(watch_duration_ms)`
+
+// SumByFeedAndWindow 汇总单 feed 窗口指标。
+func (m *customFeedMetricsHourlyModel) SumByFeedAndWindow(ctx context.Context, feedID int64, since time.Time) (*FeedMetricsHourly, error) {
+	query := fmt.Sprintf("select %s from %s where `feed_id` = ? and `stat_hour` >= ?", metricsSumColumns, m.table)
+	var res FeedMetricsHourly
+	if err := m.QueryRowNoCacheCtx(ctx, &res, query, feedID, since); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// SumByAuthorAndWindow 汇总作者名下所有 feed 窗口指标。
+func (m *customFeedMetricsHourlyModel) SumByAuthorAndWindow(ctx context.Context, authorID int64, since time.Time) (*FeedMetricsHourly, error) {
+	query := fmt.Sprintf("select %s from %s where `author_id` = ? and `stat_hour` >= ?", metricsSumColumns, m.table)
+	var res FeedMetricsHourly
+	if err := m.QueryRowNoCacheCtx(ctx, &res, query, authorID, since); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// SumByFeedIDs 批量汇总多个 feed，返回 feed_id → 聚合结果（同类对比用）。
+func (m *customFeedMetricsHourlyModel) SumByFeedIDs(ctx context.Context, feedIDs []int64, since time.Time) (map[int64]*FeedMetricsHourly, error) {
+	if len(feedIDs) == 0 {
+		return map[int64]*FeedMetricsHourly{}, nil
+	}
+	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(feedIDs)), ",")
+	query := fmt.Sprintf("select `feed_id`, %s from %s where `feed_id` in (%s) and `stat_hour` >= ? group by `feed_id`",
+		metricsSumColumns, m.table, placeholders)
+
+	args := make([]any, 0, len(feedIDs)+1)
+	for _, id := range feedIDs {
+		args = append(args, id)
+	}
+	args = append(args, since)
+
+	var rows []FeedMetricsHourly
+	if err := m.QueryRowsNoCacheCtx(ctx, &rows, query, args...); err != nil {
+		return nil, err
+	}
+	out := make(map[int64]*FeedMetricsHourly, len(rows))
+	for i := range rows {
+		out[int64(rows[i].FeedId)] = &rows[i]
+	}
+	return out, nil
+}
+
+// AvgByFeedIDs 计算多个 feed 的平均指标（SUM / COUNT(DISTINCT feed_id)）。
+// 无任何数据时返回全零结果（不报错），调用方用 sample_size 判断。
+func (m *customFeedMetricsHourlyModel) AvgByFeedIDs(ctx context.Context, feedIDs []int64, since time.Time) (*FeedMetricsHourly, error) {
+	if len(feedIDs) == 0 {
+		return &FeedMetricsHourly{}, nil
+	}
+	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(feedIDs)), ",")
+	query := fmt.Sprintf(
+		"select "+
+			"ifnull(sum(expose_count)/nullif(count(distinct feed_id),0),0), "+
+			"ifnull(sum(play_count)/nullif(count(distinct feed_id),0),0), "+
+			"ifnull(sum(effective_play_count)/nullif(count(distinct feed_id),0),0), "+
+			"ifnull(sum(finish_count)/nullif(count(distinct feed_id),0),0), "+
+			"ifnull(sum(skip_count)/nullif(count(distinct feed_id),0),0), "+
+			"ifnull(sum(share_count)/nullif(count(distinct feed_id),0),0), "+
+			"ifnull(sum(like_count)/nullif(count(distinct feed_id),0),0), "+
+			"ifnull(sum(collect_count)/nullif(count(distinct feed_id),0),0), "+
+			"ifnull(sum(comment_count)/nullif(count(distinct feed_id),0),0), "+
+			"ifnull(sum(watch_duration_ms)/nullif(count(distinct feed_id),0),0) "+
+			"from %s where `feed_id` in (%s) and `stat_hour` >= ?", m.table, placeholders)
+
+	args := make([]any, 0, len(feedIDs)+1)
+	for _, id := range feedIDs {
+		args = append(args, id)
+	}
+	args = append(args, since)
+
+	var res FeedMetricsHourly
+	if err := m.QueryRowNoCacheCtx(ctx, &res, query, args...); err != nil {
+		return nil, err
+	}
+	return &res, nil
 }

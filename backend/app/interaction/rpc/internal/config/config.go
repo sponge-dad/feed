@@ -24,6 +24,10 @@ type Config struct {
 	}
 	// FeedRpc 行为消费侧重判 feed 状态（status==NORMAL）用。
 	FeedRpc zrpc.RpcClientConf
+	// ContentRpc 兴趣画像取内容标签（BatchGetContentProfile）与同类对比（SearchContent）用。
+	ContentRpc zrpc.RpcClientConf
+	// InternalUserIDs 内部用户集合（创作者指标/兴趣画像越权例外，见 08-creator-metrics.md）。
+	InternalUserIDs []int64
 	// Behavior 行为埋点消费配置（见 docs/design/agent/03-behavior-event.md）。
 	Behavior struct {
 		ConsumeGroup            string  // 行为事件消费组：behavior-persistence-consumer
