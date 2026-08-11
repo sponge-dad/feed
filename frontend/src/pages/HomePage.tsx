@@ -17,7 +17,7 @@ export default function HomePage() {
 
   const fetcher = useCallback(
     (cursor: string): Promise<CursorResp<FeedCard>> =>
-      getTimeline({ type, cursor: cursor || undefined, page_size: 10 }),
+      getTimeline({ type, cursor: cursor || undefined, page_size: 30 }),
     [type],
   );
 
