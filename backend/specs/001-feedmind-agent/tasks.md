@@ -176,47 +176,52 @@ description: "Task list for FeedMind Agent implementation"
 
 > **CI硬约束**：必须 mock FFmpeg / ASR / OCR / 多模态，**禁止真实计费调用**
 
-- [ ] T062 [P] [US3] `app/content/worker/internal/media/ffmpeg_test.go`——注入 mock executor，覆盖 FFmpeg 安全 6 层防护的拒绝路径：非白名单域名、内网地址（10./172.16-31./192.168./127.*）、超长时长、超大文件、恶意文件名、超时强杀
-- [ ] T063 [P] [US3] `app/content/worker/internal/pipeline/pipeline_test.go`——注入 fake ASR/OCR/vision，断言状态机流转正确；**故障注入**：ASR 失败 → `analysis_status=COMPLETED` 且 `degraded=1`（**不整单失败**）
-- [ ] T064 [P] [US3] `app/content/worker/internal/consumer/consumer_test.go`——断言三层幂等：`content:analysis:lock` 互斥、`uk_feed_id` 唯一、`media_hash+model_version` 判重跑；非视频（`feed_type != 2`）置 `DISABLED` 并直接ACK
-- [ ] T065 [P] [US3] `app/content/rpc/internal/logic/getcontentprofile_test.go`——断言**分级返回**：字幕/OCR 全文仅作者本人或内部可见，其他调用方只得 `category`/`summary`/`topics`/`scenes`
-- [ ] T066 [P] [US3] `app/content/rpc/internal/logic/searchcontent_test.go`——断言三路召回 RRF 融合；⚠️ **结果必须经 `BatchGetFeeds` 校验真实存在且状态正常**（ES 可能残留已删 feed，A4 硬要求）
-- [ ] T067 [P] [US3] `tests/content_analysis_test.go`——集成测试：发帖 → MQ → 画像落库 + ES 索引 → RPC 查询全链路
+- [x] T062 [P] [US3] `media_test.go`（合并 ffmpeg/probe/url 三文件）——注入 mock executor：FFmpeg 参数数组传递断言、非零退出/输出透传、抽帧场景切换+兜底；URL 白名单/内网（10./172.16-31./192.168./127.*/169.254/CGNAT）拒绝（DNS 可注入 stub，避免依赖外网）
+- [x] T063 [P] [US3] `pipeline_test.go`——fake ASR/OCR/vision + httptest 媒体/ES + model stub，断言状态机流转（DOWNLOADING→…→COMPLETED）；**故障注入**：ASR 失败 → `COMPLETED`+`degraded=1`（不整单失败）；下载失败/抽帧失败 → `FAILED`；非白名单类目映射为「其他」
+- [ ] T064 [P] [US3] `consumer_test.go`——⚠️ **待补**：三层幂等（lock/uk_feed_id/media_hash+model_version）与非视频 DISABLED 的消费层单测（需 mock mq.Consumer + FeedRpc）
+- [x] T065 [P] [US3] `getcontentprofilelogic_test`（content_rpc_test.go）——断言**分级返回**：字幕仅作者/内部可见，其他只得公开字段；状态语义（运行中 15002/不存在 15001）；cache-aside 命中
+- [x] T066 [P] [US3] `hybrid_test.go`——httptest mock ES 断言三路召回（BM25/TAG/VECTOR）RRF 融合排序、empty 条件空结果、limit 收敛、latest 排序；⚠️ 业务侧 `SearchContentLogic` 已实现 BatchGetFeeds 回查校验（测试未覆盖该分支）
+- [ ] T067 [P] [US3] `tests/content_analysis_test.go`——⚠️ **待补**：全链路集成测试（发帖→MQ→画像→ES→RPC）依赖真实环境，当前以 logic 单测（content_rpc_test.go）替代
 
 ### Implementation for User Story 3 — Content RPC
 
-- [ ] T068 [US3] 创建 `api/proto/content/content.proto`——`Content` service 5 个方法（`GetContentProfile`/`BatchGetContentProfile`/`SearchContent`/`RetryContentAnalysis`/`SubmitProfileFeedback`）及 Req/Resp，契约见 [contracts/grpc-services.md](./contracts/grpc-services.md) §1
-- [ ] T069 [US3] 执行 `make proto` 生成 Content pb（依赖 T068）
-- [ ] T070 [US3] `goctl model mysql ddl -src deploy/sql/content.sql -dir app/content/rpc/internal/model -c` 生成 `feed_content_profiles` model（依赖 T004/T007）
-- [ ] T071 [P] [US3] 在 `customFeedContentProfilesModel` 扩展：`FindByFeedID`、`UpsertByFeedID`、`UpdateStatus`、`FindStuckTasks(before)`（捞 `*_RUNNING AND updated_at < now-6min`）、`FindByCategory`
-- [ ] T072 [P] [US3] 创建 `app/content/rpc/internal/keys/keys.go`——`AnalysisLockKey(feedID)` → `content:analysis:lock:{feed_id}`、`ProfileCacheKey(feedID)` → `content:profile:{feed_id}`
-- [ ] T073 [P] [US3] 创建 `app/content/rpc/etc/content.yaml` + `internal/config/config.go`——含 `Mysql.DataSource`（`${CONTENT_MYSQL_DSN}` 占位）、`CacheRedis`、`Elasticsearch.Addr`、`InternalUserIDs`、`Prometheus.Port: 9110`、`Telemetry`
-- [ ] T074 [US3] 创建 `app/content/rpc/internal/search/es_client.go`——ES 客户端封装（读别名 `feed_content`、写别名 `feed_content_write`），含 `IndexProfile`（`_id = feed_id` upsert 天然幂等）与 `DeleteProfile`
-- [ ] T075 [US3] 创建 `app/content/rpc/internal/search/hybrid.go`——三路召回（BM25 全文 + kNN 向量 + 标签精确匹配）+ **RRF 融合**，见 [research.md](./research.md) R3
-- [ ] T076 [P] [US3] 实现 `app/content/rpc/internal/logic/getcontentprofilelogic.go`——分级返回；cache-aside（`content:profile:{feed_id}` TTL 1h）；状态非COMPLETED 返回 `ContentAnalysisRunning`(15002)；`degraded=1` 时标注信息不完整
-- [ ] T077 [P] [US3] 实现 `app/content/rpc/internal/logic/batchgetcontentprofilelogic.go`——≤50 个 feed_id，**仅公开字段**
-- [ ] T078 [US3] 实现 `app/content/rpc/internal/logic/searchcontentlogic.go`——结构化条件入参；调 hybrid 检索；**结果经 `BatchGetFeeds` 校验真实存在**；空条件返回 `ContentSearchEmptyQuery`(15006)；ES 不可用返回 15007（依赖 T075）
-- [ ] T079 [P] [US3] 实现 `app/content/rpc/internal/logic/retrycontentanalysislogic.go`——重置状态并重新入队；**仅内部用户**
-- [ ] T080 [P] [US3] 实现 `app/content/rpc/internal/logic/submitprofilefeedbacklogic.go`——记录创作者纠错反馈；⚠️ **只记录不改画像**；仅作者本人
-- [ ] T081 [US3] 创建 `app/content/rpc/content.go` 主入口——注册 5 个方法到 `internal/server/contentserver.go`、注册 `UnaryServerRequestID`拦截器、监听 :9007、metrics :9110（依赖 T076~T080）
+- [x] T068 [US3] 创建 `api/proto/content/content.proto`——`Content` service 5 个方法及 Req/Resp，契约见 [contracts/grpc-services.md](./contracts/grpc-services.md) §1
+- [x] T069 [US3] 执行 `goctl rpc protoc` 生成 Content pb 与骨架（等价 make proto，goctl 1.10.1）
+- [x] T070 [US3] `goctl model mysql ddl -src deploy/sql/content.sql -c` 生成 `feed_content_profiles` model（⚠️ 包位置提升到 `app/content/model`，因 worker 也复用，受 Go internal 边界限制）
+- [x] T071 [P] [US3] `customFeedContentProfilesModel` 扩展：`UpsertByFeedID`（uk_feed_id 幂等 upsert）、`UpdateStatus`、`FindStuckTasks(before)`（`*_RUNNING AND updated_at < before`）、`FindByCategory`（`FindByFeedID` 由生成代码 `FindOneByFeedId` 覆盖）
+- [x] T072 [P] [US3] 创建 `app/content/keys/keys.go`（⚠️ 同样从 rpc/internal 提升）——`AnalysisLockKey`/`ProfileCacheKey`
+- [x] T073 [P] [US3] 创建 `etc/content.yaml` + `config.go`——`Mysql.DataSource`（`${CONTENT_MYSQL_DSN}`）、`CacheRedis`、`Elasticsearch.Addr`、`InternalUserIDs`、`RocketMQ`（重试入队用）、`FeedRpc`、`Prometheus.Port: 9110`、`Telemetry`
+- [x] T074 [US3] 创建 `app/content/search/es_client.go`——读别名 `feed_content`、写别名 `feed_content_write`，`IndexProfile`（`_id=feed_id` upsert 幂等）与 `DeleteProfile`（404 视为成功）
+- [x] T075 [US3] 创建 `app/content/search/hybrid.go`——三路并行召回（BM25 multi_match 字段权重 + kNN + 标签）+ **RRF 融合**（Σw/(60+rank)，w: 1.0/1.0/0.6）+ 命中原因生成 + relevance/latest/hot 排序
+- [x] T076 [P] [US3] `getContentProfileLogic.go`——分级返回；非作者/内部走 `content:profile:{feed_id}` cache-aside（TTL 1h）；状态语义：运行中 15002 / 失败 15003 / DISABLED 按不存在
+- [x] T077 [P] [US3] `batchGetContentProfileLogic.go`——≤50 校验，仅 COMPLETED 公开字段，缺失/非完成跳过，按请求顺序
+- [x] T078 [US3] `searchContentLogic.go`——结构化条件校验（关键词/标签≤5、limit 1~20、时间窗口 1~365、全空 15006）；hybrid 检索；**BatchGetFeeds 回查 status=NORMAL 过滤**；ES 不可用 15007
+- [x] T079 [P] [US3] `retryContentAnalysisLogic.go`——仅内部用户（InternalUserIDs）；重置 PENDING + 清错误/重试计数 + **重新入队 feed-created**（RocketMQ 发送）
+- [x] T080 [P] [US3] `submitProfileFeedbackLogic.go`——仅作者本人；**只记录不改画像**（Redis list `content:feedback:{feed_id}` TTL 30d + 审计日志）
+- [x] T081 [US3] `content.go` 主入口——注册 5 个方法、`UnaryServerRequestID` + `ErrorInterceptor`、监听 :9007、metrics :9110（Prometheus 配置在 yaml）
 
 ### Implementation for User Story 3 — Content Worker（独立进程）
 
-- [ ] T082 [P] [US3] 创建 `app/content/worker/etc/content-worker.yaml` + `internal/config/config.go`——含 `FFmpegPath`（`${FFMPEG_PATH}`）、`AllowedMediaHosts`、`TempDir: /var/tmp/feedmind`、`MaxConcurrency: 2`、`KeyFrameMax: 20`、`MaxVideoBytes: 209715200`、`MaxVideoDurationSec: 600`、`FFmpegTimeoutSec: 120`、`TranscriptMaxChars: 4000`、`MaxRetry: 3`、`ModelVersion`、`Prometheus.Port: 9109`
-- [ ] T083 [US3] 创建 `app/content/worker/internal/media/executor.go`——**可注入的 `Executor` 接口**（`Run(ctx, path, args...)`）+ 真实实现；⚠️ 接口化是为满足 CI mock 约束
-- [ ] T084 [US3] 创建 `app/content/worker/internal/media/ffmpeg.go`——实现安全 6 层防护（见 [research.md](./research.md) R7）：① 固定二进制路径不查 PATH ② **参数数组传递禁止 shell 拼接** ③ `AllowedMediaHosts` 白名单 + 拒绝内网地址 ④ `context.WithTimeout` 超时 kill 进程组 ⑤ 资源上限校验 ⑥ 每任务独立临时子目录并在完成后清理
-- [ ] T085 [P] [US3] 创建 `app/content/worker/internal/media/probe.go`——ffprobe 探测**真实媒体时长**（替代不可信的客户端上报值）与格式信息
-- [ ] T086 [P] [US3] 创建 `app/content/worker/internal/asr/client.go`——ASR 接口 + HTTP 实现 + fake 实现（CI 用）；API Key 从 env读取
-- [ ] T087 [P] [US3] 创建 `app/content/worker/internal/ocr/client.go`——OCR 接口 + HTTP 实现 + fake 实现
-- [ ] T088 [P] [US3] 创建 `app/content/worker/internal/vision/client.go`——多模态标签生成接口 + 实现 + fake；输出必须映射到**白名单类目**（`category`）
-- [ ] T089 [US3] 创建 `app/content/worker/internal/pipeline/pipeline.go`——状态机 `PENDING→DOWNLOADING→EXTRACTING→ASR_RUNNING→OCR_RUNNING→VISION_RUNNING→INDEXING→COMPLETED`；单步失败重试 ≤3；**部分失败置 `degraded=1` 但 status仍 COMPLETED**；整单失败置 `FAILED`（依赖 T084~T088）
-- [ ] T090 [US3] 在 pipeline 中实现字幕分段`transcript_segments`（`[{start_ms,end_ms,text}]`）以支撑「开头 3 秒讲了什么」；`transcript` 截断至 `TranscriptMaxChars`
-- [ ] T091 [US3] ⚠️ 在 pipeline 的错误处理中对 `error_message` **脱敏**——禁止写入含临时凭证的 COS 签名地址
-- [ ] T092 [US3] 创建 `app/content/worker/internal/consumer/feedcreated.go`——消费 `feed-created`：`feed_type != 2` 置 `DISABLED` 直接 ACK；取 `content:analysis:lock:{feed_id}`（TTL 6min）；`media_hash+model_version` 未变则跳过；启动 pipeline（依赖 T089）
-- [ ] T093 [P] [US3] 创建 `app/content/worker/internal/consumer/feeddeleted.go`——消费 `feed-deleted`：标记画像下线 + **从 ES 移除索引**
-- [ ] T094 [US3] 创建 `app/content/worker/worker.go` 主入口——`MaxConcurrency: 2` 并发控制、注册两个 consumer、metrics :9109（依赖 T092/T093）
-- [ ] T095 [P] [US3] 新增 Gateway 路由 GET `/api/v1/feeds/:feedId/content-profile`（登录，分级返回）与 POST `/api/v1/feeds/:feedId/content-profile/feedback`（作者本人）+ handler
-- [ ] T096 [P] [US3] 创建 `scripts/eval-search.sh`——100 条标注query 评测Precision@5 ≥ 0.85（⚠️ **不进 CI 门禁**，发布前手动执行并归档）
+- [x] T082 [P] [US3] 创建 `etc/content-worker.yaml` + `config.go`——`FFmpegPath: /usr/local/bin/ffmpeg`、`AllowedMediaHosts`、`TempDir`、`MaxConcurrency: 2`、`KeyFrameMax: 20`、`MaxVideoBytes`、`MaxVideoDurationSec: 600`、`FFmpegTimeoutSec: 120`、`TranscriptMaxChars: 4000`、`MaxRetry: 3`、`ModelVersion`、`CategoryWhitelist`、外部接入端点（ASR/OCR/Vision，空则回退 fake）；metrics :9109 在 worker.go
+- [x] T083 [US3] `media/executor.go`——**可注入 `Executor` 接口**（`Run(ctx, bin, args...)`）+ `OSExecutor` 实现（进程组隔离 + 超时强杀 + 超时/运行错误类型）
+- [x] T084 [US3] `media/ffmpeg.go`——安全 6 层防护：① 固定路径 ② 参数数组（Executor 内无 shell）③ URL 白名单+内网拒绝（`url.go` 的 `ValidateMediaURL`，可注入 DNS）④ 超时 kill 进程组 ⑤ 大小/时长上限（下载器 + ffprobe）⑥ 任务独立目录 defer 清理；含抽帧（场景切换+兜底+均匀采样）与音频提取
+- [x] T085 [P] [US3] `media/probe.go`——ffprobe 探测真实时长/分辨率/编码
+- [x] T086 [P] [US3] `asr/client.go`——接口 + HTTP（multipart wav，Bearer Key）+ fake
+- [x] T087 [P] [US3] `ocr/client.go`——接口 + HTTP（多图 multipart）+ fake + 归一化（去重/截断/上限 30）
+- [x] T088 [P] [US3] `vision/client.go`——接口 + HTTP + fake；输出映射白名单类目在 pipeline（`mapCategory`）
+- [x] T089 [US3] `pipeline/pipeline.go`——状态机 `PENDING→DOWNLOADING→EXTRACTING→ASR→OCR→VISION→INDEXING→COMPLETED`；外部调用重试 ≤3（退避）；**部分失败 degraded=1 仍 COMPLETED**；下载/抽帧失败整单 FAILED
+- [x] T090 [US3] `transcript_segments` 全量存 JSON；`transcript` 截断（开头60%+结尾20%）；标签清洗（去重/去纯符号/单条 20 字符/上限 10）
+- [x] T091 [US3] `safeErr` 脱敏：URL 一律替换为 `[url:host]`，禁止签名地址写入 `error_message`（限长 1024）
+- [x] T092 [US3] `consumer/feedcreated.go`——非视频 DISABLED ACK；`content:analysis:lock` SETNX（TTL 6min，任务结束释放）；`model_version` 判重；并发信号量（MaxConcurrency）；pipeline 错误返回触发 MQ 重投
+- [x] T093 [P] [US3] `consumer/feeddeleted.go`——软禁用 + ES 删索引（幂等）+ 删画像缓存
+- [x] T094 [US3] `worker.go`——注册两个 consumer、`MaxConcurrency: 2` 信号量、metrics :9109（promhttp）
+- [x] T095 [P] [US3] Gateway 路由 GET `/feeds/:feedId/content-profile`（登录，分级）+ POST `/feeds/:feedId/content-profile/feedback`（作者本人）+ handler/logic/types；`ContentRpc` 客户端注入 svc
+- [ ] T096 [P] [US3] `scripts/eval-search.sh`——⚠️ **待补**：检索评测脚本（不进 CI 门禁，发布前手动执行）
+
+> Phase 5 偏差小结：
+> 1. `model`/`keys`/`search` 包从 `rpc/internal/` 提升到 `app/content/` 下（worker 复用受 Go internal 边界限制）
+> 2. T064（consumer 幂等单测）、T067（全链路集成测试）、T096（检索评测脚本）为**待补项**，不阻塞 US3 功能交付
+> 3. 测试文件分布与任务书略有差异：`media_test.go`（ffmpeg/probe/url）、`pipeline_test.go`、`hybrid_test.go`、`content_rpc_test.go`
 
 **Checkpoint**: ✅ US3 完整可用——**阶段二 + 阶段三（检索部分）交付完成**，可演示「发一条标题模糊的视频 → 自动生成『西安周边露营攻略』类标签 → 用『西安周边新手露营』检索命中」。对应验收 A1/A2/A3/A4、E2E-1/2/3/8
 
@@ -232,27 +237,33 @@ description: "Task list for FeedMind Agent implementation"
 
 ### Tests for User Story 5 ⚠️
 
-- [ ] T097 [P] [US5] `app/interaction/rpc/internal/logic/getcreatormetrics_test.go`——断言归属校验（查他人返回 14005）、无行为数据时各指标返回 **0 而非 null/错误**、派生率计算正确
-- [ ] T098 [P] [US5] `app/interaction/rpc/internal/logic/getpeeraveragemetrics_test.go`——⚠️ 断言返回**匿名聚合统计量**，**禁止泄漏 feed_id/author_id**；样本不足返回 `InteractionPeerInsufficient`(14006)
-- [ ] T099 [P] [US5] `app/interaction/rpc/internal/logic/getuserinterestprofile_test.go`——断言 `user_id` 必须等于 `viewer_id`（内部例外），越权返回 14005/16010
-- [ ] T100 [P] [US5] `tests/creator_metrics_test.go`——集成测试：埋点 → 聚合 → 创作者查询全链路数据一致性
+- [x] T097 [P] [US5] `metrics_test.go`——归属校验（查他人 14005）、无数据各指标 0（rate 为 null 而非 0，符合 §2）、派生率计算正确（0.4/0.25/0.1 断言）
+- [x] T098 [P] [US5] `metrics_test.go`——⚠️ 断言响应**匿名**（peer level/category/bucket，无 feed_id/author_id 字段）；样本不足 insufficient_sample=true（偏差：设计 §3 明确 Agent 需正常返回并说明，故用标记而非 14006 报错）
+- [x] T099 [P] [US5] `metrics_test.go`——`user_id` 必须等于 `viewer_id`（内部例外），越权 Forbidden；MySQL 快照兜底 + ratio 归一化
+- [ ] T100 [P] [US5] `tests/creator_metrics_test.go`——⚠️ **待补**：全链路集成测试（埋点→聚合→查询）依赖真实存储
 
 ### Implementation for User Story 5
 
-- [ ] T101 [US5] 修改 `api/proto/interaction/interaction.proto`——**现有 10 方法保持不变**，新增 5 个：`GetFeedMetrics`/`BatchGetFeedMetrics`/`GetCreatorMetrics`/`GetPeerAverageMetrics`/`GetUserInterestProfile`及 Req/Resp，契约见 [contracts/grpc-services.md](./contracts/grpc-services.md) §4
-- [ ] T102 [US5] 执行 `make proto` 生成 Interaction pb（依赖 T101）
-- [ ] T103 [P] [US5] `goctl model` 生成 `user_interest_profiles` model 到 `app/interaction/rpc/internal/model/`；在 custom model 扩展 `UpsertWithVersion`（**version 单调递增防并发回退**）
-- [ ] T104 [P] [US5] 在 `customFeedMetricsHourlyModel` 扩展查询方法：`SumByFeedAndWindow`、`SumByAuthorAndWindow`、`AvgByFeedIDs`（供同类对比）
-- [ ] T105 [P] [US5] 实现 `app/interaction/rpc/internal/logic/getfeedmetricslogic.go`——单 feed 原子指标 + **应用层计算派生率**（完播率/有效播放率/快划率，**不落库**）；含 `window` 参数；作者本人或内部
-- [ ] T106 [P] [US5] 实现 `app/interaction/rpc/internal/logic/batchgetfeedmetricslogic.go`——≤100 个 feed_id，仅原子指标，内部服务间调用
-- [ ] T107 [US5] 实现 `app/interaction/rpc/internal/logic/getcreatormetricslogic.go`——`viewer_id` 归属校验（非本人非内部返回 14005）；返回结构见 `docs/design/agent/08-creator-metrics.md` §6
-- [ ] T108 [US5] 实现 `app/interaction/rpc/internal/logic/getpeeraveragemetricslogic.go`——两步跨库查询：先按 `category` 从 Content RPC 取同类 feed_id 列表，再聚合 `feed_metrics_hourly`；⚠️ **只返回匿名统计量**；样本不足返回 14006
-- [ ] T109 [US5] 创建 `app/interaction/rpc/internal/worker/interest_calc.go`——从 `user:interest:{user_id}` ZSet 计算兴趣快照并落`user_interest_profiles`；实现**时间衰减**（公式见 `docs/design/agent/06-user-interest.md`）；定时任务遍历 `interest:active:{yyyyMMdd}`
-- [ ] T110 [US5] 在 behavior_consumer 中补充兴趣权重累加——按 `interest:dedup:{user_id}:{feed_id}:{action}` 去重后，调 Content RPC `BatchGetContentProfile` 取标签，`ZINCRBY user:interest:{user_id}` 成员 `t:{topic}`/`c:{category}`，TTL 90d（依赖 T077）
-- [ ] T111 [P] [US5] 实现 `app/interaction/rpc/internal/logic/getuserinterestprofilelogic.go`——⚠️ `user_id` **必须等于** `viewer_id`（内部例外）；优先读 Redis ZSet，未命中回查 MySQL 快照；返回占比摘要
-- [ ] T112 [US5] 在 `app/interaction/rpc/internal/server/interactionserver.go` 注册 5 个新方法（依赖 T105~T111）
-- [ ] T113 [P] [US5] 新增 Gateway 路由 GET `/api/v1/creator/feeds/:feedId/metrics?window=24h`（作者本人）+ handler
-- [ ] T114 [P] [US5] 新增 Gateway 路由 GET `/api/v1/feeds/:feedId/recommendation-reason?request_id=`（请求归属者）+ handler——`request_id` 缺省时**走降级解释**，规则见 `docs/design/agent/07-recommend-reason.md` §6
+- [x] T101 [US5] 修改 `interaction.proto`——现有 10 方法保持不变，新增 5 个方法 + Req/Resp（`FeedMetricsRaw/Rate/PeerRateDistribution/Percentile/InterestItem` 等）
+- [x] T102 [US5] `goctl rpc protoc` 生成 pb（⚠️ 备份恢复了 interaction.go/yaml/config/svc/server，仅替换 pb）
+- [x] T103 [P] [US5] `user_interest_profiles` model（DDL 追加 interaction.sql，手写 gen+custom）；`UpsertWithVersion` **version 单调递增**（取较大值+1，防并发回退）
+- [x] T104 [P] [US5] `customFeedMetricsHourlyModel` 扩展：`SumByFeedAndWindow`/`SumByAuthorAndWindow`/`SumByFeedIDs`/`AvgByFeedIDs`（补充了 BatchGet/同类对比需要的 SumByFeedIDs）
+- [x] T105 [P] [US5] `getfeedmetricslogic.go`——应用层派生率（不落库）+ window 归一化 + data_complete 语义
+- [x] T106 [P] [US5] `batchgetfeedmetricslogic.go`——≤100 校验、仅 raw、按请求顺序
+- [x] T107 [US5] `getcreatormetricslogic.go`——`viewer_id` 归属校验（非本人非内部 14005）+ 内部审计日志
+- [x] T108 [US5] `getpeeraveragemetricslogic.go`——两步跨库（ContentRpc.SearchContent 取同类 → SumByFeedIDs 聚合）+ **匿名统计量**（avg/p25/p50/p75）+ 时长分桶过滤 + 样本不足标记（偏差见 T098）
+- [x] T109 [US5] `interest` 包（`app/interaction/interest/`）——ZSet 快照计算（BuildSnapshot）+ **时间衰减**（Lua：14 天半衰期 daily_factor=0.9517）+ SnapshotJSON（⚠️ **定时任务遍历 `interest:active` 待补**：worker 调度器留待 Phase 8，单用户 Decay 已就绪）
+- [x] T110 [US5] behavior_consumer（`behaviorWorker.updateInterest`）——`interest:dedup` 去重 24h → 读 `content:profile` 缓存/Content RPC `BatchGetContentProfile` 取标签 → Lua `ZINCRBY` `t:`/`c:` 成员，TTL 90d + 活跃集合 + Top200 裁剪（ContentRpc nil 时安全跳过）
+- [x] T111 [P] [US5] `getuserinterestprofilelogic.go`——`user_id` 必须等于 `viewer_id`（内部例外）；Redis ZSet 优先 → MySQL 快照兜底；占比归一化 + 冷启动标记
+- [x] T112 [US5] `interactionserver.go` 注册 5 个新方法
+- [x] T113 [P] [US5] Gateway 路由 GET `/creator/feeds/:feedId/metrics`（JWT 作者本人）+ handler/logic/types + MockInteraction 补充 5 方法
+- [ ] T114 [P] [US5] ⚠️ **待补**：recommendation-reason 路由（依赖 `07-recommend-reason.md` 与 Agent 阶段，见 Phase 7 说明）
+
+> Phase 6 偏差小结：
+> 1. 同类对比样本不足返回 `insufficient_sample=true`（设计 §3 要求 Agent 如实说明），而非 14006 报错（14006 已定义备用）
+> 2. 兴趣时间衰减的单用户 Decay 已实现，**活跃用户定时遍历任务留待 Phase 8 调度器**
+> 3. `interaction-test.yaml` 需显式 `InternalUserIDs: []`（go-zero 对缺失 slice 字段的解析限制）
+> 4. T100/T114 为待补项，不阻塞 US5 核心交付
 
 **Checkpoint**: ✅ US5 可独立工作——**阶段三交付完成**（兴趣画像 + 创作者指标）。对应验收 A11、E2E-8
 
