@@ -43,6 +43,14 @@ InteractionRpc:
     Key: interaction.rpc
   Timeout: 3000
 
+# Content gRPC 服务客户端配置（内容画像查询/反馈，见 http-api.md #7/#8）
+ContentRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2479
+    Key: content.rpc
+  Timeout: 3000
+
 # 行为埋点限流用 Redis（与其余服务共用同一实例）。
 BehaviorRedis:
   Host: 127.0.0.1:6379

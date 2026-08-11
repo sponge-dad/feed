@@ -31,6 +31,9 @@ type Config struct {
 	// InteractionRpc interaction 服务 gRPC 客户端配置。
 	InteractionRpc zrpc.RpcClientConf
 
+	// ContentRpc content 服务 gRPC 客户端配置（内容画像查询/反馈）。
+	ContentRpc zrpc.RpcClientConf
+
 	// IPLocation 同城流 IP 定位的兜底配置。
 	// 本地/内网开发环境无法做真实 GeoIP 解析时，使用该默认城市；
 	// 三项均为空时视为未配置，解析失败将返回业务码 12006。

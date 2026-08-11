@@ -1,0 +1,61 @@
+Name: content-worker
+
+# MySQL 连接配置（feed_content 库）。DSN 从环境变量注入，禁止硬编码（宪法 III.3）。
+Mysql:
+  DataSource: ${CONTENT_MYSQL_DSN}
+
+# Redis 缓存配置（分析锁 content:analysis:lock）
+CacheRedis:
+  - Host: 127.0.0.1:6379
+    Type: node
+    Pass: "mUd0ZLc312DPJ4Acaf4PnIoF"
+
+# RocketMQ 消费者（独立消费组）
+RocketMQ:
+  NameServer:
+    - 127.0.0.1:9876
+  ConsumeGroup: content-analysis-consumer
+
+# Feed RPC：查 Feed 详情（媒体地址 / 类型 / 作者）
+FeedRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2479
+    Key: feed.rpc
+
+# Elasticsearch 检索索引（写别名 feed_content_write）
+Elasticsearch:
+  Addr: ${ES_ADDR}
+
+# 媒体分析与安全（见 docs/design/agent/04-content-analysis.md §4）
+Media:
+  FFmpegPath: /usr/local/bin/ffmpeg
+  FFprobePath: /usr/local/bin/ffprobe
+  # 媒体下载域名白名单（SSRF 防护）；生产按实际 COS 域名配置
+  AllowedMediaHosts:
+    - "*.myqcloud.com"
+    - "*.cos.ap-guangzhou.myqcloud.com"
+  TempDir: /var/tmp/feedmind
+  MaxConcurrency: 2
+  KeyFrameMax: 20
+  MaxVideoBytes: 209715200
+  MaxVideoDurationSec: 600
+  FFmpegTimeoutSec: 120
+  TranscriptMaxChars: 4000
+  MaxRetry: 3
+  ModelVersion: v1.0.0
+  EmbeddingDim: 1024
+
+# 多模态模型（标签生成 / embedding），API Key 从环境变量注入
+ARK:
+  APIKey: ${ARK_API_KEY}
+  Model: ${ARK_MODEL}
+
+# 日志配置（独立子目录 logs/content-worker）
+Log:
+  Mode: file
+  Encoding: json
+  Path: logs/content-worker
+  Level: info
+  KeepDays: 7
+  Compress: true

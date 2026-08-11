@@ -1,0 +1,135 @@
+// content.proto
+//
+// 职责：Content 服务内部 gRPC 接口定义（FeedMind Agent 阶段二/三）。
+// 服务范围：内容画像查询（分级返回）、批量画像、语义检索、重试分析、创作者纠错反馈。
+// 端口：9007；Prometheus metrics：9110。
+// 契约见 specs/001-feedmind-agent/contracts/grpc-services.md §1。
+syntax = "proto3";
+
+package content;
+option go_package = "./content";
+
+// ==================== 枚举 ====================
+
+// 画像分析状态（与 feed_content_profiles.analysis_status 一一对应）
+enum AnalysisStatus {
+  ANALYSIS_UNKNOWN = 0; // 默认值，语义安全
+  PENDING          = 1; // 任务已创建，等待调度
+  DOWNLOADING      = 2; // 下载媒体
+  EXTRACTING       = 3; // FFmpeg 提取音频 + 抽关键帧
+  ASR_RUNNING      = 4; // 语音识别
+  OCR_RUNNING      = 5; // 画面文字识别
+  VISION_RUNNING   = 6; // 多模态摘要与标签
+  INDEXING         = 7; // 写检索索引
+  COMPLETED        = 8; // 全部完成
+  FAILED           = 9; // 整单失败
+  DISABLED         = 10; // 非视频 / 已删除，不分析
+}
+
+// ==================== 领域消息 ====================
+
+// ContentProfile 内容画像（字幕/OCR 全文仅作者本人或内部可见，其他调用方只拿到公开字段）
+message ContentProfile {
+  int64  feed_id            = 1; // 帖子 ID
+  int64  author_id          = 2; // 作者 ID（权限校验用）
+  string category           = 3; // 内容类别（白名单）
+  string summary            = 4; // 内容摘要
+  repeated string topics    = 5; // 主题标签
+  repeated string objects   = 6; // 画面实体
+  repeated string scenes    = 7; // 场景标签
+  repeated string styles    = 8; // 内容形式标签
+  string transcript         = 9;  // 语音字幕全文（分级字段）
+  string ocr_text           = 10; // 关键帧文字（分级字段）
+  string language           = 11; // 语言
+  int64  media_duration_ms  = 12; // ffprobe 探测的真实时长
+  int32  key_frame_count    = 13; // 关键帧数量
+  AnalysisStatus analysis_status = 14; // 分析状态
+  bool   degraded           = 15; // 1=部分阶段失败但结果可用
+  string model_version      = 16; // 模型版本
+  string error_message      = 17; // 失败原因（仅内部可见）
+  int64  analyzed_at        = 18; // 分析完成时间（unix ms，0 表示未完成）
+}
+
+// 命中原因（后端生成，模型只负责转述）
+message MatchReason {
+  string code   = 1; // 如 TOPIC_MATCH / TRANSCRIPT_HIT / TITLE_HIT
+  string detail = 2; // 命中片段/说明（字幕片段 ≤80 字）
+}
+
+// 检索结果项
+message SearchResultItem {
+  int64  feed_id           = 1;
+  string title             = 2;
+  string cover_url         = 3;
+  string category          = 4;
+  repeated string matched_topics = 5;
+  repeated MatchReason match_reasons = 6;
+  int64  media_duration_ms = 7;
+  int64  published_at      = 8; // unix ms
+  double score             = 9;
+}
+
+// ==================== 接口定义 ====================
+
+// 查询单条内容画像（分级返回）
+message GetContentProfileReq {
+  int64 feed_id   = 1;
+  int64 viewer_id = 2; // 当前查看者，Gateway 从 JWT 注入
+}
+message GetContentProfileResp {
+  ContentProfile profile = 1;
+}
+
+// 批量查询内容画像（≤50，仅公开字段，供兴趣画像与推荐解释使用）
+message BatchGetContentProfileReq {
+  repeated int64 feed_ids = 1; // 单次不超过 50 个，结果按请求顺序，缺失项跳过
+}
+message BatchGetContentProfileResp {
+  repeated ContentProfile profiles = 1;
+}
+
+// 结构化内容检索（入参为结构化条件，见 05-content-search.md §4）
+message SearchContentReq {
+  repeated string keywords = 1; // ≤5 个，单个 1~20 字符
+  string category          = 2; // 类目白名单，非法置空降级
+  repeated string topics   = 3; // ≤5 个
+  string city_name         = 4; // 城市名，映射失败作为普通关键词
+  int32  feed_type         = 5; // 仅 1/2，其他置 0（不限）
+  string sort              = 6; // relevance / latest / hot，默认 relevance
+  int32  limit             = 7; // 1~20
+  int32  published_within_days = 8; // 1~365，收敛到边界
+  int64  viewer_id         = 9;
+}
+message SearchContentResp {
+  int32 total_candidates = 1; // 融合后候选数（过滤前）
+  repeated SearchResultItem items = 2;
+  string no_match_code   = 3; // 无结果原因：NO_MATCH / FILTERED_OUT，空串表示有结果
+}
+
+// 内部重试分析（重置状态并重新入队）
+message RetryContentAnalysisReq {
+  int64 feed_id     = 1;
+  bool  force       = 2; // true 时忽略幂等（模型升级重跑）
+  int64 operator_id = 3; // 内部用户 ID
+}
+message RetryContentAnalysisResp {
+}
+
+// 创作者纠错反馈（只记录，不改画像）
+message SubmitProfileFeedbackReq {
+  int64  feed_id = 1;
+  int64  user_id = 2; // 仅作者本人
+  string field   = 3; // 纠错字段：category/summary/topics/...
+  string comment = 4; // 纠错说明
+}
+message SubmitProfileFeedbackResp {
+}
+
+// ==================== 服务定义 ====================
+service Content {
+  rpc GetContentProfile(GetContentProfileReq) returns (GetContentProfileResp);
+  rpc BatchGetContentProfile(BatchGetContentProfileReq) returns (BatchGetContentProfileResp);
+  rpc SearchContent(SearchContentReq) returns (SearchContentResp);
+  rpc RetryContentAnalysis(RetryContentAnalysisReq) returns (RetryContentAnalysisResp);
+  rpc SubmitProfileFeedback(SubmitProfileFeedbackReq) returns (SubmitProfileFeedbackResp);
+}

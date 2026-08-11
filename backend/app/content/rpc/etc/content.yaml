@@ -1,0 +1,68 @@
+Name: content.rpc
+
+# 服务端口约定：9007（见 docs/design/agent/01-architecture.md 端口分配表）。
+ListenOn: 0.0.0.0:9007
+Etcd:
+  Hosts:
+    # 本机是 K8s 节点，2379 被 K8s 自带 etcd 占用，开发用 etcd 容器映射在 2479
+    - 127.0.0.1:2479
+  Key: content.rpc
+
+# MySQL 连接配置（feed_content 库）。DSN 从环境变量注入，禁止硬编码（宪法 III.3）。
+Mysql:
+  DataSource: ${CONTENT_MYSQL_DSN}
+
+# Redis 缓存配置（go-zero cache.CacheConf 数组，单机写一个节点）
+CacheRedis:
+  - Host: 127.0.0.1:6379
+    Type: node
+    Pass: "mUd0ZLc312DPJ4Acaf4PnIoF"
+
+# Elasticsearch 检索索引（feed_content_v1 读别名 feed_content / 写别名 feed_content_write）
+Elasticsearch:
+  Addr: ${ES_ADDR}
+
+# 内部用户白名单（查看完整画像、重试分析）。生产由环境/配置中心注入。
+InternalUserIDs: []
+
+# 类目白名单（SearchContent 校验：非法类目降级为不限类目，与 Worker 的 CategoryWhitelist 保持一致）
+CategoryWhitelist:
+  - 户外旅行
+  - 美食
+  - 健身
+  - 知识科普
+  - 科技数码
+  - 生活方式
+  - 萌宠
+  - 汽车
+  - 游戏
+  - 其他
+
+# Feed RPC：SearchContent 结果回查存在性与 status=NORMAL（不信任索引）
+FeedRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2479
+    Key: feed.rpc
+
+# Prometheus 指标（FR-026：content:9110）
+Prometheus:
+  Host: 0.0.0.0
+  Port: 9110
+  Path: /metrics
+
+# OpenTelemetry 分布式追踪（FR-027，go-zero 内置）
+Telemetry:
+  Name: content.rpc
+  Endpoint: http://127.0.0.1:14268/api/traces
+  Sampler: 1.0
+  Batcher: jaeger
+
+# 日志配置（全项目统一规范）：file 模式落盘到独立子目录 logs/content
+Log:
+  Mode: file
+  Encoding: json
+  Path: logs/content
+  Level: info
+  KeepDays: 7
+  Compress: true

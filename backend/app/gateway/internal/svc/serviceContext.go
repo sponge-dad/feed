@@ -3,6 +3,7 @@ package svc
 
 import (
 	commentClient "github.com/sponge-dad/feed/app/comment/rpc/commentClient"
+	contentClient "github.com/sponge-dad/feed/app/content/rpc/contentClient"
 	feedClient "github.com/sponge-dad/feed/app/feed/rpc/feedclient"
 	"github.com/sponge-dad/feed/app/gateway/internal/config"
 	"github.com/sponge-dad/feed/app/gateway/internal/pkg/cos"
@@ -25,6 +26,7 @@ type ServiceContext struct {
 	FeedRpc        feedClient.Feed
 	CommentRpc     commentClient.Comment
 	InteractionRpc interactionClient.Interaction
+	ContentRpc     contentClient.Content
 
 	// IPResolver 请求 IP -> 城市 的解析器（同城流、发帖 IP 属地用）。
 	IPResolver ipx.Resolver
@@ -71,6 +73,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		FeedRpc:           feedClient.NewFeed(zrpc.MustNewClient(c.FeedRpc, zrpc.WithUnaryClientInterceptor(interceptors.UnaryClientRequestID))),
 		CommentRpc:        commentClient.NewComment(zrpc.MustNewClient(c.CommentRpc, zrpc.WithUnaryClientInterceptor(interceptors.UnaryClientRequestID))),
 		InteractionRpc:    interactionClient.NewInteraction(zrpc.MustNewClient(c.InteractionRpc, zrpc.WithUnaryClientInterceptor(interceptors.UnaryClientRequestID))),
+		ContentRpc:        contentClient.NewContent(zrpc.MustNewClient(c.ContentRpc, zrpc.WithUnaryClientInterceptor(interceptors.UnaryClientRequestID))),
 		IPResolver:        ipx.NewStaticResolver(defaultCity),
 		Cos:               cos.MustNew(c.Cos),
 		Producer:          mustNewProducer(c.RocketMQ.NameServer, c.RocketMQ.GroupName),
