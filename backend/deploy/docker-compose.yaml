@@ -146,8 +146,48 @@ services:
     environment:
       JAVA_OPT: "-Drocketmq.namesrv.addr=rmq-namesrv:9876 -Dcom.rocketmq.sendMessageWithVIPChannel=false"
 
+  # ------------------------------------------------------------------
+  # Elasticsearch：内容画像语义检索（feed_content_v1 索引，Content RPC 依赖）
+  #
+  # 说明：
+  #   - 开发环境单节点（discovery.type=single-node），关闭安全认证
+  #     （生产必须开启 xpack.security 并走 Secret，参考 deploy/k8s/ 待补充）
+  #   - 内存限制：JVM 堆 512MB，避免拖垮开发机（机器内存吃紧时可先停 rmq-dashboard）
+  #   - 通过自定义 entrypoint 幂等安装中文分词插件 analysis-ik：
+  #     mapping 中 title/transcript 等文本字段依赖 ik_max_word / ik_smart 分词，
+  #     插件缺失时 create index 会失败。若机器无法访问 GitHub 导致安装失败，
+  #     ES 仍可启动，但需手动装插件后再执行 deploy/es/init-index.sh。
+  #   - 索引/别名初始化：首次启动后执行 bash deploy/es/init-index.sh（幂等）
+  # ------------------------------------------------------------------
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: feed-es
+    restart: unless-stopped
+    environment:
+      # 单节点模式：不需要 discovery 集群配置
+      discovery.type: single-node
+      # 开发环境关闭安全认证（生产必须开启）
+      xpack.security.enabled: "false"
+      # JVM 堆内存限制（ES 默认按机器内存一半分配，开发机吃不消）
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+      # 关闭首次启动的 product 检查弹窗提示
+      ELASTIC_PASSWORD: ""
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+      # 自定义入口：先装 IK 插件（幂等），再走官方 entrypoint
+      - ./es/es-entrypoint.sh:/usr/local/bin/es-entrypoint.sh:ro
+    entrypoint: ["/usr/local/bin/es-entrypoint.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+
 volumes:
   mysql_data:
   redis_data:
   etcd_data:
   rmq_broker_data:
+  es_data:

@@ -1,0 +1,44 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "analysis": {
+      "analyzer": {
+        "ik_max_word_analyzer": {
+          "type": "custom",
+          "tokenizer": "ik_max_word"
+        },
+        "ik_smart_analyzer": {
+          "type": "custom",
+          "tokenizer": "ik_smart"
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "feed_id":   { "type": "keyword" },
+      "author_id": { "type": "keyword" },
+      "feed_type": { "type": "byte" },
+      "status":    { "type": "byte" },
+      "title":       { "type": "text", "analyzer": "ik_max_word", "search_analyzer": "ik_smart" },
+      "description": { "type": "text", "analyzer": "ik_max_word", "search_analyzer": "ik_smart" },
+      "summary":      { "type": "text", "analyzer": "ik_max_word", "search_analyzer": "ik_smart" },
+      "transcript":   { "type": "text", "analyzer": "ik_max_word", "search_analyzer": "ik_smart" },
+      "ocr_text":     { "type": "text", "analyzer": "ik_max_word", "search_analyzer": "ik_smart" },
+      "category": { "type": "keyword" },
+      "topics":   { "type": "keyword" },
+      "scenes":   { "type": "keyword" },
+      "objects":  { "type": "keyword" },
+      "styles":   { "type": "keyword" },
+      "city_code": { "type": "keyword" },
+      "city_name": { "type": "keyword" },
+      "language":  { "type": "keyword" },
+      "media_duration_ms": { "type": "long" },
+      "published_at":      { "type": "date" },
+      "like_count":        { "type": "long" },
+      "collect_count":     { "type": "long" },
+      "embedding": { "type": "dense_vector", "dims": 1024, "index": true, "similarity": "cosine" }
+    }
+  }
+}

@@ -18,6 +18,9 @@ vendor/
 # 同时兼容 logx 按天滚动产生的带日期后缀文件（如 access.log-2026-08-05）及压缩产物。
 logs/
 *.log
+
+# goctl 生成骨架临时目录（生成 pb 时使用，勿提交）
+.interaction_gen_tmp/
 *.log-*
 *.log.gz
 tmp/
