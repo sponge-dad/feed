@@ -16,6 +16,7 @@
 | [06-cache/06-cache.md](./06-cache/06-cache.md) | Redis 先行策略下的缓存一致性、计数非负保护与并发安全 |
 | [07-mq-event/07-mq-event.md](./07-mq-event/07-mq-event.md) | `interaction.event` 事件模型、有序消费、异步落库与幂等 |
 | [08-test-strategy/08-test-strategy.md](./08-test-strategy/08-test-strategy.md) | 单元/集成/并发/压测分层策略与关键用例 |
+| [dataflow.md](./dataflow.md) | 全部 logic 数据流 | 每个 logic 的入口/校验/主流程/数据源/失败降级/副作用/ASCII 图 |
 
 ## 关联文档
 

@@ -18,6 +18,7 @@
 | [06-cache-strategy.md](./06-cache-strategy.md) | 缓存策略 | Cache-Aside、缓存分层、一致性保障、击穿穿透雪崩防护 |
 | [07-mq-event.md](./07-mq-event.md) | MQ 事件与 Worker | feed.created / feed.deleted 事件、Worker 推/拉处理 |
 | [08-test-strategy.md](./08-test-strategy.md) | 测试策略 | 单元/集成/并发/压测分层与典型用例 |
+| [dataflow.md](./dataflow.md) | 全部 logic 数据流 | 每个 logic 的入口/校验/主流程/数据源/失败降级/副作用/ASCII 图 |
 
 ---
 

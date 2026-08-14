@@ -19,6 +19,7 @@
 | [06-cache.md](./06-cache.md) | 缓存一致性：Cache-Aside、重建、并发安全、降级 | Redis 与 MySQL 怎么保持一致 |
 | [07-mq-event.md](./07-mq-event.md) | MQ 事件：comment.event 模型、生产者/消费者、幂等有序 | 事件怎么发、谁消费、如何不丢 |
 | [08-test-strategy.md](./08-test-strategy.md) | 测试策略：单元/集成/并发/压测分层与关键用例 | 各模块测什么、边界在哪 |
+| [dataflow.md](./dataflow.md) | 全部 logic 数据流：入口/校验/主流程/数据源/失败降级/副作用/ASCII 图 | 每个 logic 的数据从哪来到哪去 |
 
 ## 与现有文档的引用关系
 

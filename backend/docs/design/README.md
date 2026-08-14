@@ -10,8 +10,13 @@
 | [service-design.md](./service-design.md) | 微服务拆分方案、各服务职责、服务间调用关系、RocketMQ Topic 归属 |
 | [data-model.md](./data-model.md) | MySQL 表结构、Redis 数据结构、数据归属说明 |
 | [api-spec/](./api-spec/) | 对外 REST API 契约总纲与各模块接口定义 |
+| [gateway/](./gateway/) | Gateway（8080）BFF 聚合层设计：全部 logic 数据流 |
+| [user/](./user/) | User 服务（9001）设计：全部 logic 数据流 |
+| [relation/](./relation/) | Relation 服务（9002）设计：全部 logic 数据流 |
 | [feed/](./feed/) | Feed 服务（9003）分模块设计方案：数据模型、帖子管理、三种 Timeline、缓存、MQ、测试 |
+| [comment/](./comment/) | Comment 服务（9004）分模块设计方案：发表/删除/列表/计数/热门、缓存、MQ、测试 |
 | [interaction/](./interaction/) | Interaction 服务（9005）分模块设计方案：点赞/收藏、计数/状态、用户列表、缓存一致性、MQ、测试 |
+| [content/](./content/) | Content 服务（9007）设计：内容画像、结构化检索、纠错反馈的 logic 数据流 |
 | [oss/](./oss/) | 对象存储（腾讯云 COS）设计：Bucket/Key 规范、STS 临时凭证签发、私有桶签名访问、安全策略 |
 | [agent/](./agent/) | FeedMind Agent（短视频内容理解与 Feed 智能助手）设计方案：请求标识链路、行为埋点与指标、内容多模态分析（Content 9007）、语义检索、兴趣画像、推荐原因解释、创作者分析、Agent 服务（9006）与 Eino Tool 编排 |
 
